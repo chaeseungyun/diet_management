@@ -15,7 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `requirements-phase1.md` | 1차 범위(단계 0~2)의 NFR/FR, 인수 시나리오, **§6 설계 결정(D-01~D-04, 사용자 확정)**, §7 검토 메모(미정) |
 | `erd.md` | 엔터티 속성·관계, 핵심 흐름→테이블 매핑(§4), 설계 전제(§5, 제안) |
 | `state-transitions.md` | 개체별 상태 기계, 미정 전이 목록(§10), ERD enum 대응표(§12) |
-| `screens.md` | 화면 ID(S-xx)·경로·데이터·단계별 묶음. `design-tokens.md`를 참조하지만 그 파일은 아직 없다 |
+| `screens.md` | 화면 ID(S-xx)·경로·데이터·단계별 묶음(§8), 화면별 상태 표시 규칙(§7), 미정(§9) |
+| `design-tokens.md` | 컬러 토큰(`design/globals.css`, Claude Design 생성)의 shadcn/ui(Tailwind v4) 적용 방법, 도메인 상태↔토큰 매핑, 컴포넌트 variant 확장, 대비 검토. 값은 CSS 파일이 기준 |
 | `extension-todo.md` | 단계 3 이후(OCR·사진 분석·크롤링·LLM 추천). **1차 구현 중에는 만들지 않는다** |
 | `decisions.md` | 결정 기록(DEC-###). 결정의 맥락·버린 대안·근거·재검토 조건. 상태 확정/제안/미정/대체됨. 열린 결정은 §F |
 | `archive/diet-app-requirements-v0.1.md` | 분리 전 원본. 참고용, 수정하지 않는다 |
