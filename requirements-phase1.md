@@ -195,7 +195,7 @@
 
 권고 엔터티(1차): User, GoalHistory, Product, ProductNutritionVersion, Purchase, StockReceipt, StockMovement, MealTemplate, WeeklySchedule, DateOverride, MealRecord, MealItemSnapshot, DayCompletion, WeightRecord, NotificationSetting, PushSubscription, NotificationDelivery.
 
-상태 전이(식사 기록·계획 유형·재고·하루 완료·알림 등)는 [`state-transitions.md`](state-transitions.md) 참조.
+엔터티 속성·관계·제약과 설계 전제는 [`erd.md`](erd.md) 참조. 상태 전이(식사 기록·계획 유형·재고·하루 완료·알림 등)는 [`state-transitions.md`](state-transitions.md) 참조.
 
 ## 4. 단계별 구현·인수 계획
 
