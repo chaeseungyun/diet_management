@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/erd.md` | 엔터티 속성·관계, 핵심 흐름→테이블 매핑(§4), 설계 전제(§5, 제안) |
 | `docs/state-transitions.md` | 개체별 상태 기계, 미정 전이 목록(§10), ERD enum 대응표(§12) |
 | `docs/screens.md` | 화면 ID(S-xx)·경로·데이터·단계별 묶음(§8), 화면별 상태 표시 규칙(§7), 미정(§9) |
+| `docs/api.md` | API 엔드포인트 목록(§1~§11, 모두 제안), 공통 규칙(§0), 미정(§12), 단계별 묶음(§13). 확정은 D-04의 `PUT /meal-records/{date}/{slot}`뿐 |
 | `docs/design-tokens.md` | 컬러 토큰(`docs/design/globals.css`, Claude Design 생성)의 shadcn/ui(Tailwind v4) 적용 방법, 도메인 상태↔토큰 매핑, 컴포넌트 variant 확장, 대비 검토. 값은 CSS 파일이 기준 |
 | `docs/extension-todo.md` | 단계 3 이후(OCR·사진 분석·크롤링·LLM 추천). **1차 구현 중에는 만들지 않는다** |
 | `docs/decisions.md` | 결정 기록(DEC-###). 결정의 맥락·버린 대안·근거·재검토 조건. 상태 확정/제안/미정/대체됨. 열린 결정은 §F |
@@ -27,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 문서의 **확정 / 제안 / 미정** 표기를 구분한다. 제안·미정을 사용자 확정 사항으로 기록하거나 구현 전제로 굳히지 않는다. 기술 선택·수치 목표(p95, LCP, 예산 배분)는 제안이다.
 - FR 본문과 §6 설계 결정이 충돌하면 §6이 우선한다.
-- 미정 항목은 `requirements-phase1.md` §7, `erd.md` §5 하단, `state-transitions.md` §10, `screens.md` §9에 모여 있다. 새 미정 사항은 해당 목록에 추가하고, 결정되면 §6 형식(D-xx)으로 올린다.
+- 미정 항목은 `requirements-phase1.md` §7, `erd.md` §5 하단, `state-transitions.md` §10, `screens.md` §9, `api.md` §12에 모여 있다. 새 미정 사항은 해당 목록에 추가하고, 결정되면 §6 형식(D-xx)으로 올린다.
 - 결정 기록은 `decisions.md`에 남긴다. 구현 중 내린 결정(라이브러리 선택, 스키마 변경, 설계 변경)은 나중에 몰아 쓰지 말고 커밋·PR 링크와 함께 바로 `DEC-###` 항목으로 추가한다. 번호는 재사용하지 않고, 뒤집힌 결정은 지우지 않고 `대체됨`으로 바꾼다. `decisions.md`와 요구사항 문서가 충돌하면 요구사항 문서가 우선하고 `decisions.md`를 고친다.
 - 문서 간 링크(마크다운 상대 경로)와 ID(FR-xx, NFR-xx, D-xx, S-xx, EXT-xx, A1~A8)를 유지한다. 문서는 한국어로 쓴다.
 - 이 저장소는 구매·주문·결제를 지시하지 않는다. 유료 인프라·도메인은 실제 결제액 검토가 가능한 상태만 만든다.
