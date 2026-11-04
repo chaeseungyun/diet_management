@@ -73,12 +73,12 @@ erDiagram
         uuid user_id FK
         string name
         string brand "nullable"
-        numeric package_amount "포장 규격 수량"
-        enum package_unit "g|ml|ea"
-        enum stock_unit "g|ml|ea, 재고 원장 단위"
-        numeric pack_weight_g "nullable, ea-g 변환 허용 조건"
+        enum stock_unit "g|ml|ea, 재고 원장 단위. 이동 존재 시 변경 불가 (D-13)"
+        string unit_label "ea일 때 표시 단위(팩·개·통), g/ml이면 null (D-11)"
+        numeric units_per_package "포장 1개 = 재고 단위 N, 입고 = 구매 수량 x N (D-11)"
+        numeric pack_weight_g "nullable, ea 1단위의 g, ea-g 변환 허용 조건"
         bool is_stock_tracked "소스=false"
-        numeric default_serving_amount "nullable, 소스 기본 추정량"
+        numeric default_serving_amount "nullable, 소스 기본 추정량, stock_unit 기준"
         string purchase_url "nullable"
         timestamptz created_at
         timestamptz archived_at
@@ -87,7 +87,7 @@ erDiagram
         uuid id PK
         uuid product_id FK
         numeric basis_amount "기준량"
-        enum basis_unit "g|ml|ea|serving"
+        enum basis_unit "g|ml|ea, stock_unit과 같거나 g(pack_weight_g 있는 ea 제품) (D-11)"
         numeric kcal "nullable=미상"
         numeric carb_g "nullable"
         numeric protein_g "nullable"
@@ -138,7 +138,7 @@ erDiagram
         uuid template_id FK
         uuid product_id FK
         numeric quantity
-        enum unit "g|ml|ea|serving"
+        enum unit "g|ml|ea, D-02 규칙"
         int sort_order
     }
     WeeklySchedule {
@@ -175,6 +175,7 @@ erDiagram
         numeric outside_protein_g "nullable"
         numeric outside_fat_g "nullable"
         bool plan_changed "계획 사전 변경 여부"
+        int version "낙관적 잠금, 쓰기마다 +1 (D-08)"
         timestamptz eaten_at "nullable"
         timestamptz created_at
         timestamptz updated_at
@@ -186,7 +187,7 @@ erDiagram
         string product_name "스냅샷"
         numeric planned_quantity "nullable"
         numeric actual_quantity "nullable=미기록"
-        enum unit "g|ml|ea|serving"
+        enum unit "g|ml|ea"
         numeric basis_amount "nullable, 영양 기준량 스냅샷"
         enum basis_unit "nullable"
         numeric kcal "nullable=미상"
@@ -236,7 +237,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         enum type "meal_check|outside_pre|unrecorded_remind|stock_depletion"
-        date target_date "UK(user_id, type, target_date, slot, product_id)"
+        date target_date "UK(user_id, type, target_date, slot, product_id) NULLS NOT DISTINCT (D-12)"
         enum slot "nullable"
         uuid product_id FK "nullable"
         uuid meal_record_id FK "nullable"
@@ -306,52 +307,53 @@ erDiagram
 | --- | --- | --- | --- |
 | User | 카카오 로그인 계정 | `kakao_id` 유니크. `timezone`으로 날짜 경계 결정. 삭제는 `deleted_at` 소프트 삭제 후 개인 데이터 삭제 절차 적용 | FR-01, NFR-02, NFR-04 |
 | GoalHistory | 목표 체중·칼로리·탄단지 이력 | `effective_from`부터 적용. 특정 날짜의 목표는 그 날짜 이하 중 가장 늦은 행. 탄수화물·지방은 선택 | FR-01 |
-| Product | 사용자별 제품 마스터 | `stock_unit`이 재고 원장 단위. `pack_weight_g`가 있을 때만 ea↔g 변환 허용. `is_stock_tracked=false`면 소스처럼 재고 차감 제외 | FR-02, FR-03 |
-| ProductNutritionVersion | 영양 정보 버전 | 제품당 `superseded_at IS NULL`인 행 최대 1개(부분 유니크 인덱스). 없으면 ‘영양 정보 미등록’. 기준량과 섭취량을 분리 | FR-02 |
+| Product | 사용자별 제품 마스터 | `stock_unit`이 재고 원장 단위이며 이동이 있으면 변경 불가(D-13). `unit_label`은 ea 제품의 표시 단위명, `units_per_package`는 포장 1개당 재고 단위 수로 입고 환산에 쓴다(D-11). `pack_weight_g`가 있을 때만 ea↔g 변환 허용. `is_stock_tracked=false`면 소스처럼 재고 차감 제외 | FR-02, FR-03, D-11, D-13 |
+| ProductNutritionVersion | 영양 정보 버전 | 제품당 `superseded_at IS NULL`인 행 최대 1개(부분 유니크 인덱스). 없으면 ‘영양 정보 미등록’. 기준량과 섭취량을 분리. `basis_unit`은 제품 `stock_unit`과 같거나 g(ea 제품은 `pack_weight_g` 필요), 아니면 저장 거부(D-11) | FR-02, D-11 |
 | Purchase | 구매·주문 건 | 가격·링크 선택. `received`가 되기 전에는 ‘배송 중’이며 가용 재고에 포함하지 않음 | FR-03, FR-08 |
 | StockReceipt | 실제 입고(받았음) | `purchase_id` null이면 기존 보유 초기 등록. 생성 시 `StockMovement(receipt)` 1건을 같은 트랜잭션에서 생성 | FR-03 |
 | StockMovement | 재고 이동 원장(append-only) | 현재 재고 = `SUM(delta)`. 수정·삭제 없이 역이동으로 복구. 음수 합계 허용 후 `stock_check_needed`로 노출 | FR-03, NFR-02 |
 | MealTemplate | 고정 식단 묶음 | 슬롯과 무관한 재사용 단위. 변경은 과거 `MealItemSnapshot`에 영향 없음 | FR-04 |
-| MealTemplateItem | 식단 구성 품목·수량 | 템플릿당 제품·수량 목록. 단위는 제품의 `stock_unit` 또는 serving | FR-04 |
+| MealTemplateItem | 식단 구성 품목·수량 | 템플릿당 제품·수량 목록. 단위는 제품의 `stock_unit` 또는 g(`pack_weight_g` 있는 ea 제품만, D-02) | FR-04, D-02 |
 | WeeklySchedule | 요일×슬롯 반복 계획 | (user, weekday, slot) 유니크. `plan_type`이 `template`이면 `template_id` 필수 | FR-04 |
 | DateOverride | 특정 날짜 예외 | (user, on_date, slot) 유니크. 반복 계획보다 우선. 출장 일괄 변경은 `batch_id`로 묶어 한 번에 해제 가능 | FR-04 |
-| MealRecord | 날짜×슬롯 실제 섭취 기록 | 정규 5슬롯은 (user, meal_date, slot) 유니크, `extra`는 다건 허용. 외부 식사 영양은 null=미상. `plan_changed`로 실천율 분모 제외 판단 | FR-05, FR-06 |
+| MealRecord | 날짜×슬롯 실제 섭취 기록 | 정규 5슬롯은 (user, meal_date, slot) 유니크, `extra`는 다건 허용(D-10). `version`은 정수 낙관적 잠금(D-08). 외부 식사 영양은 null=미상. `plan_changed`로 실천율 분모 제외 판단 | FR-05, FR-06 |
 | MealItemSnapshot | 섭취 품목 스냅샷 | 당시 제품명·수량·영양을 복사 보존. `planned_quantity`와 `actual_quantity` 분리. `deducts_stock`가 true인 항목만 원장 차감 | FR-05, NFR-02 |
 | DayCompletion | 하루 완료 표시 | (user, on_date) 유니크. `nutrition_complete`는 완료 시점 계산값이며 통계 조회 시 재검증 | FR-06 |
 | WeightRecord | 날짜별 대표 체중 | (user, on_date) 유니크, 덮어쓰기 확인. 미측정일은 행 없음(0 아님) | FR-07 |
 | NotificationSetting | 알림 종류별 설정 | (user, kind) 유니크. 슬롯 5종 + 소진 알림. 기본값 모두 off | FR-08, FR-09 |
 | PushSubscription | Web Push 구독 | `endpoint` 유니크. 실패 누적·권한 철회 시 `revoked_at` | FR-09, NFR-05 |
-| NotificationDelivery | 알림 발송 이력·중복 방지 | (user, type, target_date, slot, product_id) 유니크로 재시도·재시작 중복 차단. 오래 지난 pending은 `skipped` | FR-08, FR-09, NFR-05 |
+| NotificationDelivery | 알림 발송 이력·중복 방지 | (user, type, target_date, slot, product_id) 유니크(NULLS NOT DISTINCT)로 재시도·재시작 중복 차단. 취소로 미기록이 되면 `skipped` 행을 `pending`으로 되돌린다(새 행 없음, D-12). 오래 지난 pending은 `skipped` | FR-08, FR-09, NFR-05, D-12 |
 | IdempotencyKey | 쓰기 요청 멱등성 | (user, key) 유니크. 같은 키 재전송은 저장된 응답 반환. 만료 후 정리 | NFR-02 |
 
 ## 4. 핵심 흐름과 테이블 매핑
 
-1. **먹었음 체크** (시나리오 3·4): 한 트랜잭션에서 `IdempotencyKey` 삽입 → `MealRecord.status=eaten` → `MealItemSnapshot` 생성(현재 `ProductNutritionVersion` 복사) → `deducts_stock` 항목마다 `StockMovement(consume, delta=-actual)`. 키 충돌 시 저장된 응답을 반환하고 재차감하지 않는다. 동시 수정은 `MealRecord.updated_at` 비교(낙관적 잠금)로 거부한다.
+1. **먹었음 체크** (시나리오 3·4): 한 트랜잭션에서 `IdempotencyKey` 삽입 → `MealRecord.status=eaten` → `MealItemSnapshot` 생성(현재 `ProductNutritionVersion` 복사) → `deducts_stock` 항목마다 `StockMovement(consume, delta=-actual)`. 키 충돌 시 저장된 응답을 반환하고 재차감하지 않는다. 동시 수정은 정수 `MealRecord.version` 비교(낙관적 잠금, D-08)로 거부하고 응답에 새 `version`을 돌려준다.
 2. **수량 수정·취소** (FR-03, 시나리오 3): 기존 스냅샷의 차감분을 `consume_reverse(+)`로 복구한 뒤 새 수량을 `consume(-)`로 기록한다. 취소는 복구만 수행하고 `status`를 `unrecorded`로 되돌린다. 원장은 지우지 않는다.
+2-1. **입고** (FR-03): `POST /purchases/{id}/receive`는 입고 수량 기본값을 구매 수량 × `units_per_package`로 계산하고 요청의 `quantity`로 덮어쓸 수 있다(D-11). `StockReceipt`와 `StockMovement(receipt)`를 같은 트랜잭션에서 만든다.
 3. **외부 식사** (FR-05): `MealRecord.kind=outside`, 메뉴명·영양 추정값은 선택. 집 제품을 추가했을 때만 `MealItemSnapshot(deducts_stock=true)`로 차감한다.
 4. **날짜 예외와 계획 조회** (FR-04): 어느 날짜·슬롯의 계획 = `DateOverride`가 있으면 그것, 없으면 `WeeklySchedule[weekday]`. 계획 변경은 기존 `MealRecord`를 수정하지 않는다.
 5. **소진 예측** (FR-08, 시나리오 5): 저장하지 않고 계산한다. 현재 재고 = `SUM(StockMovement.delta)`(배송 중 `Purchase` 제외). 오늘부터 순차로 각 날짜·슬롯의 계획(4번 규칙) 품목 수량을 차감하되, 오늘 이미 `eaten`인 슬롯은 건너뛴다. 음수가 되는 첫 날짜가 소진 예정일. 계획 소비량이 0이면 ‘예정 소비 없음’.
 6. **하루 완료·통계** (FR-06): 활성 슬롯 = 당일 계획이 `none`이 아닌 5슬롯. 모두 `eaten|skipped`이면 완료 가능. `nutrition_complete` = 먹은 모든 스냅샷·외부 식사의 kcal이 null이 아님. 주간·월간 평균은 `DayCompletion`이 있고 해당 지표가 완전한 날만 포함한다.
-7. **알림** (FR-09, NFR-05): 예약 작업이 `NotificationSetting`과 당일 계획으로 `NotificationDelivery(pending)`를 유니크 제약 하에 생성하고 `PushSubscription`으로 발송한다. `MealRecord`가 `eaten|skipped`가 되면 같은 식사의 pending 재알림을 `skipped` 처리한다.
+7. **알림** (FR-09, NFR-05): 예약 작업이 `NotificationSetting`과 당일 계획으로 `NotificationDelivery(pending)`를 유니크 제약 하에 생성하고 `PushSubscription`으로 발송한다. `MealRecord`가 `eaten|skipped`가 되면 같은 식사의 pending 재알림을 `skipped` 처리한다. 취소로 `unrecorded`가 되면 그 행을 `pending`으로 되돌리고 `scheduled_at`을 재계산한다(D-12). `sent` 행은 재발송하지 않는다.
 8. **사용자 격리** (시나리오 7): 모든 조회는 `WHERE user_id = :session_user`. 타인 ID의 FK 참조(예: 다른 사용자의 `template_id`)는 저장 전 소유자 일치 검사로 거부한다.
 
-## 5. 설계 전제 [제안 — 사용자 미확정]
+## 5. 설계 전제 [제안 — 확정된 항목은 표시]
 
-요구사항 문서 §6 검토 메모의 미정 항목 중 ERD에 영향을 주는 것은 아래 가정으로 처리했다. 결정이 바뀌면 해당 컬럼을 수정한다.
+요구사항 문서 §7 검토 메모의 미정 항목 중 ERD에 영향을 주는 것은 아래 가정으로 처리했다. 결정이 바뀌면 해당 컬럼을 수정한다. **확정**으로 표시한 행은 2026-11-05 사용자 확정(요구사항 §6 D-xx)이다.
 
 | # | 출처 | 가정 | 영향 컬럼 |
 | --- | --- | --- | --- |
-| A1 | 검토 메모 1 | 재고 원장은 제품별 기준 단위 하나(g/ml/ea)로 기록하고 소수 수량을 허용한다. ea↔g 변환은 `pack_weight_g`가 있을 때만. 변환 불가 시 재고를 차감하지 않고 확인 필요로 표시 | `Product.stock_unit`, `Product.pack_weight_g`, `MealItemSnapshot.stock_check_needed` |
-| A2 | 검토 메모 2 | 소스는 별도 유형이 아니라 플래그. 기본 추정 섭취량의 영양 출처는 `manual_estimate` | `Product.is_stock_tracked`, `Product.default_serving_amount` |
-| A3 | 검토 메모 4 | ‘계획 없음’ 슬롯은 하루 완료 판정의 활성 슬롯에 포함하지 않는다 | `DayCompletion` 판정 로직 |
-| A4 | 검토 메모 6 | 소진 알림과 식사 알림은 같은 발송·중복 방지 체계를 쓴다 | `NotificationDelivery.type`, `NotificationSetting.kind` |
+| A1 | 요구사항 D-02 | **확정(D-02·D-11)** 재고 원장은 제품별 기준 단위 하나(g/ml/ea)로 기록하고 소수 수량을 허용한다. ea↔g 변환은 `pack_weight_g`가 있을 때만. 변환 불가 시 재고를 차감하지 않고 확인 필요로 표시 | `Product.stock_unit`, `Product.pack_weight_g`, `MealItemSnapshot.stock_check_needed` |
+| A2 | 요구사항 §7-1 | **확정(D-09)** 소스는 별도 유형이 아니라 플래그. 기본 추정 섭취량의 영양 출처는 `manual_estimate` | `Product.is_stock_tracked`, `Product.default_serving_amount` |
+| A3 | 요구사항 §7-2 | ‘계획 없음’ 슬롯은 하루 완료 판정의 활성 슬롯에 포함하지 않는다 | `DayCompletion` 판정 로직 |
+| A4 | 요구사항 §7-4 | 소진 알림과 식사 알림은 같은 발송·중복 방지 체계를 쓴다 | `NotificationDelivery.type`, `NotificationSetting.kind` |
 | A5 | NFR-02 | 멱등성 키를 별도 테이블로 둔다(권고 목록 외 추가) | `IdempotencyKey` |
 | A6 | FR-04 | 식단 품목 테이블을 추가하고, 템플릿은 슬롯과 분리한다(권고 목록 외 추가) | `MealTemplateItem` |
-| A7 | FR-06 | 추가 간식은 `slot=extra`로 같은 날 여러 건 허용 | `MealRecord.slot` |
-| A8 | NFR-04 | 세션 저장소는 인증 라이브러리 선택에 따르므로 ERD에서 제외 | — |
+| A7 | FR-06 | **확정(D-10)** 추가 간식은 `slot=extra`로 같은 날 여러 건 허용, `id`로 식별 | `MealRecord.slot` |
+| A8 | NFR-04 | **확정(D-07)** 세션 저장소 없음. stateless JWT를 HttpOnly 쿠키에 담으므로 세션 테이블·Redis를 두지 않는다 | — |
 
 ### 남은 미정 (ERD로 결정하지 않음)
 
-- 검토 메모 3: 하루 완료 후 과거 기록을 수정하면 `DayCompletion`을 유지할지 해제할지. 현재 구조는 둘 다 가능하며 `nutrition_complete`를 조회 시 재계산하면 유지 쪽이 단순하다.
-- 검토 메모 5: 원장 합계가 음수인 제품을 소진 예측에서 ‘이미 소진’으로 표시할지. 현재 구조는 음수를 보존하므로 표시 규칙만 정하면 된다.
+- ~~하루 완료 후 과거 기록 수정 시 유지/해제~~ → D-04로 확정(해제). `nutrition_complete`는 조회 시 재계산(제안).
+- 요구사항 §7-3: 원장 합계가 음수인 제품을 소진 예측에서 ‘이미 소진’으로 표시할지. 현재 구조는 음수를 보존하므로 표시 규칙만 정하면 된다.
 - 계획 실천율의 수량 허용 오차(1차 제안: 정확 일치). `planned_quantity`와 `actual_quantity`를 모두 보존하므로 이후 변경 가능하다.

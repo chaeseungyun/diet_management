@@ -7,13 +7,14 @@
 ## 0. 공통 규칙 [제안]
 
 - 접두사 `/api/v1`, JSON. 업무 규칙은 모두 이 API에 둔다(NFR-07). Next 서버는 화면만 담당한다.
-- 인증은 카카오 OAuth 후 HttpOnly·Secure 세션 쿠키. 모든 리소스는 세션 사용자 범위로 강제한다(NFR-04). 요청 본문의 FK(제품·템플릿 ID)는 저장 전 소유자 검사로 거부한다.
+- 인증은 카카오 OAuth 후 서버가 서명한 JWT를 HttpOnly·Secure·SameSite 쿠키로 발급한다(stateless, 서버 세션 저장소 없음, **D-07**). 모든 리소스는 토큰 사용자 범위로 강제한다(NFR-04). 요청 본문의 FK(제품·템플릿 ID)는 저장 전 소유자 검사로 거부한다.
 - 날짜는 사용자 시간대(`User.timezone`, 기본 Asia/Seoul) 기준 `YYYY-MM-DD`. 시각은 ISO 8601 UTC(NFR-02).
 - 슬롯 enum: `breakfast | lunch | dinner | afternoon_snack | evening_snack | extra`.
 - 수량·영양은 소수 허용. `null`은 미상, `0`은 확인된 0. 서버는 반올림하지 않는다.
+- 웹과 API는 같은 오리진이다. 운영은 Caddy가 `/api/*`를 NestJS로 보내고, 개발은 Next rewrite로 `/api/*`를 NestJS 포트로 보낸다. CORS·쿠키 도메인 설정 없음(**D-14**).
 - 재고에 영향을 주는 쓰기 요청은 `Idempotency-Key` 헤더를 받는다. (user, key) 재전송은 저장된 응답을 그대로 돌려주고 재차감하지 않는다. 같은 키에 다른 본문이면 `422`(ERD A5).
-- 식사 기록 쓰기는 `version`을 함께 보내고 불일치면 `409`(D-04).
-- 상태 코드: 미인증 `401`, 검증 실패 `422`, 버전 충돌·덮어쓰기 확인 필요 `409`. 타인 리소스 응답(403/404)은 §12 미정.
+- 식사 기록 쓰기는 정수 `version`(**D-08**)을 함께 보내고 불일치면 `409`(D-04). 응답은 새 `version`을 돌려준다.
+- 상태 코드: 미인증 `401`, 검증 실패 `422`, 버전 충돌·덮어쓰기 확인 필요 `409`. 타인 리소스와 없는 리소스는 모두 `404`(존재 여부 비노출, **D-06**). `403`은 쓰지 않는다.
 - 날짜·슬롯의 계획은 저장하지 않고 `DateOverride` → `WeeklySchedule[weekday]` 순으로 계산하는 함수 하나를 둔다. 오늘 조회·소진 예측·완료 판정·알림 예약이 모두 이 함수를 쓴다(D-01).
 
 ## 1. 인증·계정 (단계 0) — FR-01, NFR-04, S-01~S-03, S-70, S-73
@@ -21,8 +22,8 @@
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
 | `GET /auth/kakao` | 카카오 로그인 시작. OAuth state 생성 후 리다이렉트 | 상태 전이 §7 |
-| `GET /auth/kakao/callback` | state·허용 리다이렉트 검증, `User` upsert, 세션 쿠키 발급 | 실패 시 사유 없이 S-01로 |
-| `POST /auth/logout` | 세션 폐기 | 로컬 임시 입력 삭제는 프런트 책임 |
+| `GET /auth/kakao/callback` | 카카오에 등록하는 리다이렉트 URI. state·허용 리다이렉트 검증, `User` upsert, JWT 쿠키 발급 후 웹 `/`로 302 | 실패는 `/login?error=1`로 302(사유 비노출). 웹 처리 화면 없음(**D-14**). 개발 중 URI는 `localhost`(D-07) |
+| `POST /auth/logout` | 쿠키 삭제(서버 상태 없음). 만료 전 토큰의 강제 무효화는 1차 범위 밖 | 로컬 임시 입력 삭제는 프런트 책임 |
 | `GET /me` | 프로필·시간대·온보딩 완료 여부 | |
 | `PATCH /me` | 닉네임·시간대 수정 | 시간대 변경 시 pending 알림 재예약 |
 | `DELETE /me` | 계정 소프트 삭제(`deleted_at`) | 2단계 확인은 화면 책임. 개인 데이터 삭제 절차 문서화 필요 |
@@ -43,10 +44,10 @@
 | `GET /products?q=&archived=` | 목록·검색. 영양 미등록·재고 비관리(소스) 배지 | |
 | `POST /products` | 제품 등록. 선택 `initialStock`이 있으면 `StockReceipt(purchase_id=null)` + `StockMovement(initial)`을 같은 트랜잭션에서 생성 | 영양 정보 없이 저장 가능 |
 | `GET /products/{id}` | 상세: 현재 영양 버전, 현재 재고·소진 예정, 구매 이력, 사용 중 템플릿 | |
-| `PATCH /products/{id}` | 기본 정보 수정(`stock_unit`, `pack_weight_g`, `is_stock_tracked`, `default_serving_amount`, 링크 등) | 과거 스냅샷 불변 |
+| `PATCH /products/{id}` | 기본 정보 수정(`unit_label`, `units_per_package`, `pack_weight_g`, `is_stock_tracked`, `default_serving_amount`, 링크 등) | 과거 스냅샷 불변. `stock_unit`은 원장 이동이 1건이라도 있으면 `422`(**D-13**) |
 | `POST /products/{id}/archive` · `POST /products/{id}/unarchive` | 보관·복구 | |
 | `GET /products/{id}/nutrition` | 영양 버전 목록(현재 + 이력) | |
-| `POST /products/{id}/nutrition` | 새 버전 저장, 이전 버전 `superseded_at` 설정. 응답에 영양 미상 스냅샷 건수 포함 | D-03 1단계 |
+| `POST /products/{id}/nutrition` | 새 버전 저장, 이전 버전 `superseded_at` 설정. 응답에 영양 미상 스냅샷 건수 포함 | D-03 1단계. `basisUnit`은 제품 `stock_unit`과 같거나 g(`pack_weight_g` 있는 ea 제품), 아니면 `422`(**D-11**) |
 | `POST /products/{id}/nutrition/backfill` | `kcal null`인 스냅샷만 현재 버전으로 채우고 출처 ‘사후 보완’·시각 기록 | D-03 2단계. 사용자 확인 후 호출. 값이 있는 스냅샷은 변경 안 함 |
 
 ## 4. 구매·입고 (단계 1) — FR-03, S-34, S-35
@@ -56,7 +57,7 @@
 | `GET /purchases?status=` | 배송 중(`ordered`)·입고 완료(`received`)·취소 목록 | 배송 중은 재고 미포함 표시 |
 | `POST /purchases` | 구매 등록. `received: true`면 즉시 입고 처리 | Idempotency-Key |
 | `PATCH /purchases/{id}` | `ordered` 상태에서만 수정 | |
-| `POST /purchases/{id}/receive` | 받았음: `StockReceipt` + `StockMovement(receipt)` 생성 | 1 트랜잭션, Idempotency-Key |
+| `POST /purchases/{id}/receive` | 받았음: 입고 수량 기본값 = 구매 수량 × `units_per_package`, 요청 `quantity`로 덮어쓰기 가능(**D-11**). `StockReceipt` + `StockMovement(receipt)` 생성 | 1 트랜잭션, Idempotency-Key |
 | `POST /purchases/{id}/cancel` | `ordered`만 취소 | ERD enum `cancelled` |
 | `POST /stock-receipts` | 구매 이력 없는 기존 보유분 초기 등록 | FR-03 제안. reason `initial` |
 
@@ -74,7 +75,7 @@
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
 | `GET /meal-templates` | 목록. 1회 영양 합계(불완전 표시), 사용 중인 요일·슬롯 수 | |
-| `POST /meal-templates` | 생성(`name`, `items[{productId, quantity, unit, sortOrder}]`) | 타인 제품 ID 거부 |
+| `POST /meal-templates` | 생성(`name`, `items[{productId, quantity, unit, sortOrder}]`) | 타인 제품 ID 거부. `unit`은 g/ml/ea, 단위 중량 없는 ea 제품에 g는 `422`(D-02·D-11) |
 | `GET /meal-templates/{id}` | 상세 | |
 | `PUT /meal-templates/{id}` | 이름·품목 전체 교체 | 과거 스냅샷 불변 |
 | `POST /meal-templates/{id}/archive` · `.../unarchive` | 보관·복구 | |
@@ -104,7 +105,7 @@
 | `GET /days/{date}` | 오늘 홈 한 번에: 계획 5슬롯 + 기록 상태, 영양 합계(기록/계획 포함 예상/해당 날짜 목표), 영양 누락 수, 추가 간식, 다음 식사, 체중, 완료 상태, 소진 임박 제품 | S-10. §12 미정(묶음 여부) |
 | `GET /meal-records/{date}/{slot}` | 슬롯 상세. 레코드가 없으면 계산된 계획을 `status=unrecorded`, `version=null`로 반환 | 미래 레코드를 만들지 않음(D-01) |
 | `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind, items[{productId, actualQuantity, unit}], outsideMenu, outsideNutrition, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음 |
-| `POST /meal-records/{date}/extra` | 추가 간식 생성 | 같은 날 다건(ERD A7) |
+| `POST /meal-records/{date}/extra` | 추가 간식 생성 | 같은 날 다건, `id`로 식별(**D-10**) |
 | `PUT /meal-records/{date}/extra/{id}` · `DELETE .../extra/{id}` | 추가 간식 수정·삭제. 삭제 시 차감 전량 복구 | |
 | `GET /days/{date}/completion` | 완료 가능 여부, 활성 슬롯 처리 현황, 미기록 목록, 영양 완전 여부 예측 | ‘계획 없음’ 슬롯 제외는 ERD A3 가정 |
 | `PUT /days/{date}/completion` | 하루 완료. 활성 슬롯 미처리면 `422`. `nutrition_complete` 계산 저장 | 미래·가입 전 날짜 거부 |
@@ -145,20 +146,21 @@
 - 예약 시각 도달 시 `PushSubscription`으로 발송. 실패는 `failed`, 재시도 중 중복 금지.
 - 유형 ①(식사 체크) 발송 후 60분(설정값) 지나도 미기록이면 재알림 1회(설정값).
 - 소진 임박 판정(예측 소진일 ≤ 오늘 + N일) 시 유형 ④ 예약.
+- 유니크 (user, type, target_date, slot, product_id)는 `NULLS NOT DISTINCT`(D-12). 식사가 취소되어 `unrecorded`가 되면 `skipped` 행을 `pending`으로 되돌리고 `scheduled_at`을 재계산한다. 새 행을 만들지 않는다.
 - 서버 재시작 후 오래 지난 pending은 `skipped`. `IdempotencyKey` 만료분 정리.
 
 ## 12. 미정·결정 필요
 
 문서에 답이 없어 구현 전에 정해야 할 항목. 괄호는 Claude Code 권고이며 사용자 미확정이다. 결정되면 `decisions.md`에 DEC-### 항목으로 올린다.
 
-1. **타인 리소스 응답 코드**: 403 vs 404 (권고 404, 존재 여부 노출 방지. screens G-03의 ‘권한 없음’ 문구와 조정).
-2. **`version` 형식**: ERD는 `updated_at` 비교를 말하지만 정수 컬럼이 단순하다 (권고 정수 `version` 추가, ERD 수정).
+1. ~~**타인 리소스 응답 코드**~~ → **404로 확정(D-06, 2026-11-05)**. G-03 문구를 ‘찾을 수 없음’으로 맞춤.
+2. ~~**`version` 형식**~~ → **정수 `version` 컬럼으로 확정(D-08, 2026-11-05)**. ERD 수정 완료.
 3. **오늘 홈 조회**: `GET /days/{date}` 하나로 묶을지, 슬롯·체중·재고를 따로 호출할지 (권고 묶음, 모바일 LCP 목표).
 4. **주간 계획 저장 단위**: 셀 단위만 둘지 격자 전체 교체도 둘지 (권고 둘 다).
-5. **추가 간식 식별**: `extra`는 (user, date, slot) 유니크가 아니므로 `id` 경로가 필요하다. 위 §8 형태로 둘지 확인.
-6. **낙관적 잠금 범위**: D-04는 식사 기록만 명시한다. 템플릿·주간 계획·설정에도 적용할지 (권고 1차는 식사 기록만).
-7. **D-03 보완 흐름**: 저장 응답에 건수를 싣고 별도 `backfill` 호출로 2단계 처리할지, 저장 요청에 `applyToUnknown` 플래그로 1단계 처리할지 (권고 2단계, S-33 확인 다이얼로그와 맞음).
-8. **OpenAPI 문서**: NestJS Swagger로 자동 생성해 프런트 DTO를 공유할지 (권고 생성).
+5. ~~**추가 간식 식별**~~ → **§8 형태(`id` 경로)로 확정(D-10, 2026-11-05)**.
+6. ~~**낙관적 잠금 범위**~~ → **1차는 식사 기록만(D-08, 2026-11-05)**.
+7. **D-03 보완 흐름** ⏰ **단계 1 착수 전 결정(2026-11-05 사용자 지시: 단계 1 시작 시 리마인드)**: 저장 응답에 건수를 싣고 별도 `backfill` 호출로 2단계 처리할지, 저장 요청에 `applyToUnknown` 플래그로 1단계 처리할지 (권고 2단계, S-33 확인 다이얼로그와 맞음). 현재 §3 표는 2단계 형태로 적혀 있다.
+8. ~~**OpenAPI 문서**~~ → **NestJS Swagger로 생성하고 프런트 타입을 그 산출물에서 생성(D-05, 2026-11-05)**.
 9. `POST /push/test`, `GET /notifications` 포함 여부 (screens §9-5와 연동).
 
 ## 13. 단계별 묶음
@@ -166,5 +168,5 @@
 | 단계 | 엔드포인트 그룹 | 완료 조건(요구사항 §4 대응) |
 | --- | --- | --- |
 | 0 | §1 인증·계정, `/health` | HTTPS·카카오·사용자 격리(시나리오 7) |
-| 1 | §2 목표, §3 제품·영양, §4 구매·입고, §6 템플릿, §7 주간·예외, §8 식사 기록(완료 제외), §9 체중 | 제품 B 등록·수동 영양·반복 식단·예외·실제 기록·일일 합계·체중(시나리오 1·2·3·4·5) |
-| 2 | §5 재고·예측, §8 하루 완료, §10 통계, §11 알림·푸시, 내부 스케줄러 | 입고·차감·복구·예측, 하루 완료 통계, 대시보드, 알림(시나리오 6·8) |
+| 1 | §2 목표, §3 제품·영양, §4 구매·입고, §6 템플릿, §7 주간·예외, §8 식사 기록(완료 제외), §9 체중 | 제품 B 등록·수동 영양·반복 식단·예외·실제 기록·일일 합계·체중, 입고·차감·복구 원장(시나리오 1·2·3·4·5, D-15) |
+| 2 | §5 재고·예측, §8 하루 완료, §10 통계, §11 알림·푸시, 내부 스케줄러 | 재고 조회·예측·보정, 하루 완료 통계, 대시보드, 알림(시나리오 6·8) |
