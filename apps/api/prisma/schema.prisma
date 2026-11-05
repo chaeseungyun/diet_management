@@ -1,0 +1,27 @@
+// 1차 ERD(docs/erd.md)를 단계별로 옮긴다. 단계 0: User 만.
+// 테이블·컬럼은 snake_case, 모델·필드는 camelCase. 시각은 timestamptz(UTC), 날짜는 date (NFR-02).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 카카오 로그인 계정 (FR-01, NFR-04). 삭제는 소프트 삭제 후 개인 데이터 삭제 절차 적용.
+model User {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kakaoId     String    @unique @map("kakao_id")
+  nickname    String
+  /// IANA 시간대. 식사·체중·완료 날짜의 경계 기준 (D-21)
+  timezone    String    @default("Asia/Seoul")
+  /// 첫 설정(S-03) 완료 시각. null이면 미완료 (요구사항 §7-7 권고)
+  onboardedAt DateTime? @map("onboarded_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// null = 활성. 값이 있으면 로그인·모든 요청 거부
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  @@map("users")
+}

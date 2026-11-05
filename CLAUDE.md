@@ -4,9 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-식단·재고·체중 관리 웹앱의 **요구사항·설계 문서만 있는 저장소**다. 코드, 패키지 매니저, 빌드·테스트 명령은 아직 없다. 코드가 추가되면 이 절을 실제 명령(설치·실행·테스트·단일 테스트·린트)으로 교체한다.
+단계 0 코드가 있다(2026-11-05). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. 도메인·VM은 2026-11-06 구매 예정이라 배포·HTTPS·백업 복원 확인은 아직이다.
 
-확정 스택(D-05, 2026-11-05): Next.js + TypeScript(웹·PWA), NestJS + TypeScript(인증·모든 업무 규칙), PostgreSQL, 클라우드 VM 1대 + Docker Compose + Caddy/Nginx. **pnpm 모노레포**(`apps/web`, `apps/api`, `packages/shared`), ORM은 **Prisma**, NestJS Swagger로 OpenAPI를 생성해 프런트 타입을 만든다. 도메인·VM은 2026-11-06 구매 예정이며 그 전까지는 배포 전 단계(로컬 Compose)까지 개발한다.
+명령(저장소 루트에서):
+
+- 준비: `pnpm install && pnpm --filter @diet/shared build && pnpm --filter @diet/api prisma:generate`. 환경 변수는 `apps/api/.env.example`, `apps/web/.env.example`를 복사.
+- 로컬 DB: `pnpm db:dev`(embedded-postgres, 127.0.0.1:54320, Docker 불필요) → `pnpm --filter @diet/api prisma:deploy`.
+- 실행: `pnpm --filter @diet/api dev`(:4000, Swagger `/api/v1/docs`), `pnpm --filter @diet/web dev`(:3000, `/api/*`를 :4000으로 rewrite). 브라우저는 항상 :3000.
+- 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
+- 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
+- 린트: 미도입(단계 1에서 ESLint). Prettier는 `pnpm format:check`.
+
+코드 규칙:
+
+- `apps/api`는 CommonJS + Jest다. ESM 전용 패키지(NestJS 12, jose, cookie v2 등)를 넣지 않는다(DEC-047·049). 런타임 의존성을 늘리기 전에 node 내장으로 되는지 본다.
+- 스키마 변경: `apps/api/prisma/schema.prisma` 수정 → 로컬 DB 띄운 뒤 `pnpm --filter @diet/api prisma:migrate --name <이름>` → 생성 SQL 검토(NULLS NOT DISTINCT 같은 수동 SQL은 파일에 직접) → 커밋. 테이블은 snake_case 복수형, 모델·필드는 camelCase(DEC-052).
+- 새 리소스는 `findFirst({ where: { id, userId } })` 결과에 `assertOwned`(404)를 적용한다. `OriginGuard`(CSRF)·`AuthGuard`가 전역이며 공개 엔드포인트만 `@Public()`.
+- 환경 변수는 `src/config/env.ts`의 zod 스키마에 추가하고 `.env.example`과 `deploy/docker-compose.yml`을 함께 갱신한다. 비밀 값은 로그·응답에 싣지 않는다.
+- 웹에서 API 호출은 `src/lib/api.ts`(서버)·같은 오리진 `fetch('/api/v1/…')`(클라이언트)만. 업무 규칙을 Next 쪽에 두지 않는다.
 
 ## 문서 지도와 우선순위
 
@@ -21,7 +36,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/api.md` | API 엔드포인트 목록(§1~§11, 모두 제안), 공통 규칙(§0), 미정(§12), 단계별 묶음(§13). 확정은 D-04의 `PUT /meal-records/{date}/{slot}`, 404(D-06), JWT 쿠키(D-07), 정수 `version`(D-08), `extra` 경로(D-10) |
 | `docs/design-tokens.md` | 컬러 토큰(`docs/design/globals.css`, Claude Design 생성)의 shadcn/ui(Tailwind v4) 적용 방법, 도메인 상태↔토큰 매핑, 컴포넌트 variant 확장, 대비 검토. 값은 CSS 파일이 기준 |
 | `docs/extension-todo.md` | 단계 3 이후(OCR·사진 분석·크롤링·LLM 추천). **1차 구현 중에는 만들지 않는다** |
-| `docs/decisions.md` | 결정 기록(DEC-###). 결정의 맥락·버린 대안·근거·재검토 조건. 상태 확정/제안/미정/대체됨. 열린 결정은 §F |
+| `docs/decisions.md` | 결정 기록(DEC-###). 결정의 맥락·버린 대안·근거·재검토 조건. 상태 확정/제안/미정/대체됨. 열린 결정은 §F, 구현 단계 결정은 §H |
+| `docs/ops.md` | 운영 문서: 로컬 실행, 검증 명령, 배포 절차, 백업·복원, 계정 삭제, 로그·장애 대응, 비용 |
 | `docs/archive/diet-app-requirements-v0.1.md` | 분리 전 원본. 참고용, 수정하지 않는다 |
 
 규칙:

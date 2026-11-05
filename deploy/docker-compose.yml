@@ -1,0 +1,81 @@
+# 운영 구성 (DEC-010, D-14): VM 1대, Caddy 가 HTTPS 종단 + /api/* 분기, DB 는 내부 네트워크만.
+# 이미지는 CI 가 빌드해 GHCR 에 올린다(DEC-011). 값은 deploy/.env 에서 읽는다.
+name: diet
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-diet}
+      POSTGRES_USER: ${POSTGRES_USER:-diet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-diet} -d ${POSTGRES_DB:-diet}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 포트를 호스트에 열지 않는다 (NFR-04)
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/chaeseungyun/diet-api:latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-diet}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-diet}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+      JWT_TTL_DAYS: ${JWT_TTL_DAYS:-7}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:?set KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_REDIRECT_URI: https://${DOMAIN}/api/v1/auth/kakao/callback
+      WEB_ORIGIN: https://${DOMAIN}
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/api/v1/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/chaeseungyun/diet-web:latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options: { max-size: '10m', max-file: '5' }
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -12,6 +12,7 @@
 - 슬롯 enum: `breakfast | lunch | dinner | afternoon_snack | evening_snack | extra`.
 - 수량·영양은 소수 허용. `null`은 미상, `0`은 확인된 0. 서버는 반올림하지 않는다.
 - 웹과 API는 같은 오리진이다. 운영은 Caddy가 `/api/*`를 NestJS로 보내고, 개발은 Next rewrite로 `/api/*`를 NestJS 포트로 보낸다. CORS·쿠키 도메인 설정 없음(**D-14**).
+- 상태를 바꾸는 요청(POST/PUT/PATCH/DELETE)은 `Origin`(없으면 `Referer`)이 WEB_ORIGIN과 같아야 하며 불일치는 `403`이다(CSRF, DEC-051). D-06의 404 규칙은 리소스 접근에만 해당한다.
 - 재고에 영향을 주는 쓰기 요청은 `Idempotency-Key` 헤더를 받는다. (user, key) 재전송은 저장된 응답을 그대로 돌려주고 재차감하지 않는다. 같은 키에 다른 본문이면 `422`(ERD A5).
 - 식사 기록 쓰기는 정수 `version`(**D-08**)을 함께 보내고 불일치면 `409`(D-04). 응답은 새 `version`을 돌려준다.
 - 상태 코드: 미인증 `401`, 검증 실패 `422`, 버전 충돌·덮어쓰기 확인 필요 `409`. 타인 리소스와 없는 리소스는 모두 `404`(존재 여부 비노출, **D-06**). `403`은 쓰지 않는다.
@@ -23,11 +24,12 @@
 | --- | --- | --- |
 | `GET /auth/kakao` | 카카오 로그인 시작. OAuth state 생성 후 리다이렉트 | 상태 전이 §7 |
 | `GET /auth/kakao/callback` | 카카오에 등록하는 리다이렉트 URI. state·허용 리다이렉트 검증, `User` upsert, JWT 쿠키 발급 후 웹 `/`로 302 | 실패는 `/login?error=1`로 302(사유 비노출). 웹 처리 화면 없음(**D-14**). 개발 중 URI는 `localhost`(D-07) |
-| `POST /auth/logout` | 쿠키 삭제(서버 상태 없음). 만료 전 토큰의 강제 무효화는 1차 범위 밖 | 로컬 임시 입력 삭제는 프런트 책임 |
+| `POST /auth/logout` | 쿠키 삭제(서버 상태 없음). 만료 전 토큰의 강제 무효화는 1차 범위 밖 | 비인증 허용, Origin 검사 적용. 로컬 임시 입력 삭제는 프런트 책임 |
 | `GET /me` | 프로필·시간대·온보딩 완료 여부 | |
-| `PATCH /me` | 닉네임·시간대 수정 | 시간대 변경 시 pending 알림 재예약 |
+| `PATCH /me` | 닉네임·시간대 수정, `onboarded: true`로 첫 설정(S-03) 완료 표시 | 시간대 변경 시 pending 알림 재예약(단계 2) |
 | `DELETE /me` | 계정 소프트 삭제(`deleted_at`) | 2단계 확인은 화면 책임. 개인 데이터 삭제 절차 문서화 필요 |
-| `GET /health` | 상태 확인(비인증) | NFR-05 |
+| `GET /health` | 상태 확인(비인증). DB `SELECT 1` 포함, 실패면 `503` | NFR-05 |
+| `GET /docs` | Swagger UI. 운영 환경에서는 비활성 | D-05 |
 
 ## 2. 목표 (단계 1) — FR-01, S-51
 

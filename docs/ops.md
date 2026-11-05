@@ -1,0 +1,130 @@
+# 식단·재고·체중 관리 웹앱 — 운영 문서
+
+버전: v0.1 (2026-11-05, 단계 0) / 근거: [`requirements-phase1.md`](requirements-phase1.md) NFR-04·05·06·07, [`decisions.md`](decisions.md) DEC-010·011·014·037·045·047~053
+
+NFR-07이 요구하는 운영 문서(로컬 실행, 환경 변수, 배포, 백업·복원, 도메인 갱신, 장애 대응, 비용 확인)를 한곳에 둔다. 도메인·VM 구매 전(2026-11-06 예정)이라 배포 절은 **절차만** 적고 실제 값은 비워 둔다.
+
+## 1. 구성 요약
+
+| 항목 | 값 |
+| --- | --- |
+| 리포지터리 | pnpm 모노레포. `apps/web`(Next.js 16), `apps/api`(NestJS 11), `packages/shared`(상수·순수 함수) |
+| 런타임 | Node 22, pnpm 10.24 (`packageManager` 고정) |
+| DB | PostgreSQL 18. 로컬은 embedded-postgres, 운영은 `postgres:18-alpine` 컨테이너 |
+| ORM | Prisma 6. 스키마 `apps/api/prisma/schema.prisma`, 마이그레이션 `apps/api/prisma/migrations` |
+| 인증 | 카카오 OAuth → HttpOnly·SameSite=Lax 쿠키의 HS256 JWT(7일). 서버 세션 저장소 없음 (D-07) |
+| 오리진 | 웹·API 같은 오리진. `/api/*`만 API로 분기(운영 Caddy, 개발 Next rewrite) (D-14) |
+| 이미지 | CI(GitHub Actions)가 `ghcr.io/<owner>/diet-api`, `diet-web`을 빌드·푸시. VM은 실행만 (DEC-011) |
+
+## 2. 로컬 실행
+
+```bash
+pnpm install
+pnpm --filter @diet/shared build          # 공유 패키지 (web·api가 dist를 참조)
+pnpm --filter @diet/api prisma:generate
+
+cp apps/api/.env.example apps/api/.env    # JWT_SECRET, KAKAO_* 채우기
+cp apps/web/.env.example apps/web/.env
+
+pnpm db:dev                                # 터미널 1: 로컬 PostgreSQL (127.0.0.1:54320, 데이터 .local/pgdata)
+pnpm --filter @diet/api prisma:deploy      # 터미널 2: 마이그레이션 적용
+pnpm --filter @diet/api dev                # API :4000  (Swagger: http://localhost:4000/api/v1/docs)
+pnpm --filter @diet/web dev                # 웹 :3000   (/api/* 는 :4000 으로 rewrite)
+```
+
+- 브라우저는 항상 `http://localhost:3000`으로 접근한다. 카카오 리다이렉트 URI도 `http://localhost:3000/api/v1/auth/kakao/callback`이어야 쿠키가 같은 오리진에 설정된다.
+- 카카오 개발자 콘솔: 앱 생성 → 플랫폼 Web `http://localhost:3000` 등록 → 카카오 로그인 활성화 → Redirect URI 위 값 등록 → REST API 키를 `KAKAO_CLIENT_ID`, (보안 탭에서 켰다면) Client Secret을 `KAKAO_CLIENT_SECRET`에. 동의 항목은 닉네임만.
+- Docker Desktop이 있으면 `deploy/docker-compose.yml`로 운영과 같은 구성을 로컬에서 띄울 수 있다(§4). 단계 0 개발 PC에는 Docker가 없어 embedded-postgres로 대체했다(DEC-050).
+
+## 3. 검증 명령
+
+| 명령 | 내용 |
+| --- | --- |
+| `pnpm typecheck` | 세 패키지 `tsc --noEmit` (strict) |
+| `pnpm test` | shared 단위 테스트, API 단위·e2e 테스트. e2e는 `DATABASE_URL`이 없으면 embedded-postgres를 임시로 띄운다(`apps/api/test/run-with-db.mjs`) |
+| `pnpm --filter @diet/api test:e2e` | 단계 0 인수 테스트만: 카카오 로그인 흐름(HTTP는 fetch 수준 대체), 사용자 격리(시나리오 7), CSRF, 422 검증, 로그아웃, 소프트 삭제 |
+| `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types` | OpenAPI → `apps/web/src/lib/api-types.d.ts` 재생성. 둘 다 커밋하며 CI가 최신 여부를 검사한다 |
+| `pnpm build` | shared → api(`nest build`) → web(`next build`, standalone) |
+| `pnpm format:check` | Prettier |
+
+CI(`.github/workflows/ci.yml`)는 push·PR마다 위를 모두 돌리고, `main` push면 두 이미지를 GHCR에 올린다(태그 `latest`, `<sha>`).
+
+## 4. 배포 (VM) — 절차. 값은 구매 후 채운다
+
+사전: 도메인 A 레코드 → VM 공인 IP, VM 2GB급(DEC-010), Ubuntu LTS, 방화벽 22/80/443만.
+
+```bash
+# VM 1회 준비
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 age rclone
+sudo usermod -aG docker $USER   # 재로그인
+git clone https://github.com/chaeseungyun/diet_management.git ~/diet && cd ~/diet
+cp deploy/.env.example deploy/.env && nano deploy/.env   # DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, KAKAO_*, BACKUP_*
+echo "<GHCR 토큰>" | docker login ghcr.io -u <github-id> --password-stdin   # 공개 패키지면 불필요
+
+# 기동·갱신
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
+curl -fsS https://$DOMAIN/api/v1/health
+```
+
+- API 컨테이너는 기동 시 `prisma migrate deploy`를 실행한다. **DB 변경이 이전 앱 버전과 호환되는지**(컬럼 삭제·NOT NULL 추가 등) 배포 전에 확인한다(NFR-05).
+- 롤백: `deploy/.env`의 `API_IMAGE`/`WEB_IMAGE`를 이전 `<sha>` 태그로 바꾸고 `up -d`. 마이그레이션은 되돌리지 않으므로 호환성 확인이 롤백의 전제다.
+- 카카오 콘솔에 운영 Redirect URI `https://<DOMAIN>/api/v1/auth/kakao/callback`을 추가한다. 출시 대상 계정 정책은 미정(DEC-038).
+- 단계 0 완료 조건의 배포·HTTPS·백업 복원 확인은 VM 구매 후 수행하고 결과를 이 문서에 적는다.
+
+## 5. 백업·복원 (DEC-014: 매일 1회, 7일 보관, RPO/RTO 24h)
+
+```bash
+# 백업: pg_dump → gzip → age 암호화 → backups/ + rclone 원격(BACKUP_REMOTE)
+./scripts/backup.sh
+# cron (매일 03:10 KST = 18:10 UTC)
+10 18 * * * cd /home/<user>/diet && ./scripts/backup.sh >> /var/log/diet-backup.log 2>&1
+
+# 복원 시험(별도 DB): 출시 전 1회 필수
+TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
+# 운영 복원(확인 질문 있음, API 정지 후 복원)
+./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
+```
+
+- `BACKUP_PASSPHRASE`는 VM 밖(비밀번호 관리자)에도 보관한다. 이것이 없으면 백업은 복원할 수 없다.
+- 백업에는 사진 등 파일이 없다(확장 단계 정책). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
+- 백업 만료: 7일 후 로컬·원격 모두 삭제. 계정 삭제 요청 시 "최대 7일 안에 백업에서도 사라진다"로 안내한다(NFR-04).
+
+## 6. 계정·개인 데이터 삭제 절차 (NFR-04)
+
+1. 사용자가 S-73에서 삭제 요청 → `DELETE /api/v1/me` → `users.deleted_at` 설정, 쿠키 삭제. 이후 같은 카카오 계정의 로그인·모든 요청은 거부된다.
+2. 운영자는 7일 안에 하드 삭제를 수행한다(단계 1에서 사용자 소유 테이블이 늘어나면 FK cascade 스크립트로 확장):
+   ```bash
+   docker compose -f deploy/docker-compose.yml --env-file deploy/.env exec -T db \
+     psql -U diet -d diet -c "DELETE FROM users WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '7 days';"
+   ```
+3. 백업은 7일 보관이므로 그 뒤에는 어디에도 남지 않는다.
+
+## 7. 로그·관찰 (NFR-05)
+
+- 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
+- API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
+- 확인 항목(주 1회): `df -h`(디스크), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔).
+- 메모리 실측 결과(단계 0 완료 조건, 요구사항 §7-5)는 여기 표로 남긴다: (VM 구매 후 기록)
+
+## 8. 장애 대응
+
+| 증상 | 확인 | 조치 |
+| --- | --- | --- |
+| 사이트 전체 불통 | `docker compose ps`, Caddy 로그 | `up -d`로 재기동. 인증서 발급 실패면 DNS·80/443 개방 확인 |
+| `/health` 503 | DB 컨테이너 상태, 디스크 | DB 재기동. 디스크 가득이면 로그·백업 정리 |
+| 로그인 실패(`/login?error=1`) | API 로그의 사유 코드 | `state_mismatch`: 쿠키 차단·오리진 불일치. `kakao_token_exchange_failed`: 카카오 콘솔의 Redirect URI·키 확인 |
+| 배포 후 오류 | 이미지 태그, 마이그레이션 로그 | 이전 태그로 롤백(§4). 마이그레이션 실패면 복원 시험 DB에서 재현 |
+| 서버 재시작 후 알림 폭주(단계 2) | `notification_delivery` pending | 설계상 오래된 pending은 skipped 처리. 발생하면 버그로 기록 |
+
+## 9. 비용·도메인 (NFR-06)
+
+- 월 환산 20,000원 상한. 확인 주기: 매월 1일 공급자 청구서 + 도메인 갱신일(연 1회) 캘린더 등록.
+- 도메인·VM 실제 금액은 구매 후 [`decisions.md`](decisions.md) §F와 여기 기록한다.
+- 도메인 갱신: 자동 갱신 켜기, 만료 30일 전 알림. 등록기관 계정 2단계 인증.
+
+## 10. 단계 0 상태 (2026-11-05)
+
+- 완료: 모노레포, 카카오 로그인(API 콜백·JWT 쿠키), 사용자 격리·CSRF·소프트 삭제, `/me`, `/health`, Swagger·OpenAPI 타입 생성, 마이그레이션, e2e 11건·단위 13건 통과, 로컬 API·웹 기동 확인, 실제 카카오 앱으로 로그인 확인(2026-11-05), Dockerfile·Compose·Caddyfile·CI·백업 스크립트 작성.
+- 미완료(도메인·VM 구매 후): HTTPS 배포, 이미지 빌드(CI), 백업·복원 시험, 메모리 실측, 예산 견적 기록. Dockerfile·compose·백업 스크립트는 Docker가 없는 개발 PC에서 **실행해 보지 않았다**.

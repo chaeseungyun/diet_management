@@ -76,6 +76,13 @@
 | DEC-044 | 알림 유니크 NULLS NOT DISTINCT, 취소 시 행 되돌림 | 확정 | 2026-11-05 |
 | DEC-045 | 카카오 콜백은 API 수신, 웹·API 같은 오리진 | 확정 | 2026-11-05 |
 | DEC-046 | 재고 원장 쓰기는 단계 1, 화면·예측은 단계 2 | 확정 | 2026-11-05 |
+| DEC-047 | NestJS 11(CommonJS) 채택, 12(ESM 전용) 보류 | 확정(구현) | 2026-11-05 |
+| DEC-048 | Prisma 6 채택, 7 보류 | 확정(구현) | 2026-11-05 |
+| DEC-049 | JWT·쿠키는 node:crypto 로 직접 구현 | 확정(구현) | 2026-11-05 |
+| DEC-050 | 로컬·테스트 DB 는 embedded-postgres 18, 운영은 postgres:18-alpine | 확정(구현) | 2026-11-05 |
+| DEC-051 | 단계 0 인증 세부 규칙(CSRF 403, 삭제 계정 거부, 토큰 7일 등) | 제안(구현 기본값) | 2026-11-05 |
+| DEC-052 | DB 명명 규칙과 `users.onboarded_at` | 확정(구현) | 2026-11-05 |
+| DEC-053 | 단계 0 도구: Jest·Prettier·OpenAPI 생성물 커밋, ESLint·shadcn init 은 단계 1 | 제안 | 2026-11-05 |
 
 ---
 
@@ -431,6 +438,66 @@
 
 ---
 
+## H. 구현 단계 결정 (단계 0, 2026-11-05)
+
+코드를 쓰면서 내린 결정. 커밋: 단계 0 최초 커밋(`feat: 단계 0 …`).
+
+### DEC-047 NestJS 11(CommonJS) 채택, NestJS 12(ESM 전용) 보류
+- 날짜 2026-11-05 / 상태 확정(구현) / 범위: DEC-007, D-05
+- **맥락**: 2026-11 현재 최신 NestJS 12 는 ESM 전용 패키지다. 이 저장소의 테스트 러너(Jest 30 + ts-jest, CommonJS)와 Node 22 에서는 `require(esm)` 이 Jest 안에서 동작하지 않아 모든 테스트가 "Must use import to load ES Module" 로 실패했다.
+- **선택지**: (a) NestJS 12 + 프로젝트 전체 ESM 전환(`type: module`, `.js` 확장자 import, Jest ESM 모드), (b) NestJS 12 + Vitest(+swc 데코레이터 메타데이터 플러그인), (c) NestJS 11(CommonJS) 유지.
+- **결정**: (c). `@nestjs/*` 11.x, `@nestjs/swagger` 11.x.
+- **근거**: 주당 5시간(DEC-004) 안에서 ESM/Jest 상호작용을 디버깅하는 비용이 기능 가치보다 크다. 11 은 LTS 성격이고 이 프로젝트가 쓰는 표면(모듈·가드·파이프·Swagger)은 12 와 같다.
+- **영향·트레이드오프**: ESM 전용 라이브러리를 API 에 넣을 수 없다(DEC-049). 12 로 올릴 때 import 경로·Jest 설정을 한 번에 바꿔야 한다.
+- **재검토 조건**: Node 24 LTS 로 올려 Jest 가 `require(esm)` 을 지원하게 될 때, 또는 Vitest 로 전환할 때.
+
+### DEC-048 Prisma 6 채택, Prisma 7 보류
+- 날짜 2026-11-05 / 상태 확정(구현) / 범위: DEC-035
+- **맥락**: Prisma 7 은 드라이버 어댑터 필수·`prisma.config.ts`·ESM 중심으로 바뀌어 6 과 설정 방식이 다르다. DEC-047 로 API 가 CommonJS 인 상황에서 7 의 ESM 지향 변경이 또 다른 변수가 된다.
+- **결정**: `prisma`·`@prisma/client` 6.19.x 고정. `prisma` CLI 는 런타임 이미지에서 `migrate deploy` 를 돌리기 위해 dependencies 에 둔다.
+- **근거**: 6 은 `DATABASE_URL` 하나로 동작하고 `Decimal`·마이그레이션·타입 생성이 충분하다. 이 프로젝트가 7 의 새 기능(어댑터·엣지)을 필요로 하지 않는다.
+- **재검토 조건**: 6 의 보안 지원 종료, 또는 PGlite 기반 테스트(7.1+ 어댑터 필요)로 옮기고 싶을 때.
+
+### DEC-049 JWT·쿠키 처리를 node:crypto 로 직접 구현
+- 날짜 2026-11-05 / 상태 확정(구현) / 범위: D-07, NFR-04
+- **맥락**: 후보였던 `jose` 6 과 `cookie` 2 는 ESM 전용이라 DEC-047 환경에서 쓸 수 없었다. 필요한 기능은 HS256 서명·검증과 Cookie 파싱·Set-Cookie 직렬화뿐이다.
+- **선택지**: (a) 구버전(CJS) 라이브러리 고정, (b) `jsonwebtoken`+`cookie-parser`, (c) node:crypto 로 직접 구현(약 100줄) + 단위 테스트.
+- **결정**: (c). `src/common/jwt.ts`(alg 는 HS256 고정, 헤더의 alg 를 믿지 않음, timingSafeEqual), `src/common/cookies.ts`.
+- **근거**: 공급망 의존성 2개를 줄이고 alg confusion 류의 취약점 표면을 없앤다. 기능이 작아 테스트로 완전히 덮을 수 있다.
+- **영향·트레이드오프**: RS256·JWK 등 다른 알고리즘이 필요해지면 라이브러리를 다시 검토한다. 쿠키 속성은 우리가 쓰는 것만 지원한다.
+
+### DEC-050 로컬·테스트 DB 는 embedded-postgres 18, 운영은 postgres:18-alpine
+- 날짜 2026-11-05 / 상태 확정(구현) / 범위: NFR-07, DEC-009, D-12
+- **맥락**: 개발 PC 에 Docker 가 없다. e2e 테스트는 실제 PostgreSQL 이 필요하고(트랜잭션·유니크·NULLS NOT DISTINCT 검증), 설치형 PostgreSQL 은 환경을 더럽힌다.
+- **선택지**: (a) PGlite(WASM) — Prisma 6 과 어댑터 불가, (b) Docker 설치 요구, (c) `embedded-postgres`(실제 바이너리를 npm 으로 받아 실행).
+- **결정**: (c). `pnpm db:dev` 가 `.local/pgdata` 에 영속 DB 를 띄우고, e2e 는 `apps/api/test/run-with-db.mjs` 가 임시 DB 를 띄웠다 지운다. CI 는 GitHub Actions `services: postgres:18-alpine`. 운영 compose 도 18 로 맞춘다(D-12 의 `NULLS NOT DISTINCT` 는 15+).
+- **근거**: 세 환경이 같은 메이저 버전의 진짜 PostgreSQL 을 쓴다. Docker 가 생기면 compose 로 바꿔도 코드 변경이 없다.
+- **영향·트레이드오프**: `embedded-postgres` 는 버전 태그가 `-beta` 로 붙지만 PostgreSQL 바이너리 자체는 정식이다. 바이너리 다운로드(약 30MB)가 설치 시간에 더해진다. pnpm 10 은 빌드 스크립트를 기본 차단하므로 루트 `package.json` 의 `pnpm.onlyBuiltDependencies` 에 허용 목록을 둔다.
+
+### DEC-051 단계 0 인증 세부 규칙
+- 날짜 2026-11-05 / 상태 **제안(구현 기본값, 사용자 미확정)** / 범위: D-06, D-07, D-14, 요구사항 §7-6
+- **결정(기본값)**:
+  - 토큰 만료 7일, 갱신 토큰 없음(만료 시 재로그인). 쿠키 `session`: HttpOnly, SameSite=Lax, Path=/, 운영에서 Secure.
+  - CSRF: 상태 변경 요청은 `Origin`(없으면 `Referer`)이 `WEB_ORIGIN` 과 같아야 하며 불일치는 **403**. D-06 의 404 규칙은 리소스 접근에만 적용한다.
+  - OAuth state: 32바이트 난수, 쿠키 `oauth_state`(10분, Path=/api/v1/auth), 콜백에서 timingSafeEqual 비교 후 즉시 삭제.
+  - 소프트 삭제된 계정(`deleted_at`)은 로그인·모든 요청을 거부한다. 재가입은 운영자가 하드 삭제한 뒤에만 가능하다(ops.md §6).
+  - 재로그인은 닉네임을 덮어쓰지 않는다(사용자가 앱에서 바꾼 값을 보존). 카카오가 닉네임을 주지 않으면 ‘사용자’.
+  - 로그인 실패는 `/login?error=1` 로 302, 사유는 서버 로그에만.
+- **근거**: 요구사항 §7-6 의 제안값을 그대로 구현했다. 403 은 "존재 여부 노출"과 무관한 거부라 D-06 과 충돌하지 않는다. 삭제 계정 재가입을 막는 것은 "삭제 후 7일 안 백업 만료" 약속(ops.md §5)과 일관되게 하기 위해서다.
+- **재검토 조건**: 사용자가 §7-6 을 확정할 때. 갱신 토큰이 필요하다고 판단되면 서버 상태 없는 회전 방식으로 추가한다.
+
+### DEC-052 DB 명명 규칙과 `users.onboarded_at`
+- 날짜 2026-11-05 / 상태 확정(구현) / 범위: erd.md, 요구사항 §7-7
+- **결정**: 테이블은 snake_case 복수형(`users`), 컬럼은 snake_case, Prisma 모델·필드는 PascalCase/camelCase 로 `@map`/`@@map`. 시각은 `timestamptz(6)`. PK 는 DB 가 만드는 `gen_random_uuid()`. 요구사항 §7-7 권고대로 `users.onboarded_at` 을 두고 `PATCH /me { onboarded: true }` 로 설정한다.
+- **근거**: `user` 는 PostgreSQL 예약어라 따옴표가 필요해진다. ERD 의 PascalCase 엔터티명은 문서용이고 SQL 은 snake_case 가 관례다. `onboarded_at` 은 S-03 건너뛰기를 허용하므로 목표 유무로 유도할 수 없다.
+
+### DEC-053 단계 0 개발 도구 선택
+- 날짜 2026-11-05 / 상태 제안 / 범위: NFR-07, DEC-011
+- **결정**: TypeScript 5.9(strict, `noUncheckedIndexedAccess`), Jest 30 + ts-jest(unit·e2e 프로젝트 분리), Prettier. ESLint 는 단계 1 에서 도입(규칙 합의 전 CI 를 막지 않기 위해). OpenAPI 는 `nest build` 산출물로 내보내고(`tsx` 는 `emitDecoratorMetadata` 미지원) `openapi-typescript` 로 웹 타입을 만들며 **둘 다 커밋**해 CI 가 최신 여부를 검사한다. 웹은 Next.js 16 + Tailwind v4 에 디자인 토큰을 직접 넣었고 shadcn/ui 컴포넌트 추가(`shadcn init`)는 단계 1 에서 한다. TypeScript 7(Go 기반)은 도구 호환이 확인될 때까지 쓰지 않는다.
+- **근거**: 단계 0 의 목적은 인증·격리·배포 골격이지 린트 규칙이 아니다. 생성물을 커밋하면 웹 타입체크가 API 빌드에 의존하지 않는다.
+
+---
+
 ## F. 열린 결정 (아직 내리지 않음)
 
 구현 전 결정이 필요한 항목. 결정되면 위 목록에 DEC로 추가하고 이 표에서 지운다.
@@ -441,7 +508,7 @@
 | VM 공급자·지역·사양·실제 견적 | 요구사항 §5, §7-5 | 2026-11-06 구매 예정 | 2GB급 메모리 실측이 선행. Next 정적 내보내기 대안 |
 | 도메인 선결제 월의 현금 상한 처리 | 요구사항 §5 | 도메인 구매와 함께 | DEC-012 |
 | 카카오 출시 대상 계정 정책 | 요구사항 §5 | 도메인 확정 후 | DEC-015, DEC-038. 개발 중 localhost는 확정 |
-| JWT 만료 기간·갱신 토큰·CSRF 세부 | 요구사항 §7-6 | 단계 0 구현 시 | DEC-037. 제안: 7일·갱신 없음·SameSite=Lax + Origin 검사 |
+| JWT 만료 기간·갱신 토큰·CSRF 세부 | 요구사항 §7-6 | 사용자 확정 대기 | DEC-037·DEC-051. 구현 기본값(7일·갱신 없음·SameSite=Lax + Origin 검사·CSRF 403) 적용됨 |
 | D-03 보완 흐름(2단계 backfill vs 1단계 플래그) | api §12-7 | **단계 1 착수 전 (리마인드)** | 2026-11-05 사용자: 단계 1 시작 전 다시 묻는다. 권고 2단계 |
 | "계획 없음" 슬롯의 완료 조건 | 요구사항 §7-2 | 단계 2 착수 전 | DEC-029, 제안: 미포함 |
 | 음수 재고와 소진 예측 표시 | 요구사항 §7-3 | 단계 2 착수 전 | DEC-026 |

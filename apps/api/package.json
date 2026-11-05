@@ -1,0 +1,52 @@
+{
+  "name": "@diet/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(api) ESLint은 단계 1에서 도입\"",
+    "test": "node test/run-with-db.mjs jest",
+    "test:unit": "jest --selectProjects unit",
+    "test:e2e": "node test/run-with-db.mjs jest --selectProjects e2e",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:verify": "prisma migrate diff --from-url \"$DATABASE_URL\" --to-schema-datamodel prisma/schema.prisma --exit-code",
+    "openapi:export": "nest build && node dist/openapi.js"
+  },
+  "dependencies": {
+    "@diet/shared": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/swagger": "^11.2.0",
+    "@prisma/client": "6.19.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^18.0.0",
+    "prisma": "6.19.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.1.0",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.23.0",
+    "@types/supertest": "^7.2.1",
+    "embedded-postgres": "18.6.0-beta.19",
+    "jest": "^30.5.0",
+    "pg": "^8.23.0",
+    "supertest": "^7.3.1",
+    "ts-jest": "^29.4.15",
+    "tsx": "^4.23.0",
+    "typescript": "~5.9.3"
+  }
+}

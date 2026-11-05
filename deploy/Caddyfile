@@ -1,0 +1,24 @@
+# HTTPS 자동 발급(Let's Encrypt). 같은 오리진에서 /api/* 만 NestJS 로 보낸다 (D-14).
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# 업로드 크기 제한 (NFR-04). 단계 3 사진 업로드 전까지 작게 둔다.
+	request_body {
+		max_size 2MB
+	}
+
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

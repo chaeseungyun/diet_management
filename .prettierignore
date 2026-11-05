@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+docs/archive
+*.md
+apps/api/openapi.json
+apps/web/src/lib/api-types.d.ts
+.local
+docs/design/globals.css

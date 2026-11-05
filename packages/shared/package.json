@@ -1,0 +1,27 @@
+{
+  "name": "@diet/shared",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx ./src/*.test.ts",
+    "lint": "echo \"(shared) lint 생략\""
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0",
+    "typescript": "~5.9.3"
+  }
+}
