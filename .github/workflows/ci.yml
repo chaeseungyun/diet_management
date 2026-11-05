@@ -42,12 +42,14 @@ jobs:
           pnpm --filter @diet/api openapi:export
           pnpm --filter @diet/web api-types
           git diff --exit-code -- apps/api/openapi.json apps/web/src/lib/api-types.d.ts
-      - name: Test
-        run: pnpm test
+      # 빈 DB 에 migrate deploy 가 되는지와 schema.prisma 와의 차이를 먼저 본다.
+      # e2e(global-setup)는 이력 테이블 없이 SQL 을 직접 적용하므로 이 단계를 테스트 뒤에 두면 P3005 가 난다.
       - name: Migrations match schema
         run: |
           pnpm --filter @diet/api prisma:deploy
           pnpm --filter @diet/api exec prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: Test
+        run: pnpm test
       - name: Build
         run: pnpm build
 
