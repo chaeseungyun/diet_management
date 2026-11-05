@@ -61,6 +61,7 @@ jobs:
       contents: read
       packages: write
     strategy:
+      fail-fast: false # api·web 이미지는 독립이라 한쪽 실패로 다른 쪽을 취소하지 않는다
       matrix:
         app: [api, web]
     steps:
