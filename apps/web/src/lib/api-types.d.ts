@@ -74,6 +74,543 @@ export interface paths {
         patch: operations["MeController_update"];
         trace?: never;
     };
+    "/api/v1/goals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 목표 이력 목록. 현재 적용 중 표시 */
+        get: operations["GoalsController_list"];
+        put?: never;
+        /** 새 목표 추가. 이전 행은 이력으로 보존. 같은 시작일은 덮어쓴다 */
+        post: operations["GoalsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/goals/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 특정 날짜에 적용되는 목표 (기본 오늘) */
+        get: operations["GoalsController_effective"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 목록·검색. 영양 미등록·재고 비관리 표시 */
+        get: operations["ProductsController_list"];
+        put?: never;
+        /** 제품 등록. initialStock 이 있으면 초기 입고를 같은 트랜잭션에서 만든다 */
+        post: operations["ProductsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 상세: 현재 영양, 현재 재고, 구매 이력, 사용 중 템플릿 */
+        get: operations["ProductsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 기본 정보 수정. 원장 이동이 있으면 stockUnit 변경은 422 (D-13) */
+        patch: operations["ProductsController_update"];
+        trace?: never;
+    };
+    "/api/v1/products/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 보관. 활성 템플릿이 참조하면 422 */
+        post: operations["ProductsController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 보관 해제 */
+        post: operations["ProductsController_unarchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{id}/nutrition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 영양 버전 목록(현재 + 이력) */
+        get: operations["ProductsController_nutritionVersions"];
+        put?: never;
+        /** 새 영양 버전 저장. 응답의 unknownSnapshotCount 로 D-03 보완 여부를 묻는다 */
+        post: operations["ProductsController_saveNutrition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/{id}/nutrition/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** D-03 2단계: 영양 미상 스냅샷만 현재 버전으로 채운다(출처 backfill) */
+        post: operations["ProductsController_backfill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 구매 목록. 배송 중(ordered)은 재고 미포함 */
+        get: operations["PurchasesController_list"];
+        put?: never;
+        /** 구매 등록. received=true 면 즉시 입고 */
+        post: operations["PurchasesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchases/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** ordered 상태에서만 수정 */
+        patch: operations["PurchasesController_update"];
+        trace?: never;
+    };
+    "/api/v1/purchases/{id}/receive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 받았음. 입고 수량 기본 = 구매 수량 × units_per_package (D-11) */
+        post: operations["PurchasesController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/purchases/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** ordered 만 취소 */
+        post: operations["PurchasesController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 구매 이력 없는 기존 보유분 초기 등록 (reason initial) */
+        post: operations["PurchasesController_createReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 목록. 1회 영양 합계(불완전 표시), 사용 중인 셀 수 */
+        get: operations["TemplatesController_list"];
+        put?: never;
+        /** 생성. 타인 제품은 404, 허용되지 않는 단위는 422 */
+        post: operations["TemplatesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TemplatesController_get"];
+        /** 이름·품목 전체 교체. 과거 스냅샷 불변 */
+        put: operations["TemplatesController_replace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-templates/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 보관. 주간 계획·예정 예외가 참조하면 422 */
+        post: operations["TemplatesController_archive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-templates/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TemplatesController_unarchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/weekly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 요일 7 × 슬롯 5 격자 */
+        get: operations["PlansController_weekly"];
+        /** 격자 전체 교체(요일 복사용). 빠진 셀은 계획 없음 */
+        put: operations["PlansController_putWeeklyGrid"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/weekly/{weekday}/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 셀 단위 설정. weekday 는 ISO 1=월 … 7=일 */
+        put: operations["PlansController_putWeeklyCell"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 기간 내 날짜 예외 목록 (최대 62일) */
+        get: operations["PlansController_overrides"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/overrides/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능 */
+        post: operations["PlansController_batch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/overrides/batch/{batchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 묶음 단위 해제 */
+        delete: operations["PlansController_deleteBatch"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/overrides/{date}/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 단일 예외 설정 (반복 계획보다 우선) */
+        put: operations["PlansController_putOverride"];
+        post?: never;
+        /** 예외 해제 → 반복 계획 복귀. 기존 기록은 불변 */
+        delete: operations["PlansController_deleteOverride"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plans/resolved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 날짜·슬롯별 적용 계획(예외 우선). D-01 계산 함수를 그대로 노출 */
+        get: operations["PlansController_resolved"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 캘린더용 날짜별 요약 (최대 62일) */
+        get: operations["MealsController_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/days/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 오늘 홈 한 번에: 5슬롯 계획+기록, 영양 합계·예상·목표, 추가 간식, 체중 */
+        get: operations["MealsController_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-records/{date}/{slot}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 슬롯 상세. 레코드가 없으면 계획을 unrecorded·version=null 로 반환 */
+        get: operations["MealsController_record"];
+        /** 상태 설정 (D-04 확정). 서버가 차이로 원장을 만든다. version 불일치 409 */
+        put: operations["MealsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-records/{date}/extra": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 추가 간식 생성. 같은 날 다건, id 로 식별 (D-10) */
+        post: operations["MealsController_createExtra"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-records/{date}/extra/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 추가 간식 수정 (version 필요) */
+        put: operations["MealsController_updateExtra"];
+        post?: never;
+        /** 추가 간식 삭제. 차감 전량 복구 */
+        delete: operations["MealsController_deleteExtra"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 기간 목록 + 요약(최근 7일 평균·목표 차이·주/월 변화) */
+        get: operations["WeightsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weights/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 입력·수정. 같은 날 기록이 있으면 overwrite=true 없이는 409 */
+        put: operations["WeightsController_put"];
+        post?: never;
+        /** 삭제 → 미측정 */
+        delete: operations["WeightsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -99,6 +636,663 @@ export interface components {
             timezone?: string;
             /** @description true 면 첫 설정(S-03) 완료로 표시한다 */
             onboarded?: boolean;
+        };
+        GoalDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example 2026-11-06 */
+            effectiveFrom: string;
+            targetWeightKg: number;
+            dailyKcal: number;
+            proteinG: number;
+            carbG: number | null;
+            fatG: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 오늘(사용자 시간대) 적용 중인 목표인가 */
+            current: boolean;
+        };
+        CreateGoalDto: {
+            /**
+             * @description 적용 시작일(YYYY-MM-DD). 생략하면 오늘(사용자 시간대). 같은 날짜가 있으면 덮어쓴다
+             * @example 2026-11-06
+             */
+            effectiveFrom?: string;
+            /** @example 72.5 */
+            targetWeightKg: number;
+            /** @example 1800 */
+            dailyKcal: number;
+            /** @example 140 */
+            proteinG: number;
+            carbG?: number | null;
+            fatG?: number | null;
+        };
+        EffectiveGoalDto: {
+            /** @example 2026-11-06 */
+            date: string;
+            /** @description 그 날짜에 적용되는 목표. 없으면 null */
+            goal: components["schemas"]["GoalDto"] | null;
+        };
+        NutritionVersionDto: {
+            /** Format: uuid */
+            id: string;
+            basisAmount: number;
+            /** @enum {string} */
+            basisUnit: "g" | "ml" | "ea";
+            kcal: number | null;
+            carbG: number | null;
+            proteinG: number | null;
+            fatG: number | null;
+            /** @enum {string} */
+            source: "label" | "manual_estimate" | "ai_estimate";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            supersededAt: string | null;
+        };
+        ProductDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            brand: string | null;
+            /** @enum {string} */
+            stockUnit: "g" | "ml" | "ea";
+            unitLabel: string | null;
+            unitsPerPackage: number;
+            packWeightG: number | null;
+            isStockTracked: boolean;
+            defaultServingAmount: number | null;
+            purchaseUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description 현재 영양 버전. null = 영양 정보 미등록 */
+            nutrition: components["schemas"]["NutritionVersionDto"] | null;
+            /** @description 원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 (재고 확인 필요) */
+            currentStock: number | null;
+            /** @description 배송 중 수량(stock_unit 환산). 재고에 포함하지 않는다 */
+            orderedQuantity: number;
+            /** @description 섭취·템플릿 입력에 허용되는 단위 (D-02) */
+            allowedUnits: ("g" | "ml" | "ea")[];
+        };
+        CreateProductDto: {
+            /** @example 닭가슴살 100g */
+            name: string;
+            brand?: string | null;
+            /**
+             * @description 재고 원장 단위. 이동이 생기면 바꿀 수 없다 (D-13)
+             * @enum {string}
+             */
+            stockUnit: "g" | "ml" | "ea";
+            /**
+             * @description ea 제품의 표시 단위명(팩·개·통). ea 면 필수, g/ml 면 무시 (D-11)
+             * @example 팩
+             */
+            unitLabel?: string | null;
+            /**
+             * @description 포장 1개 = 재고 단위 N. 입고 기본값 = 구매 수량 × N (D-11). 기본 1
+             * @example 1
+             */
+            unitsPerPackage?: number;
+            /**
+             * @description ea 1단위의 g. 있을 때만 ea↔g 변환 (D-02). g/ml 제품은 null
+             * @example 100
+             */
+            packWeightG?: number | null;
+            /**
+             * @description false = 소스처럼 재고 차감 제외 (D-09). 기본 true
+             * @default true
+             */
+            isStockTracked: boolean;
+            /** @description 소스 기본 추정 섭취량(stock_unit 기준). 이 값으로 계산한 영양은 출처 manual_estimate */
+            defaultServingAmount?: number | null;
+            /** Format: uri */
+            purchaseUrl?: string | null;
+            /**
+             * @description 기존 보유 수량(stock_unit 기준). 있으면 StockReceipt(purchase 없음) + StockMovement(initial) 을 같이 만든다
+             * @example 30
+             */
+            initialStock?: number;
+        };
+        ProductPurchaseDto: {
+            /** Format: uuid */
+            id: string;
+            quantity: number;
+            /** @example 2026-11-06 */
+            purchasedOn: string;
+            price: number | null;
+            /** @enum {string} */
+            status: "ordered" | "received" | "cancelled";
+            receivedQuantity: number | null;
+            /** Format: date-time */
+            receivedAt: string | null;
+        };
+        ProductRefDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        ProductDetailDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            brand: string | null;
+            /** @enum {string} */
+            stockUnit: "g" | "ml" | "ea";
+            unitLabel: string | null;
+            unitsPerPackage: number;
+            packWeightG: number | null;
+            isStockTracked: boolean;
+            defaultServingAmount: number | null;
+            purchaseUrl: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+            /** @description 현재 영양 버전. null = 영양 정보 미등록 */
+            nutrition: components["schemas"]["NutritionVersionDto"] | null;
+            /** @description 원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 (재고 확인 필요) */
+            currentStock: number | null;
+            /** @description 배송 중 수량(stock_unit 환산). 재고에 포함하지 않는다 */
+            orderedQuantity: number;
+            /** @description 섭취·템플릿 입력에 허용되는 단위 (D-02) */
+            allowedUnits: ("g" | "ml" | "ea")[];
+            purchases: components["schemas"]["ProductPurchaseDto"][];
+            /** @description 이 제품을 쓰는 보관되지 않은 템플릿 */
+            templates: components["schemas"]["ProductRefDto"][];
+        };
+        UpdateProductDto: {
+            /** @example 닭가슴살 100g */
+            name?: string;
+            brand?: string | null;
+            /**
+             * @description 재고 원장 단위. 이동이 생기면 바꿀 수 없다 (D-13)
+             * @enum {string}
+             */
+            stockUnit?: "g" | "ml" | "ea";
+            /**
+             * @description ea 제품의 표시 단위명(팩·개·통). ea 면 필수, g/ml 면 무시 (D-11)
+             * @example 팩
+             */
+            unitLabel?: string | null;
+            /**
+             * @description 포장 1개 = 재고 단위 N. 입고 기본값 = 구매 수량 × N (D-11). 기본 1
+             * @example 1
+             */
+            unitsPerPackage?: number;
+            /**
+             * @description ea 1단위의 g. 있을 때만 ea↔g 변환 (D-02). g/ml 제품은 null
+             * @example 100
+             */
+            packWeightG?: number | null;
+            /**
+             * @description false = 소스처럼 재고 차감 제외 (D-09). 기본 true
+             * @default true
+             */
+            isStockTracked: boolean;
+            /** @description 소스 기본 추정 섭취량(stock_unit 기준). 이 값으로 계산한 영양은 출처 manual_estimate */
+            defaultServingAmount?: number | null;
+            /** Format: uri */
+            purchaseUrl?: string | null;
+        };
+        CreateNutritionDto: {
+            /**
+             * @description 기준량. "1회분" 은 재고 단위 수량(예: 30)으로 적는다 (D-11)
+             * @example 100
+             */
+            basisAmount: number;
+            /**
+             * @description 제품 stock_unit 과 같거나, pack_weight_g 있는 ea 제품에 한해 g (D-11). 아니면 422
+             * @enum {string}
+             */
+            basisUnit: "g" | "ml" | "ea";
+            kcal?: number | null;
+            carbG?: number | null;
+            proteinG?: number | null;
+            fatG?: number | null;
+            /**
+             * @description ai_estimate 는 확장 단계(EXT-01)에서만 생긴다
+             * @enum {string}
+             */
+            source: "label" | "manual_estimate";
+        };
+        NutritionSaveResultDto: {
+            version: components["schemas"]["NutritionVersionDto"];
+            /** @description 이 제품의 영양 미상 스냅샷 수. 0 보다 크면 S-33 이 D-03 확인 다이얼로그를 띄운다 */
+            unknownSnapshotCount: number;
+        };
+        BackfillResultDto: {
+            /** @description 채운 스냅샷 수 */
+            updated: number;
+            /** @description 수량·단위로 계산할 수 없어 남긴 수 */
+            skipped: number;
+        };
+        ReceiptDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: uuid */
+            purchaseId: string | null;
+            quantity: number;
+            /** Format: date-time */
+            receivedAt: string;
+        };
+        PurchaseDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            productName: string;
+            /** @enum {string} */
+            stockUnit: "g" | "ml" | "ea";
+            unitLabel: string | null;
+            quantity: number;
+            /** @example 2026-11-06 */
+            purchasedOn: string;
+            price: number | null;
+            url: string | null;
+            /** @enum {string} */
+            status: "ordered" | "received" | "cancelled";
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 받았음 처리 시 입고 수량 기본값 = 구매 수량 × units_per_package (D-11) */
+            defaultReceiveQuantity: number;
+            receipt: components["schemas"]["ReceiptDto"] | null;
+        };
+        CreatePurchaseDto: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description 구매 수량(포장 단위)
+             * @example 30
+             */
+            quantity: number;
+            /** @example 2026-11-06 */
+            purchasedOn: string;
+            price?: number | null;
+            /** Format: uri */
+            url?: string | null;
+            /** @description true 면 즉시 입고 처리 (S-34 "이미 받았음") */
+            received?: boolean;
+            /** @description 즉시 입고 시 입고 수량(stock_unit). 생략하면 구매 수량 × units_per_package (D-11) */
+            receivedQuantity?: number;
+        };
+        UpdatePurchaseDto: {
+            quantity?: number;
+            /** @example 2026-11-06 */
+            purchasedOn?: string;
+            price?: number | null;
+            /** Format: uri */
+            url?: string | null;
+        };
+        ReceivePurchaseDto: {
+            /** @description 입고 수량(stock_unit). 생략하면 구매 수량 × units_per_package */
+            quantity?: number;
+        };
+        CreateReceiptDto: {
+            /** Format: uuid */
+            productId: string;
+            /**
+             * @description 현재 보유 수량(stock_unit)
+             * @example 12
+             */
+            quantity: number;
+            note?: string | null;
+        };
+        NutritionValuesDto: {
+            kcal: number | null;
+            carbG: number | null;
+            proteinG: number | null;
+            fatG: number | null;
+        };
+        TemplateItemDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            productName: string;
+            productArchived: boolean;
+            isStockTracked: boolean;
+            quantity: number;
+            /** @enum {string} */
+            unit: "g" | "ml" | "ea";
+            /** @description 화면 표시 단위(g/ml 또는 unit_label) */
+            displayUnit: string;
+            sortOrder: number;
+            /** @description 현재 영양 버전 기준 1회 영양. 미등록이면 전부 null */
+            nutrition: components["schemas"]["NutritionValuesDto"];
+        };
+        NutritionTotalsDto: {
+            kcal: number;
+            carbG: number;
+            proteinG: number;
+            fatG: number;
+            complete: boolean;
+            /** @description kcal 미상 항목 수 */
+            missing: number;
+        };
+        TemplateUsageDto: {
+            /** @description 주간 반복 계획에서 쓰는 셀 수 */
+            weeklyCells: number;
+            /** @description 오늘 이후 날짜 예외에서 쓰는 수 */
+            upcomingOverrides: number;
+        };
+        TemplateDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            archivedAt: string | null;
+            items: components["schemas"]["TemplateItemDto"][];
+            /** @description 1회 영양 합계. complete=false 면 영양 미등록 제품 포함(불완전) */
+            nutrition: components["schemas"]["NutritionTotalsDto"];
+            usage: components["schemas"]["TemplateUsageDto"];
+        };
+        TemplateItemInputDto: {
+            /** Format: uuid */
+            productId: string;
+            /** @example 200 */
+            quantity: number;
+            /**
+             * @description 제품 stock_unit, 또는 pack_weight_g 있는 ea 제품의 g (D-02)
+             * @enum {string}
+             */
+            unit: "g" | "ml" | "ea";
+        };
+        PutTemplateDto: {
+            /** @example 평일 아침 */
+            name: string;
+            /** @description 순서대로 sort_order 가 매겨진다 */
+            items: components["schemas"]["TemplateItemInputDto"][];
+        };
+        WeeklyCellDto: {
+            weekday: number;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /** Format: uuid */
+            templateId: string | null;
+            templateName: string | null;
+        };
+        WeeklyGridDto: {
+            /** @description 7×5 = 35 셀, 요일·슬롯 순 */
+            cells: components["schemas"]["WeeklyCellDto"][];
+        };
+        PutPlanCellDto: {
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /**
+             * Format: uuid
+             * @description planType=template 이면 필수
+             */
+            templateId?: string | null;
+        };
+        WeeklyGridCellInputDto: {
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /**
+             * Format: uuid
+             * @description planType=template 이면 필수
+             */
+            templateId?: string | null;
+            /** @description ISO 1=월 … 7=일 */
+            weekday: number;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+        };
+        PutWeeklyGridDto: {
+            /** @description 격자 전체. 빠진 셀은 '계획 없음' */
+            cells: components["schemas"]["WeeklyGridCellInputDto"][];
+        };
+        OverrideDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example 2026-11-10 */
+            date: string;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /** Format: uuid */
+            templateId: string | null;
+            templateName: string | null;
+            /** Format: uuid */
+            batchId: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BatchOverrideDto: {
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /**
+             * Format: uuid
+             * @description planType=template 이면 필수
+             */
+            templateId?: string | null;
+            note?: string | null;
+            /** @example 2026-11-10 */
+            from: string;
+            /** @example 2026-11-12 */
+            to: string;
+            /** @description 바꿀 슬롯. 유지할 슬롯은 빼면 된다 */
+            slots: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
+        };
+        BatchResultDto: {
+            /** Format: uuid */
+            batchId: string;
+            count: number;
+        };
+        PutOverrideDto: {
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /**
+             * Format: uuid
+             * @description planType=template 이면 필수
+             */
+            templateId?: string | null;
+            note?: string | null;
+        };
+        ResolvedSlotDto: {
+            /** @example 2026-11-10 */
+            date: string;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            /** @enum {string} */
+            planType: "template" | "outside" | "none";
+            /** Format: uuid */
+            templateId: string | null;
+            templateName: string | null;
+            /**
+             * @description override = 날짜 예외, weekly = 반복 계획, default = 둘 다 없음
+             * @enum {string}
+             */
+            source: "override" | "weekly" | "default";
+            /** Format: uuid */
+            overrideId: string | null;
+            note: string | null;
+        };
+        DaySummaryDto: {
+            /** @example 2026-11-06 */
+            date: string;
+            completed: boolean;
+            hasOverride: boolean;
+            /** @description 계획 또는 기록에 외부 식사가 있는가 */
+            hasOutside: boolean;
+            /** @description 계획이 '없음'이 아닌 슬롯 수 */
+            activeSlots: number;
+            /** @description 활성 슬롯 중 먹었음/안 먹음 처리된 수 */
+            recordedSlots: number;
+            /** @description 오늘 이전·오늘의 미기록 활성 슬롯 수. 미래는 null */
+            unrecordedCount: number | null;
+        };
+        MealItemDto: {
+            /**
+             * Format: uuid
+             * @description 저장된 스냅샷 id. 계획에서 계산한 가상 항목은 null
+             */
+            id: string | null;
+            /** Format: uuid */
+            productId: string | null;
+            productName: string;
+            plannedQuantity: number | null;
+            actualQuantity: number | null;
+            /** @enum {string} */
+            unit: "g" | "ml" | "ea";
+            displayUnit: string;
+            /** @description 스냅샷(또는 계획이면 현재 버전) 기준 영양. null 은 미상 */
+            nutrition: components["schemas"]["NutritionValuesDto"];
+            /** @enum {string|null} */
+            nutritionSource: "label" | "manual_estimate" | "ai_estimate" | "backfill" | null;
+            /** Format: date-time */
+            backfilledAt: string | null;
+            deductsStock: boolean;
+            /** @description 차감 후 원장이 음수 → '재고 확인 필요' (FR-03) */
+            stockCheckNeeded: boolean;
+            isStockTracked: boolean;
+            /** @description 현재 제품 설정에서 입력 가능한 단위 (D-02). 제품이 삭제됐으면 스냅샷 단위만 */
+            allowedUnits: ("g" | "ml" | "ea")[];
+            /** @description 제품에 현재 영양 버전이 있는가(UI 의 '영양 미등록' 배지) */
+            nutritionRegistered: boolean;
+        };
+        MealRecordDto: {
+            /**
+             * Format: uuid
+             * @description 저장된 레코드 id. 레코드가 없는 슬롯은 null (D-01: 미래 레코드를 만들지 않음)
+             */
+            id: string | null;
+            /** @example 2026-11-06 */
+            date: string;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
+            /** @enum {string} */
+            status: "unrecorded" | "eaten" | "skipped";
+            /** @enum {string} */
+            kind: "home" | "outside";
+            /** @description 낙관적 잠금 값. 레코드 없음 = null (D-08) */
+            version: number | null;
+            /**
+             * @description 그 날짜·슬롯의 적용 계획 (D-01). extra 는 항상 none
+             * @enum {string}
+             */
+            planType: "template" | "outside" | "none";
+            /** @enum {string} */
+            planSource: "override" | "weekly" | "default";
+            /** Format: uuid */
+            templateId: string | null;
+            templateName: string | null;
+            /** @description 레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용) */
+            planChanged: boolean;
+            outsideMenu: string | null;
+            /** @description 외부 식사 직접 입력 영양. null 은 미상 */
+            outsideNutrition: components["schemas"]["NutritionValuesDto"];
+            /** @description eaten: 실제 스냅샷. unrecorded: 계획 품목(가상, id null). skipped: 비어 있음 */
+            items: components["schemas"]["MealItemDto"][];
+            /** @description eaten: 실제 합계, skipped: 0(확인된 0), unrecorded: 계획 기준 예상 */
+            nutrition: components["schemas"]["NutritionTotalsDto"];
+            /** Format: date-time */
+            eatenAt: string | null;
+            /** @description 어떤 항목이든 재고 확인 필요 */
+            stockCheckNeeded: boolean;
+            /** @description 이 쓰기로 하루 완료가 해제됐는가 (D-04). 조회 응답에서는 false */
+            completionCleared: boolean;
+        };
+        DayNutritionDto: {
+            /** @description 먹었음·안 먹음·추가 간식의 실제 합계 ('기록된 합계') */
+            recorded: components["schemas"]["NutritionTotalsDto"];
+            /** @description 기록된 합계 + 미기록 슬롯의 계획 예상 */
+            expected: components["schemas"]["NutritionTotalsDto"];
+            goal: components["schemas"]["GoalDto"] | null;
+        };
+        WeightDto: {
+            /** @example 2026-11-06 */
+            date: string;
+            weightKg: number;
+            /** Format: date-time */
+            measuredAt: string;
+        };
+        DayCompletionDto: {
+            /** Format: date-time */
+            completedAt: string;
+            nutritionComplete: boolean;
+        };
+        DayDto: {
+            /** @example 2026-11-06 */
+            date: string;
+            isToday: boolean;
+            /** @description 5슬롯, 하루 순서 */
+            slots: components["schemas"]["MealRecordDto"][];
+            extras: components["schemas"]["MealRecordDto"][];
+            nutrition: components["schemas"]["DayNutritionDto"];
+            /**
+             * @description 오늘이면 계획이 있고 아직 미기록인 첫 슬롯
+             * @enum {string|null}
+             */
+            nextSlot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | null;
+            weight: components["schemas"]["WeightDto"] | null;
+            completion: components["schemas"]["DayCompletionDto"] | null;
+            hasOverride: boolean;
+        };
+        MealItemInputDto: {
+            /** Format: uuid */
+            productId: string;
+            /** @description 실제량. 재고 비관리 제품은 생략 가능(기본 추정량 사용, 출처 manual_estimate). 재고 관리 제품은 필수 */
+            quantity?: number | null;
+            /** @enum {string} */
+            unit: "g" | "ml" | "ea";
+        };
+        PutMealRecordDto: {
+            /** @enum {string} */
+            status: "unrecorded" | "eaten" | "skipped";
+            /**
+             * @description home = 집 제품, outside = 외부 식사. 기본 home
+             * @default home
+             * @enum {string}
+             */
+            kind: "home" | "outside";
+            /** @description status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 집 제품' 만 (이 항목만 차감) */
+            items?: components["schemas"]["MealItemInputDto"][];
+            /** @description kind=outside, status=eaten 이면 필수 */
+            outsideMenu?: string | null;
+            outsideKcal?: number | null;
+            outsideCarbG?: number | null;
+            outsideProteinG?: number | null;
+            outsideFatG?: number | null;
+            /** @description 조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08) */
+            version?: number | null;
+        };
+        WeightSummaryDto: {
+            latest: components["schemas"]["WeightDto"] | null;
+            /** @description 최근 7일(오늘 포함) 실측 평균. 측정이 없으면 null (0 으로 채우지 않음) */
+            last7Avg: number | null;
+            /** @description 평균에 쓴 측정 횟수 */
+            last7Count: number;
+            targetWeightKg: number | null;
+            /** @description 최신 측정값 − 목표. 둘 중 하나라도 없으면 null */
+            diffToTarget: number | null;
+            /** @description 최신 측정값 − (최신 측정일 7일 이전 또는 그 전 가장 가까운 측정값) */
+            weekChange: number | null;
+            /** @description 30일 기준, 위와 같은 규칙 */
+            monthChange: number | null;
+        };
+        WeightListDto: {
+            /** @example 2026-08-08 */
+            from: string;
+            /** @example 2026-11-06 */
+            to: string;
+            items: components["schemas"]["WeightDto"][];
+            summary: components["schemas"]["WeightSummaryDto"];
+        };
+        PutWeightDto: {
+            /** @example 74.3 */
+            weightKg: number;
+            /** @description 같은 날 기록이 있을 때 덮어쓰기 확인. 없이 보내면 409 */
+            overwrite?: boolean;
         };
     };
     responses: never;
@@ -216,6 +1410,986 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MeDto"];
                 };
+            };
+        };
+    };
+    GoalsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalDto"][];
+                };
+            };
+        };
+    };
+    GoalsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGoalDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoalDto"];
+                };
+            };
+        };
+    };
+    GoalsController_effective: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EffectiveGoalDto"];
+                };
+            };
+        };
+    };
+    ProductsController_list: {
+        parameters: {
+            query?: {
+                q?: string;
+                /** @description true 면 보관 제품만 */
+                archived?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"][];
+                };
+            };
+        };
+    };
+    ProductsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    ProductsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetailDto"];
+                };
+            };
+        };
+    };
+    ProductsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateProductDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    ProductsController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    ProductsController_unarchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDto"];
+                };
+            };
+        };
+    };
+    ProductsController_nutritionVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NutritionVersionDto"][];
+                };
+            };
+        };
+    };
+    ProductsController_saveNutrition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateNutritionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NutritionSaveResultDto"];
+                };
+            };
+        };
+    };
+    ProductsController_backfill: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillResultDto"];
+                };
+            };
+        };
+    };
+    PurchasesController_list: {
+        parameters: {
+            query?: {
+                status?: "ordered" | "received" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseDto"][];
+                };
+            };
+        };
+    };
+    PurchasesController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 같은 응답을 돌려주고 재입고하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePurchaseDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseDto"];
+                };
+            };
+        };
+    };
+    PurchasesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePurchaseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseDto"];
+                };
+            };
+        };
+    };
+    PurchasesController_receive: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 같은 응답을 돌려주고 재입고하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceivePurchaseDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseDto"];
+                };
+            };
+        };
+    };
+    PurchasesController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseDto"];
+                };
+            };
+        };
+    };
+    PurchasesController_createReceipt: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 같은 응답을 돌려주고 재입고하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReceiptDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptDto"];
+                };
+            };
+        };
+    };
+    TemplatesController_list: {
+        parameters: {
+            query?: {
+                archived?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"][];
+                };
+            };
+        };
+    };
+    TemplatesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutTemplateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+        };
+    };
+    TemplatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+        };
+    };
+    TemplatesController_replace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+        };
+    };
+    TemplatesController_archive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+        };
+    };
+    TemplatesController_unarchive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateDto"];
+                };
+            };
+        };
+    };
+    PlansController_weekly: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyGridDto"];
+                };
+            };
+        };
+    };
+    PlansController_putWeeklyGrid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutWeeklyGridDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyGridDto"];
+                };
+            };
+        };
+    };
+    PlansController_putWeeklyCell: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                weekday: number;
+                slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutPlanCellDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyCellDto"];
+                };
+            };
+        };
+    };
+    PlansController_overrides: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideDto"][];
+                };
+            };
+        };
+    };
+    PlansController_batch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchOverrideDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchResultDto"];
+                };
+            };
+        };
+    };
+    PlansController_deleteBatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PlansController_putOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+                slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutOverrideDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideDto"];
+                };
+            };
+        };
+    };
+    PlansController_deleteOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+                slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PlansController_resolved: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedSlotDto"][];
+                };
+            };
+        };
+    };
+    MealsController_days: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DaySummaryDto"][];
+                };
+            };
+        };
+    };
+    MealsController_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayDto"];
+                };
+            };
+        };
+    };
+    MealsController_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+                slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRecordDto"];
+                };
+            };
+        };
+    };
+    MealsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 저장된 응답을 돌려주고 재차감하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                date: string;
+                slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutMealRecordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRecordDto"];
+                };
+            };
+        };
+    };
+    MealsController_createExtra: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 저장된 응답을 돌려주고 재차감하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutMealRecordDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRecordDto"];
+                };
+            };
+        };
+    };
+    MealsController_updateExtra: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 저장된 응답을 돌려주고 재차감하지 않는다 */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                date: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutMealRecordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealRecordDto"];
+                };
+            };
+        };
+    };
+    MealsController_deleteExtra: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    WeightsController_list: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightListDto"];
+                };
+            };
+        };
+    };
+    WeightsController_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutWeightDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeightDto"];
+                };
+            };
+        };
+    };
+    WeightsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

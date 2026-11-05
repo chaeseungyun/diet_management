@@ -1,5 +1,7 @@
-// 1차 ERD(docs/erd.md)를 단계별로 옮긴다. 단계 0: User 만.
-// 테이블·컬럼은 snake_case, 모델·필드는 camelCase. 시각은 timestamptz(UTC), 날짜는 date (NFR-02).
+// 1차 ERD(docs/erd.md)를 단계별로 옮긴다. 단계 0: User. 단계 1: 목표·제품·영양·구매·입고·원장·템플릿·계획·식사 기록·체중.
+// 테이블·컬럼은 snake_case, 모델·필드는 camelCase. 시각은 timestamptz(UTC), 날짜는 date (NFR-02, DEC-052).
+// 제약은 Prisma 로 표현 가능한 것만 쓴다(CI 의 migrate diff 검사 유지, DEC-055). 부분 유니크·NULLS NOT DISTINCT 는 쓰지 않는다.
+// 자식 테이블(영양 버전·템플릿 품목·스냅샷)은 user_id 없이 부모 조인으로 격리한다(요구사항 §7-7).
 
 generator client {
   provider = "prisma-client-js"
@@ -8,6 +10,73 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+/// 재고 원장·섭취·영양 기준 단위 (D-02, D-11)
+enum StockUnit {
+  g
+  ml
+  ea
+}
+
+/// 영양 정보 출처 (FR-02). ai_estimate 는 확장 단계용 자리
+enum NutritionSource {
+  label
+  manual_estimate
+  ai_estimate
+}
+
+/// 스냅샷 영양 출처. backfill = 사후 보완 (D-03)
+enum SnapshotNutritionSource {
+  label
+  manual_estimate
+  ai_estimate
+  backfill
+}
+
+enum PurchaseStatus {
+  ordered
+  received
+  cancelled
+}
+
+/// 원장 이동 사유 (erd §3). 단계 1 은 receipt·initial·consume·consume_reverse 만 만든다
+enum StockMovementReason {
+  receipt
+  initial
+  consume
+  consume_reverse
+  adjust
+  waste
+  other_use
+}
+
+/// 식사 슬롯 5종 + 추가 간식 (D-10)
+enum MealSlot {
+  breakfast
+  lunch
+  afternoon_snack
+  dinner
+  evening_snack
+  extra
+}
+
+enum PlanType {
+  template
+  outside
+  none
+}
+
+enum MealStatus {
+  unrecorded
+  eaten
+  skipped
+}
+
+/// home = 집 제품(계획 템플릿 또는 계획 없는 슬롯), outside = 외부 식사 (요구사항 §7-7 권고로 template→home 개명)
+enum MealKind {
+  home
+  outside
 }
 
 /// 카카오 로그인 계정 (FR-01, NFR-04). 삭제는 소프트 삭제 후 개인 데이터 삭제 절차 적용.
@@ -23,5 +92,346 @@ model User {
   /// null = 활성. 값이 있으면 로그인·모든 요청 거부
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
 
+  goals           GoalHistory[]
+  products        Product[]
+  purchases       Purchase[]
+  stockReceipts   StockReceipt[]
+  stockMovements  StockMovement[]
+  mealTemplates   MealTemplate[]
+  weeklySchedules WeeklySchedule[]
+  dateOverrides   DateOverride[]
+  mealRecords     MealRecord[]
+  dayCompletions  DayCompletion[]
+  weightRecords   WeightRecord[]
+  idempotencyKeys IdempotencyKey[]
+
   @@map("users")
+}
+
+/// 목표 이력 (FR-01). 특정 날짜의 목표 = effective_from <= 날짜 중 가장 늦은 행
+model GoalHistory {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  effectiveFrom  DateTime @map("effective_from") @db.Date
+  targetWeightKg Decimal  @map("target_weight_kg") @db.Decimal(6, 2)
+  dailyKcal      Int      @map("daily_kcal")
+  proteinG       Decimal  @map("protein_g") @db.Decimal(8, 2)
+  carbG          Decimal? @map("carb_g") @db.Decimal(8, 2)
+  fatG           Decimal? @map("fat_g") @db.Decimal(8, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, effectiveFrom])
+  @@map("goal_histories")
+}
+
+/// 사용자별 제품 마스터 (FR-02, D-02, D-09, D-11, D-13)
+model Product {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  name                 String
+  brand                String?
+  /// 재고 원장 단위. 이동이 1건이라도 있으면 변경 불가 (D-13)
+  stockUnit            StockUnit @map("stock_unit")
+  /// ea 제품의 표시 단위명(팩·개·통). g/ml 이면 null (D-11)
+  unitLabel            String?   @map("unit_label")
+  /// 포장 1개 = 재고 단위 N. 입고 기본값 = 구매 수량 × N (D-11)
+  unitsPerPackage      Decimal   @default(1) @map("units_per_package") @db.Decimal(12, 3)
+  /// ea 1단위의 g. 있을 때만 ea↔g 변환 허용 (D-02)
+  packWeightG          Decimal?  @map("pack_weight_g") @db.Decimal(12, 3)
+  /// false = 소스처럼 재고 차감 제외 (D-09)
+  isStockTracked       Boolean   @default(true) @map("is_stock_tracked")
+  /// 소스 기본 추정 섭취량, stock_unit 기준 (D-09)
+  defaultServingAmount Decimal?  @map("default_serving_amount") @db.Decimal(12, 3)
+  purchaseUrl          String?   @map("purchase_url")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt           DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  user              User                      @relation(fields: [userId], references: [id])
+  nutritionVersions ProductNutritionVersion[]
+  purchases         Purchase[]
+  stockReceipts     StockReceipt[]
+  stockMovements    StockMovement[]
+  templateItems     MealTemplateItem[]
+  snapshots         MealItemSnapshot[]
+
+  @@index([userId, name])
+  @@map("products")
+}
+
+/// 영양 정보 버전 (FR-02, D-11). superseded_at IS NULL 인 행이 현재 버전이며 서비스가 트랜잭션으로 1개를 보장한다
+model ProductNutritionVersion {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId    String          @map("product_id") @db.Uuid
+  basisAmount  Decimal         @map("basis_amount") @db.Decimal(12, 3)
+  /// 제품 stock_unit 과 같거나 g(pack_weight_g 있는 ea 제품) (D-11)
+  basisUnit    StockUnit       @map("basis_unit")
+  kcal         Decimal?        @db.Decimal(12, 3)
+  carbG        Decimal?        @map("carb_g") @db.Decimal(12, 3)
+  proteinG     Decimal?        @map("protein_g") @db.Decimal(12, 3)
+  fatG         Decimal?        @map("fat_g") @db.Decimal(12, 3)
+  source       NutritionSource
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  supersededAt DateTime?       @map("superseded_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId, supersededAt])
+  @@map("product_nutrition_versions")
+}
+
+/// 구매·주문 건 (FR-03). received 전에는 배송 중이며 재고에 포함하지 않는다
+model Purchase {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  productId   String         @map("product_id") @db.Uuid
+  /// 구매 수량(포장 단위)
+  quantity    Decimal        @db.Decimal(12, 3)
+  purchasedOn DateTime       @map("purchased_on") @db.Date
+  price       Decimal?       @db.Decimal(12, 2)
+  url         String?
+  status      PurchaseStatus @default(ordered)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User           @relation(fields: [userId], references: [id])
+  product  Product        @relation(fields: [productId], references: [id])
+  receipts StockReceipt[]
+
+  @@index([userId, status])
+  @@map("purchases")
+}
+
+/// 실제 입고 (FR-03). purchase_id null = 기존 보유 초기 등록. 생성 시 StockMovement 1건을 같은 트랜잭션에서 만든다
+model StockReceipt {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  productId  String   @map("product_id") @db.Uuid
+  purchaseId String?  @map("purchase_id") @db.Uuid
+  /// stock_unit 기준
+  quantity   Decimal  @db.Decimal(12, 3)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  user      User            @relation(fields: [userId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
+  purchase  Purchase?       @relation(fields: [purchaseId], references: [id])
+  movements StockMovement[]
+
+  @@index([userId, productId])
+  @@map("stock_receipts")
+}
+
+/// 재고 이동 원장(append-only). 현재 재고 = SUM(delta). 수정·삭제 없이 역이동으로 복구 (erd §3, NFR-02)
+model StockMovement {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  productId          String              @map("product_id") @db.Uuid
+  /// 부호 있는 수량, stock_unit 기준
+  delta              Decimal             @db.Decimal(12, 3)
+  reason             StockMovementReason
+  receiptId          String?             @map("receipt_id") @db.Uuid
+  /// 스냅샷이 교체되면 null 이 되지만 meal_record_id 로 식사와의 연결은 남는다
+  mealItemSnapshotId String?             @map("meal_item_snapshot_id") @db.Uuid
+  mealRecordId       String?             @map("meal_record_id") @db.Uuid
+  note               String?
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User              @relation(fields: [userId], references: [id])
+  product  Product           @relation(fields: [productId], references: [id])
+  receipt  StockReceipt?     @relation(fields: [receiptId], references: [id])
+  snapshot MealItemSnapshot? @relation(fields: [mealItemSnapshotId], references: [id], onDelete: SetNull)
+  record   MealRecord?       @relation(fields: [mealRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId, productId, createdAt])
+  @@index([mealItemSnapshotId])
+  @@map("stock_movements")
+}
+
+/// 고정 식단 묶음 (FR-04). 슬롯과 무관한 재사용 단위
+model MealTemplate {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  name       String
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  user      User               @relation(fields: [userId], references: [id])
+  items     MealTemplateItem[]
+  schedules WeeklySchedule[]
+  overrides DateOverride[]
+  records   MealRecord[]
+
+  @@index([userId])
+  @@map("meal_templates")
+}
+
+/// 식단 구성 품목 (FR-04, D-02). 단위는 제품 stock_unit 또는 g(pack_weight_g 있는 ea 제품)
+model MealTemplateItem {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  templateId String    @map("template_id") @db.Uuid
+  productId  String    @map("product_id") @db.Uuid
+  quantity   Decimal   @db.Decimal(12, 3)
+  unit       StockUnit
+  sortOrder  Int       @default(0) @map("sort_order")
+
+  template MealTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  product  Product      @relation(fields: [productId], references: [id])
+
+  @@index([templateId])
+  @@index([productId])
+  @@map("meal_template_items")
+}
+
+/// 요일×슬롯 반복 계획 (FR-04, D-01). weekday 는 ISO 1=월 ~ 7=일 (요구사항 §7-7)
+model WeeklySchedule {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  weekday    Int      @db.SmallInt
+  slot       MealSlot
+  planType   PlanType @map("plan_type")
+  templateId String?  @map("template_id") @db.Uuid
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User          @relation(fields: [userId], references: [id])
+  template MealTemplate? @relation(fields: [templateId], references: [id])
+
+  @@unique([userId, weekday, slot])
+  @@map("weekly_schedules")
+}
+
+/// 특정 날짜 예외 (FR-04). 반복 계획보다 우선. batch_id 로 기간 일괄 변경을 묶는다
+model DateOverride {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  onDate     DateTime @map("on_date") @db.Date
+  slot       MealSlot
+  planType   PlanType @map("plan_type")
+  templateId String?  @map("template_id") @db.Uuid
+  batchId    String?  @map("batch_id") @db.Uuid
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User          @relation(fields: [userId], references: [id])
+  template MealTemplate? @relation(fields: [templateId], references: [id])
+
+  @@unique([userId, onDate, slot])
+  @@index([userId, batchId])
+  @@map("date_overrides")
+}
+
+/// 날짜×슬롯 실제 섭취 기록 (FR-05, D-04, D-08, D-10).
+/// 정규 5슬롯은 seq=0 으로 (user, date, slot, seq) 유니크가 1건을 보장하고, extra 는 seq 1,2,… 로 다건을 허용한다 (DEC-055)
+model MealRecord {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String     @map("user_id") @db.Uuid
+  /// 사용자 시간대 기준 날짜
+  mealDate        DateTime   @map("meal_date") @db.Date
+  slot            MealSlot
+  seq             Int        @default(0)
+  status          MealStatus @default(unrecorded)
+  kind            MealKind   @default(home)
+  /// 계획 출처 템플릿
+  templateId      String?    @map("template_id") @db.Uuid
+  outsideMenu     String?    @map("outside_menu")
+  outsideKcal     Decimal?   @map("outside_kcal") @db.Decimal(12, 3)
+  outsideCarbG    Decimal?   @map("outside_carb_g") @db.Decimal(12, 3)
+  outsideProteinG Decimal?   @map("outside_protein_g") @db.Decimal(12, 3)
+  outsideFatG     Decimal?   @map("outside_fat_g") @db.Decimal(12, 3)
+  /// 레코드 생성 시 적용 계획이 DateOverride 에서 왔으면 true (요구사항 §7-7)
+  planChanged     Boolean    @default(false) @map("plan_changed")
+  /// 낙관적 잠금. 쓰기마다 +1 (D-08)
+  version         Int        @default(0)
+  eatenAt         DateTime?  @map("eaten_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user      User               @relation(fields: [userId], references: [id])
+  template  MealTemplate?      @relation(fields: [templateId], references: [id])
+  items     MealItemSnapshot[]
+  movements StockMovement[]
+
+  @@unique([userId, mealDate, slot, seq])
+  @@map("meal_records")
+}
+
+/// 섭취 품목 스냅샷 (FR-05, NFR-02, D-03). 당시 제품명·수량·영양을 복사해 보존한다
+model MealItemSnapshot {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mealRecordId    String                   @map("meal_record_id") @db.Uuid
+  productId       String?                  @map("product_id") @db.Uuid
+  productName     String                   @map("product_name")
+  plannedQuantity Decimal?                 @map("planned_quantity") @db.Decimal(12, 3)
+  /// null = 수량 미기록
+  actualQuantity  Decimal?                 @map("actual_quantity") @db.Decimal(12, 3)
+  unit            StockUnit
+  basisAmount     Decimal?                 @map("basis_amount") @db.Decimal(12, 3)
+  basisUnit       StockUnit?               @map("basis_unit")
+  /// null = 미상
+  kcal            Decimal?                 @db.Decimal(12, 3)
+  carbG           Decimal?                 @map("carb_g") @db.Decimal(12, 3)
+  proteinG        Decimal?                 @map("protein_g") @db.Decimal(12, 3)
+  fatG            Decimal?                 @map("fat_g") @db.Decimal(12, 3)
+  nutritionSource SnapshotNutritionSource? @map("nutrition_source")
+  /// 사후 보완 시각 (D-03)
+  backfilledAt    DateTime?                @map("backfilled_at") @db.Timestamptz(6)
+  /// true 인 항목만 원장 차감. 소스(is_stock_tracked=false)는 false
+  deductsStock    Boolean                  @default(true) @map("deducts_stock")
+  /// 차감 후 원장 합계가 음수가 되면 true (FR-03 재고 확인 필요)
+  stockCheckNeeded Boolean                 @default(false) @map("stock_check_needed")
+  sortOrder       Int                      @default(0) @map("sort_order")
+
+  record    MealRecord      @relation(fields: [mealRecordId], references: [id], onDelete: Cascade)
+  product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  movements StockMovement[]
+
+  @@index([mealRecordId])
+  @@index([productId, kcal])
+  @@map("meal_item_snapshots")
+}
+
+/// 하루 완료 (FR-06, D-04). 완료 API 는 단계 2 이지만, 식사 수정 시 해제해야 하므로 테이블은 단계 1 에 둔다
+model DayCompletion {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  onDate            DateTime @map("on_date") @db.Date
+  completedAt       DateTime @default(now()) @map("completed_at") @db.Timestamptz(6)
+  nutritionComplete Boolean  @map("nutrition_complete")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, onDate])
+  @@map("day_completions")
+}
+
+/// 날짜별 대표 체중 (FR-07). 미측정일은 행 없음
+model WeightRecord {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  onDate     DateTime @map("on_date") @db.Date
+  weightKg   Decimal  @map("weight_kg") @db.Decimal(6, 2)
+  measuredAt DateTime @default(now()) @map("measured_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, onDate])
+  @@map("weight_records")
+}
+
+/// 쓰기 요청 멱등성 (NFR-02, erd A5). (user, key) 재전송은 저장된 응답을 돌려준다
+model IdempotencyKey {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  key            String
+  requestHash    String   @map("request_hash")
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
 }

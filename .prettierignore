@@ -9,3 +9,4 @@ apps/api/openapi.json
 apps/web/src/lib/api-types.d.ts
 .local
 docs/design/globals.css
+apps/web/next-env.d.ts

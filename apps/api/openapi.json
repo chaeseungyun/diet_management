@@ -110,6 +110,1601 @@
           "me"
         ]
       }
+    },
+    "/api/v1/goals": {
+      "get": {
+        "operationId": "GoalsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GoalDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "목표 이력 목록. 현재 적용 중 표시",
+        "tags": [
+          "goals"
+        ]
+      },
+      "post": {
+        "operationId": "GoalsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGoalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoalDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "새 목표 추가. 이전 행은 이력으로 보존. 같은 시작일은 덮어쓴다",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/v1/goals/effective": {
+      "get": {
+        "operationId": "GoalsController_effective",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveGoalDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "특정 날짜에 적용되는 목표 (기본 오늘)",
+        "tags": [
+          "goals"
+        ]
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "operationId": "ProductsController_list",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "required": false,
+            "in": "query",
+            "description": "true 면 보관 제품만",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "목록·검색. 영양 미등록·재고 비관리 표시",
+        "tags": [
+          "products"
+        ]
+      },
+      "post": {
+        "operationId": "ProductsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "제품 등록. initialStock 이 있으면 초기 입고를 같은 트랜잭션에서 만든다",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "operationId": "ProductsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDetailDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "상세: 현재 영양, 현재 재고, 구매 이력, 사용 중 템플릿",
+        "tags": [
+          "products"
+        ]
+      },
+      "patch": {
+        "operationId": "ProductsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProductDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "기본 정보 수정. 원장 이동이 있으면 stockUnit 변경은 422 (D-13)",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{id}/archive": {
+      "post": {
+        "operationId": "ProductsController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "보관. 활성 템플릿이 참조하면 422",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{id}/unarchive": {
+      "post": {
+        "operationId": "ProductsController_unarchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "보관 해제",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{id}/nutrition": {
+      "get": {
+        "operationId": "ProductsController_nutritionVersions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NutritionVersionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "영양 버전 목록(현재 + 이력)",
+        "tags": [
+          "products"
+        ]
+      },
+      "post": {
+        "operationId": "ProductsController_saveNutrition",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNutritionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NutritionSaveResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "새 영양 버전 저장. 응답의 unknownSnapshotCount 로 D-03 보완 여부를 묻는다",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{id}/nutrition/backfill": {
+      "post": {
+        "operationId": "ProductsController_backfill",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "D-03 2단계: 영양 미상 스냅샷만 현재 버전으로 채운다(출처 backfill)",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/purchases": {
+      "get": {
+        "operationId": "PurchasesController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "ordered",
+                "received",
+                "cancelled"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PurchaseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "구매 목록. 배송 중(ordered)은 재고 미포함",
+        "tags": [
+          "purchases"
+        ]
+      },
+      "post": {
+        "operationId": "PurchasesController_create",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 같은 응답을 돌려주고 재입고하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePurchaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "구매 등록. received=true 면 즉시 입고",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{id}": {
+      "patch": {
+        "operationId": "PurchasesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePurchaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ordered 상태에서만 수정",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{id}/receive": {
+      "post": {
+        "operationId": "PurchasesController_receive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 같은 응답을 돌려주고 재입고하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceivePurchaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "받았음. 입고 수량 기본 = 구매 수량 × units_per_package (D-11)",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{id}/cancel": {
+      "post": {
+        "operationId": "PurchasesController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "ordered 만 취소",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/stock-receipts": {
+      "post": {
+        "operationId": "PurchasesController_createReceipt",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 같은 응답을 돌려주고 재입고하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "구매 이력 없는 기존 보유분 초기 등록 (reason initial)",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/meal-templates": {
+      "get": {
+        "operationId": "TemplatesController_list",
+        "parameters": [
+          {
+            "name": "archived",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "목록. 1회 영양 합계(불완전 표시), 사용 중인 셀 수",
+        "tags": [
+          "meal-templates"
+        ]
+      },
+      "post": {
+        "operationId": "TemplatesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "생성. 타인 제품은 404, 허용되지 않는 단위는 422",
+        "tags": [
+          "meal-templates"
+        ]
+      }
+    },
+    "/api/v1/meal-templates/{id}": {
+      "get": {
+        "operationId": "TemplatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meal-templates"
+        ]
+      },
+      "put": {
+        "operationId": "TemplatesController_replace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "이름·품목 전체 교체. 과거 스냅샷 불변",
+        "tags": [
+          "meal-templates"
+        ]
+      }
+    },
+    "/api/v1/meal-templates/{id}/archive": {
+      "post": {
+        "operationId": "TemplatesController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "보관. 주간 계획·예정 예외가 참조하면 422",
+        "tags": [
+          "meal-templates"
+        ]
+      }
+    },
+    "/api/v1/meal-templates/{id}/unarchive": {
+      "post": {
+        "operationId": "TemplatesController_unarchive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "meal-templates"
+        ]
+      }
+    },
+    "/api/v1/plans/weekly": {
+      "get": {
+        "operationId": "PlansController_weekly",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyGridDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "요일 7 × 슬롯 5 격자",
+        "tags": [
+          "plans"
+        ]
+      },
+      "put": {
+        "operationId": "PlansController_putWeeklyGrid",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutWeeklyGridDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyGridDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "격자 전체 교체(요일 복사용). 빠진 셀은 계획 없음",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/weekly/{weekday}/{slot}": {
+      "put": {
+        "operationId": "PlansController_putWeeklyCell",
+        "parameters": [
+          {
+            "name": "weekday",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "slot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPlanCellDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyCellDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "셀 단위 설정. weekday 는 ISO 1=월 … 7=일",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/overrides": {
+      "get": {
+        "operationId": "PlansController_overrides",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OverrideDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "기간 내 날짜 예외 목록 (최대 62일)",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/overrides/batch": {
+      "post": {
+        "operationId": "PlansController_batch",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchOverrideDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResultDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/overrides/batch/{batchId}": {
+      "delete": {
+        "operationId": "PlansController_deleteBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "묶음 단위 해제",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/overrides/{date}/{slot}": {
+      "put": {
+        "operationId": "PlansController_putOverride",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutOverrideDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverrideDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "단일 예외 설정 (반복 계획보다 우선)",
+        "tags": [
+          "plans"
+        ]
+      },
+      "delete": {
+        "operationId": "PlansController_deleteOverride",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "예외 해제 → 반복 계획 복귀. 기존 기록은 불변",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/plans/resolved": {
+      "get": {
+        "operationId": "PlansController_resolved",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResolvedSlotDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "날짜·슬롯별 적용 계획(예외 우선). D-01 계산 함수를 그대로 노출",
+        "tags": [
+          "plans"
+        ]
+      }
+    },
+    "/api/v1/days": {
+      "get": {
+        "operationId": "MealsController_days",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DaySummaryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "캘린더용 날짜별 요약 (최대 62일)",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/api/v1/days/{date}": {
+      "get": {
+        "operationId": "MealsController_day",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "오늘 홈 한 번에: 5슬롯 계획+기록, 영양 합계·예상·목표, 추가 간식, 체중",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/api/v1/meal-records/{date}/{slot}": {
+      "get": {
+        "operationId": "MealsController_record",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "슬롯 상세. 레코드가 없으면 계획을 unrecorded·version=null 로 반환",
+        "tags": [
+          "meals"
+        ]
+      },
+      "put": {
+        "operationId": "MealsController_put",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "slot",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 저장된 응답을 돌려주고 재차감하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutMealRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "상태 설정 (D-04 확정). 서버가 차이로 원장을 만든다. version 불일치 409",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/api/v1/meal-records/{date}/extra": {
+      "post": {
+        "operationId": "MealsController_createExtra",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 저장된 응답을 돌려주고 재차감하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutMealRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "추가 간식 생성. 같은 날 다건, id 로 식별 (D-10)",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/api/v1/meal-records/{date}/extra/{id}": {
+      "put": {
+        "operationId": "MealsController_updateExtra",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "재전송 시 저장된 응답을 돌려주고 재차감하지 않는다",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutMealRecordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealRecordDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "추가 간식 수정 (version 필요)",
+        "tags": [
+          "meals"
+        ]
+      },
+      "delete": {
+        "operationId": "MealsController_deleteExtra",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "추가 간식 삭제. 차감 전량 복구",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
+    "/api/v1/weights": {
+      "get": {
+        "operationId": "WeightsController_list",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightListDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "기간 목록 + 요약(최근 7일 평균·목표 차이·주/월 변화)",
+        "tags": [
+          "weights"
+        ]
+      }
+    },
+    "/api/v1/weights/{date}": {
+      "put": {
+        "operationId": "WeightsController_put",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutWeightDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeightDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "입력·수정. 같은 날 기록이 있으면 overwrite=true 없이는 409",
+        "tags": [
+          "weights"
+        ]
+      },
+      "delete": {
+        "operationId": "WeightsController_remove",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "삭제 → 미측정",
+        "tags": [
+          "weights"
+        ]
+      }
     }
   },
   "info": {
@@ -166,6 +1761,7 @@
         "properties": {
           "nickname": {
             "type": "string",
+            "minLength": 1,
             "maxLength": 30,
             "example": "승윤"
           },
@@ -179,6 +1775,2112 @@
             "description": "true 면 첫 설정(S-03) 완료로 표시한다"
           }
         }
+      },
+      "GoalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "targetWeightKg": {
+            "type": "number"
+          },
+          "dailyKcal": {
+            "type": "number"
+          },
+          "proteinG": {
+            "type": "number"
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean",
+            "description": "오늘(사용자 시간대) 적용 중인 목표인가"
+          }
+        },
+        "required": [
+          "id",
+          "effectiveFrom",
+          "targetWeightKg",
+          "dailyKcal",
+          "proteinG",
+          "carbG",
+          "fatG",
+          "createdAt",
+          "current"
+        ]
+      },
+      "CreateGoalDto": {
+        "type": "object",
+        "properties": {
+          "effectiveFrom": {
+            "type": "string",
+            "description": "적용 시작일(YYYY-MM-DD). 생략하면 오늘(사용자 시간대). 같은 날짜가 있으면 덮어쓴다",
+            "example": "2026-11-06"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "minimum": 1,
+            "example": 72.5
+          },
+          "dailyKcal": {
+            "type": "number",
+            "minimum": 1,
+            "example": 1800
+          },
+          "proteinG": {
+            "type": "number",
+            "minimum": 0,
+            "example": 140
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "targetWeightKg",
+          "dailyKcal",
+          "proteinG"
+        ]
+      },
+      "EffectiveGoalDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "goal": {
+            "nullable": true,
+            "description": "그 날짜에 적용되는 목표. 없으면 null",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "goal"
+        ]
+      },
+      "NutritionVersionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "basisAmount": {
+            "type": "number"
+          },
+          "basisUnit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "kcal": {
+            "type": "number",
+            "nullable": true
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true
+          },
+          "proteinG": {
+            "type": "number",
+            "nullable": true
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true
+          },
+          "source": {
+            "enum": [
+              "label",
+              "manual_estimate",
+              "ai_estimate"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "supersededAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "basisAmount",
+          "basisUnit",
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG",
+          "source",
+          "createdAt",
+          "supersededAt"
+        ]
+      },
+      "ProductDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string",
+            "nullable": true
+          },
+          "stockUnit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitsPerPackage": {
+            "type": "number"
+          },
+          "packWeightG": {
+            "type": "number",
+            "nullable": true
+          },
+          "isStockTracked": {
+            "type": "boolean"
+          },
+          "defaultServingAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "purchaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "nutrition": {
+            "nullable": true,
+            "description": "현재 영양 버전. null = 영양 정보 미등록",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionVersionDto"
+              }
+            ]
+          },
+          "currentStock": {
+            "type": "number",
+            "nullable": true,
+            "description": "원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 (재고 확인 필요)"
+          },
+          "orderedQuantity": {
+            "type": "number",
+            "description": "배송 중 수량(stock_unit 환산). 재고에 포함하지 않는다"
+          },
+          "allowedUnits": {
+            "type": "array",
+            "description": "섭취·템플릿 입력에 허용되는 단위 (D-02)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "g",
+                "ml",
+                "ea"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "brand",
+          "stockUnit",
+          "unitLabel",
+          "unitsPerPackage",
+          "packWeightG",
+          "isStockTracked",
+          "defaultServingAmount",
+          "purchaseUrl",
+          "createdAt",
+          "archivedAt",
+          "nutrition",
+          "currentStock",
+          "orderedQuantity",
+          "allowedUnits"
+        ]
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "닭가슴살 100g"
+          },
+          "brand": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100
+          },
+          "stockUnit": {
+            "description": "재고 원장 단위. 이동이 생기면 바꿀 수 없다 (D-13)",
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true,
+            "description": "ea 제품의 표시 단위명(팩·개·통). ea 면 필수, g/ml 면 무시 (D-11)",
+            "maxLength": 20,
+            "example": "팩"
+          },
+          "unitsPerPackage": {
+            "type": "number",
+            "description": "포장 1개 = 재고 단위 N. 입고 기본값 = 구매 수량 × N (D-11). 기본 1",
+            "minimum": 1,
+            "example": 1
+          },
+          "packWeightG": {
+            "type": "number",
+            "nullable": true,
+            "description": "ea 1단위의 g. 있을 때만 ea↔g 변환 (D-02). g/ml 제품은 null",
+            "minimum": 1,
+            "example": 100
+          },
+          "isStockTracked": {
+            "type": "boolean",
+            "description": "false = 소스처럼 재고 차감 제외 (D-09). 기본 true",
+            "default": true
+          },
+          "defaultServingAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "소스 기본 추정 섭취량(stock_unit 기준). 이 값으로 계산한 영양은 출처 manual_estimate",
+            "minimum": 0
+          },
+          "purchaseUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "initialStock": {
+            "type": "number",
+            "description": "기존 보유 수량(stock_unit 기준). 있으면 StockReceipt(purchase 없음) + StockMovement(initial) 을 같이 만든다",
+            "minimum": 0,
+            "example": 30
+          }
+        },
+        "required": [
+          "name",
+          "stockUnit"
+        ]
+      },
+      "ProductPurchaseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "purchasedOn": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "ordered",
+              "received",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "receivedQuantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "receivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "quantity",
+          "purchasedOn",
+          "price",
+          "status",
+          "receivedQuantity",
+          "receivedAt"
+        ]
+      },
+      "ProductRefDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ProductDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string",
+            "nullable": true
+          },
+          "stockUnit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitsPerPackage": {
+            "type": "number"
+          },
+          "packWeightG": {
+            "type": "number",
+            "nullable": true
+          },
+          "isStockTracked": {
+            "type": "boolean"
+          },
+          "defaultServingAmount": {
+            "type": "number",
+            "nullable": true
+          },
+          "purchaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "nutrition": {
+            "nullable": true,
+            "description": "현재 영양 버전. null = 영양 정보 미등록",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionVersionDto"
+              }
+            ]
+          },
+          "currentStock": {
+            "type": "number",
+            "nullable": true,
+            "description": "원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 (재고 확인 필요)"
+          },
+          "orderedQuantity": {
+            "type": "number",
+            "description": "배송 중 수량(stock_unit 환산). 재고에 포함하지 않는다"
+          },
+          "allowedUnits": {
+            "type": "array",
+            "description": "섭취·템플릿 입력에 허용되는 단위 (D-02)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "g",
+                "ml",
+                "ea"
+              ]
+            }
+          },
+          "purchases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductPurchaseDto"
+            }
+          },
+          "templates": {
+            "description": "이 제품을 쓰는 보관되지 않은 템플릿",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductRefDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "brand",
+          "stockUnit",
+          "unitLabel",
+          "unitsPerPackage",
+          "packWeightG",
+          "isStockTracked",
+          "defaultServingAmount",
+          "purchaseUrl",
+          "createdAt",
+          "archivedAt",
+          "nutrition",
+          "currentStock",
+          "orderedQuantity",
+          "allowedUnits",
+          "purchases",
+          "templates"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "닭가슴살 100g"
+          },
+          "brand": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 100
+          },
+          "stockUnit": {
+            "description": "재고 원장 단위. 이동이 생기면 바꿀 수 없다 (D-13)",
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true,
+            "description": "ea 제품의 표시 단위명(팩·개·통). ea 면 필수, g/ml 면 무시 (D-11)",
+            "maxLength": 20,
+            "example": "팩"
+          },
+          "unitsPerPackage": {
+            "type": "number",
+            "description": "포장 1개 = 재고 단위 N. 입고 기본값 = 구매 수량 × N (D-11). 기본 1",
+            "minimum": 1,
+            "example": 1
+          },
+          "packWeightG": {
+            "type": "number",
+            "nullable": true,
+            "description": "ea 1단위의 g. 있을 때만 ea↔g 변환 (D-02). g/ml 제품은 null",
+            "minimum": 1,
+            "example": 100
+          },
+          "isStockTracked": {
+            "type": "boolean",
+            "description": "false = 소스처럼 재고 차감 제외 (D-09). 기본 true",
+            "default": true
+          },
+          "defaultServingAmount": {
+            "type": "number",
+            "nullable": true,
+            "description": "소스 기본 추정 섭취량(stock_unit 기준). 이 값으로 계산한 영양은 출처 manual_estimate",
+            "minimum": 0
+          },
+          "purchaseUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "format": "uri"
+          }
+        }
+      },
+      "CreateNutritionDto": {
+        "type": "object",
+        "properties": {
+          "basisAmount": {
+            "type": "number",
+            "description": "기준량. \"1회분\" 은 재고 단위 수량(예: 30)으로 적는다 (D-11)",
+            "minimum": 1,
+            "example": 100
+          },
+          "basisUnit": {
+            "description": "제품 stock_unit 과 같거나, pack_weight_g 있는 ea 제품에 한해 g (D-11). 아니면 422",
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "kcal": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "proteinG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "source": {
+            "description": "ai_estimate 는 확장 단계(EXT-01)에서만 생긴다",
+            "enum": [
+              "label",
+              "manual_estimate"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "basisAmount",
+          "basisUnit",
+          "source"
+        ]
+      },
+      "NutritionSaveResultDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/NutritionVersionDto"
+          },
+          "unknownSnapshotCount": {
+            "type": "number",
+            "description": "이 제품의 영양 미상 스냅샷 수. 0 보다 크면 S-33 이 D-03 확인 다이얼로그를 띄운다"
+          }
+        },
+        "required": [
+          "version",
+          "unknownSnapshotCount"
+        ]
+      },
+      "BackfillResultDto": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "description": "채운 스냅샷 수"
+          },
+          "skipped": {
+            "type": "number",
+            "description": "수량·단위로 계산할 수 없어 남긴 수"
+          }
+        },
+        "required": [
+          "updated",
+          "skipped"
+        ]
+      },
+      "ReceiptDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purchaseId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "purchaseId",
+          "quantity",
+          "receivedAt"
+        ]
+      },
+      "PurchaseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "stockUnit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "purchasedOn": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "price": {
+            "type": "number",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "ordered",
+              "received",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "defaultReceiveQuantity": {
+            "type": "number",
+            "description": "받았음 처리 시 입고 수량 기본값 = 구매 수량 × units_per_package (D-11)"
+          },
+          "receipt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productName",
+          "stockUnit",
+          "unitLabel",
+          "quantity",
+          "purchasedOn",
+          "price",
+          "url",
+          "status",
+          "createdAt",
+          "defaultReceiveQuantity",
+          "receipt"
+        ]
+      },
+      "CreatePurchaseDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "구매 수량(포장 단위)",
+            "minimum": 1,
+            "example": 30
+          },
+          "purchasedOn": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "price": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "received": {
+            "type": "boolean",
+            "description": "true 면 즉시 입고 처리 (S-34 \"이미 받았음\")"
+          },
+          "receivedQuantity": {
+            "type": "number",
+            "description": "즉시 입고 시 입고 수량(stock_unit). 생략하면 구매 수량 × units_per_package (D-11)",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "productId",
+          "quantity",
+          "purchasedOn"
+        ]
+      },
+      "UpdatePurchaseDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "minimum": 1
+          },
+          "purchasedOn": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "price": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "url": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000,
+            "format": "uri"
+          }
+        }
+      },
+      "ReceivePurchaseDto": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": "number",
+            "description": "입고 수량(stock_unit). 생략하면 구매 수량 × units_per_package",
+            "minimum": 0
+          }
+        }
+      },
+      "CreateReceiptDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "현재 보유 수량(stock_unit)",
+            "minimum": 0,
+            "example": 12
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "productId",
+          "quantity"
+        ]
+      },
+      "NutritionValuesDto": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "type": "number",
+            "nullable": true
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true
+          },
+          "proteinG": {
+            "type": "number",
+            "nullable": true
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG"
+        ]
+      },
+      "TemplateItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productArchived": {
+            "type": "boolean"
+          },
+          "isStockTracked": {
+            "type": "boolean"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "displayUnit": {
+            "type": "string",
+            "description": "화면 표시 단위(g/ml 또는 unit_label)"
+          },
+          "sortOrder": {
+            "type": "number"
+          },
+          "nutrition": {
+            "description": "현재 영양 버전 기준 1회 영양. 미등록이면 전부 null",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionValuesDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productName",
+          "productArchived",
+          "isStockTracked",
+          "quantity",
+          "unit",
+          "displayUnit",
+          "sortOrder",
+          "nutrition"
+        ]
+      },
+      "NutritionTotalsDto": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "type": "number"
+          },
+          "carbG": {
+            "type": "number"
+          },
+          "proteinG": {
+            "type": "number"
+          },
+          "fatG": {
+            "type": "number"
+          },
+          "complete": {
+            "type": "boolean"
+          },
+          "missing": {
+            "type": "number",
+            "description": "kcal 미상 항목 수"
+          }
+        },
+        "required": [
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG",
+          "complete",
+          "missing"
+        ]
+      },
+      "TemplateUsageDto": {
+        "type": "object",
+        "properties": {
+          "weeklyCells": {
+            "type": "number",
+            "description": "주간 반복 계획에서 쓰는 셀 수"
+          },
+          "upcomingOverrides": {
+            "type": "number",
+            "description": "오늘 이후 날짜 예외에서 쓰는 수"
+          }
+        },
+        "required": [
+          "weeklyCells",
+          "upcomingOverrides"
+        ]
+      },
+      "TemplateDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateItemDto"
+            }
+          },
+          "nutrition": {
+            "description": "1회 영양 합계. complete=false 면 영양 미등록 제품 포함(불완전)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionTotalsDto"
+              }
+            ]
+          },
+          "usage": {
+            "$ref": "#/components/schemas/TemplateUsageDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "archivedAt",
+          "items",
+          "nutrition",
+          "usage"
+        ]
+      },
+      "TemplateItemInputDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "example": 200
+          },
+          "unit": {
+            "description": "제품 stock_unit, 또는 pack_weight_g 있는 ea 제품의 g (D-02)",
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "productId",
+          "quantity",
+          "unit"
+        ]
+      },
+      "PutTemplateDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "example": "평일 아침"
+          },
+          "items": {
+            "description": "순서대로 sort_order 가 매겨진다",
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateItemInputDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "items"
+        ]
+      },
+      "WeeklyCellDto": {
+        "type": "object",
+        "properties": {
+          "weekday": {
+            "type": "number"
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          },
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "weekday",
+          "slot",
+          "planType",
+          "templateId",
+          "templateName"
+        ]
+      },
+      "WeeklyGridDto": {
+        "type": "object",
+        "properties": {
+          "cells": {
+            "description": "7×5 = 35 셀, 요일·슬롯 순",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyCellDto"
+            }
+          }
+        },
+        "required": [
+          "cells"
+        ]
+      },
+      "PutPlanCellDto": {
+        "type": "object",
+        "properties": {
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "planType=template 이면 필수",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "planType"
+        ]
+      },
+      "WeeklyGridCellInputDto": {
+        "type": "object",
+        "properties": {
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "planType=template 이면 필수",
+            "format": "uuid"
+          },
+          "weekday": {
+            "type": "number",
+            "description": "ISO 1=월 … 7=일",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "planType",
+          "weekday",
+          "slot"
+        ]
+      },
+      "PutWeeklyGridDto": {
+        "type": "object",
+        "properties": {
+          "cells": {
+            "description": "격자 전체. 빠진 셀은 '계획 없음'",
+            "maxItems": 35,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeeklyGridCellInputDto"
+            }
+          }
+        },
+        "required": [
+          "cells"
+        ]
+      },
+      "OverrideDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-11-10"
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          },
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "batchId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "slot",
+          "planType",
+          "templateId",
+          "templateName",
+          "batchId",
+          "note",
+          "createdAt"
+        ]
+      },
+      "BatchOverrideDto": {
+        "type": "object",
+        "properties": {
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "planType=template 이면 필수",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          },
+          "from": {
+            "type": "string",
+            "example": "2026-11-10"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-12"
+          },
+          "slots": {
+            "type": "array",
+            "description": "바꿀 슬롯. 유지할 슬롯은 빼면 된다",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ]
+            }
+          }
+        },
+        "required": [
+          "planType",
+          "from",
+          "to",
+          "slots"
+        ]
+      },
+      "BatchResultDto": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "batchId",
+          "count"
+        ]
+      },
+      "PutOverrideDto": {
+        "type": "object",
+        "properties": {
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "planType=template 이면 필수",
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "planType"
+        ]
+      },
+      "ResolvedSlotDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-10"
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          },
+          "planType": {
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "description": "override = 날짜 예외, weekly = 반복 계획, default = 둘 다 없음",
+            "enum": [
+              "override",
+              "weekly",
+              "default"
+            ],
+            "type": "string"
+          },
+          "overrideId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "date",
+          "slot",
+          "planType",
+          "templateId",
+          "templateName",
+          "source",
+          "overrideId",
+          "note"
+        ]
+      },
+      "DaySummaryDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "hasOverride": {
+            "type": "boolean"
+          },
+          "hasOutside": {
+            "type": "boolean",
+            "description": "계획 또는 기록에 외부 식사가 있는가"
+          },
+          "activeSlots": {
+            "type": "number",
+            "description": "계획이 '없음'이 아닌 슬롯 수"
+          },
+          "recordedSlots": {
+            "type": "number",
+            "description": "활성 슬롯 중 먹었음/안 먹음 처리된 수"
+          },
+          "unrecordedCount": {
+            "type": "number",
+            "nullable": true,
+            "description": "오늘 이전·오늘의 미기록 활성 슬롯 수. 미래는 null"
+          }
+        },
+        "required": [
+          "date",
+          "completed",
+          "hasOverride",
+          "hasOutside",
+          "activeSlots",
+          "recordedSlots",
+          "unrecordedCount"
+        ]
+      },
+      "MealItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "description": "저장된 스냅샷 id. 계획에서 계산한 가상 항목은 null",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "plannedQuantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "actualQuantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "unit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "displayUnit": {
+            "type": "string"
+          },
+          "nutrition": {
+            "description": "스냅샷(또는 계획이면 현재 버전) 기준 영양. null 은 미상",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionValuesDto"
+              }
+            ]
+          },
+          "nutritionSource": {
+            "nullable": true,
+            "enum": [
+              "label",
+              "manual_estimate",
+              "ai_estimate",
+              "backfill"
+            ],
+            "type": "string"
+          },
+          "backfilledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "deductsStock": {
+            "type": "boolean"
+          },
+          "stockCheckNeeded": {
+            "type": "boolean",
+            "description": "차감 후 원장이 음수 → '재고 확인 필요' (FR-03)"
+          },
+          "isStockTracked": {
+            "type": "boolean"
+          },
+          "allowedUnits": {
+            "type": "array",
+            "description": "현재 제품 설정에서 입력 가능한 단위 (D-02). 제품이 삭제됐으면 스냅샷 단위만",
+            "items": {
+              "type": "string",
+              "enum": [
+                "g",
+                "ml",
+                "ea"
+              ]
+            }
+          },
+          "nutritionRegistered": {
+            "type": "boolean",
+            "description": "제품에 현재 영양 버전이 있는가(UI 의 '영양 미등록' 배지)"
+          }
+        },
+        "required": [
+          "id",
+          "productId",
+          "productName",
+          "plannedQuantity",
+          "actualQuantity",
+          "unit",
+          "displayUnit",
+          "nutrition",
+          "nutritionSource",
+          "backfilledAt",
+          "deductsStock",
+          "stockCheckNeeded",
+          "isStockTracked",
+          "allowedUnits",
+          "nutritionRegistered"
+        ]
+      },
+      "MealRecordDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true,
+            "description": "저장된 레코드 id. 레코드가 없는 슬롯은 null (D-01: 미래 레코드를 만들지 않음)",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack",
+              "extra"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unrecorded",
+              "eaten",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "home",
+              "outside"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "type": "number",
+            "nullable": true,
+            "description": "낙관적 잠금 값. 레코드 없음 = null (D-08)"
+          },
+          "planType": {
+            "description": "그 날짜·슬롯의 적용 계획 (D-01). extra 는 항상 none",
+            "enum": [
+              "template",
+              "outside",
+              "none"
+            ],
+            "type": "string"
+          },
+          "planSource": {
+            "enum": [
+              "override",
+              "weekly",
+              "default"
+            ],
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string",
+            "nullable": true
+          },
+          "planChanged": {
+            "type": "boolean",
+            "description": "레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용)"
+          },
+          "outsideMenu": {
+            "type": "string",
+            "nullable": true
+          },
+          "outsideNutrition": {
+            "description": "외부 식사 직접 입력 영양. null 은 미상",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionValuesDto"
+              }
+            ]
+          },
+          "items": {
+            "description": "eaten: 실제 스냅샷. unrecorded: 계획 품목(가상, id null). skipped: 비어 있음",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MealItemDto"
+            }
+          },
+          "nutrition": {
+            "description": "eaten: 실제 합계, skipped: 0(확인된 0), unrecorded: 계획 기준 예상",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionTotalsDto"
+              }
+            ]
+          },
+          "eatenAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "stockCheckNeeded": {
+            "type": "boolean",
+            "description": "어떤 항목이든 재고 확인 필요"
+          },
+          "completionCleared": {
+            "type": "boolean",
+            "description": "이 쓰기로 하루 완료가 해제됐는가 (D-04). 조회 응답에서는 false"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "slot",
+          "status",
+          "kind",
+          "version",
+          "planType",
+          "planSource",
+          "templateId",
+          "templateName",
+          "planChanged",
+          "outsideMenu",
+          "outsideNutrition",
+          "items",
+          "nutrition",
+          "eatenAt",
+          "stockCheckNeeded",
+          "completionCleared"
+        ]
+      },
+      "DayNutritionDto": {
+        "type": "object",
+        "properties": {
+          "recorded": {
+            "description": "먹었음·안 먹음·추가 간식의 실제 합계 ('기록된 합계')",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionTotalsDto"
+              }
+            ]
+          },
+          "expected": {
+            "description": "기록된 합계 + 미기록 슬롯의 계획 예상",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionTotalsDto"
+              }
+            ]
+          },
+          "goal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GoalDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "recorded",
+          "expected",
+          "goal"
+        ]
+      },
+      "WeightDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "weightKg": {
+            "type": "number"
+          },
+          "measuredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "date",
+          "weightKg",
+          "measuredAt"
+        ]
+      },
+      "DayCompletionDto": {
+        "type": "object",
+        "properties": {
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nutritionComplete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "completedAt",
+          "nutritionComplete"
+        ]
+      },
+      "DayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "isToday": {
+            "type": "boolean"
+          },
+          "slots": {
+            "description": "5슬롯, 하루 순서",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MealRecordDto"
+            }
+          },
+          "extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MealRecordDto"
+            }
+          },
+          "nutrition": {
+            "$ref": "#/components/schemas/DayNutritionDto"
+          },
+          "nextSlot": {
+            "nullable": true,
+            "description": "오늘이면 계획이 있고 아직 미기록인 첫 슬롯",
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          },
+          "weight": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightDto"
+              }
+            ]
+          },
+          "completion": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DayCompletionDto"
+              }
+            ]
+          },
+          "hasOverride": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "date",
+          "isToday",
+          "slots",
+          "extras",
+          "nutrition",
+          "nextSlot",
+          "weight",
+          "completion",
+          "hasOverride"
+        ]
+      },
+      "MealItemInputDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true,
+            "description": "실제량. 재고 비관리 제품은 생략 가능(기본 추정량 사용, 출처 manual_estimate). 재고 관리 제품은 필수",
+            "minimum": 0
+          },
+          "unit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "productId",
+          "unit"
+        ]
+      },
+      "PutMealRecordDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "unrecorded",
+              "eaten",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "description": "home = 집 제품, outside = 외부 식사. 기본 home",
+            "enum": [
+              "home",
+              "outside"
+            ],
+            "type": "string",
+            "default": "home"
+          },
+          "items": {
+            "description": "status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 집 제품' 만 (이 항목만 차감)",
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MealItemInputDto"
+            }
+          },
+          "outsideMenu": {
+            "type": "string",
+            "nullable": true,
+            "description": "kind=outside, status=eaten 이면 필수",
+            "maxLength": 100
+          },
+          "outsideKcal": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "outsideCarbG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "outsideProteinG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "outsideFatG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "version": {
+            "type": "number",
+            "nullable": true,
+            "description": "조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08)",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "WeightSummaryDto": {
+        "type": "object",
+        "properties": {
+          "latest": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightDto"
+              }
+            ]
+          },
+          "last7Avg": {
+            "type": "number",
+            "nullable": true,
+            "description": "최근 7일(오늘 포함) 실측 평균. 측정이 없으면 null (0 으로 채우지 않음)"
+          },
+          "last7Count": {
+            "type": "number",
+            "description": "평균에 쓴 측정 횟수"
+          },
+          "targetWeightKg": {
+            "type": "number",
+            "nullable": true
+          },
+          "diffToTarget": {
+            "type": "number",
+            "nullable": true,
+            "description": "최신 측정값 − 목표. 둘 중 하나라도 없으면 null"
+          },
+          "weekChange": {
+            "type": "number",
+            "nullable": true,
+            "description": "최신 측정값 − (최신 측정일 7일 이전 또는 그 전 가장 가까운 측정값)"
+          },
+          "monthChange": {
+            "type": "number",
+            "nullable": true,
+            "description": "30일 기준, 위와 같은 규칙"
+          }
+        },
+        "required": [
+          "latest",
+          "last7Avg",
+          "last7Count",
+          "targetWeightKg",
+          "diffToTarget",
+          "weekChange",
+          "monthChange"
+        ]
+      },
+      "WeightListDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-08-08"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-06"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WeightDto"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/WeightSummaryDto"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "items",
+          "summary"
+        ]
+      },
+      "PutWeightDto": {
+        "type": "object",
+        "properties": {
+          "weightKg": {
+            "type": "number",
+            "minimum": 1,
+            "example": 74.3
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "같은 날 기록이 있을 때 덮어쓰기 확인. 없이 보내면 409"
+          }
+        },
+        "required": [
+          "weightKg"
+        ]
       }
     }
   }
