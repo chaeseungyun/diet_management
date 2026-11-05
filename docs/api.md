@@ -94,7 +94,7 @@
 | `DELETE /plans/overrides/{date}/{slot}` | 예외 해제 → 반복 계획 복귀 | |
 | `POST /plans/overrides/batch` | 기간·슬롯 일괄 변경(출장). `batch_id` 반환 | 유지할 슬롯은 제외 가능 |
 | `DELETE /plans/overrides/batch/{batchId}` | 묶음 단위 해제 | |
-| `POST /plans/overrides/batch/preview` | 적용 전 예정 소비 감소분·소진일 변화 계산(저장 없음) | S-24. 소진 예측 함수 재사용 |
+| `POST /plans/overrides/batch/preview` | 적용 전 예정 소비 감소분·소진일 변화 계산(저장 없음) | S-24. 소진 예측 함수 재사용. **단계 2**(D-15 예측과 함께) |
 | `GET /plans/resolved?from=&to=` | 날짜·슬롯별 적용 계획(예외 우선) | D-01 계산 함수를 그대로 노출 |
 
 계획 변경은 기존 `MealRecord`를 수정하지 않는다(FR-04). 예외 등록·해제 시 소진 예측은 조회 시 재계산되고, 해당 슬롯의 pending 알림은 유형 변경·취소된다.
@@ -106,7 +106,7 @@
 | `GET /days?from=&to=` | 캘린더·통계용 날짜별 요약: 완료 여부, 예외 유무, 외부 식사, 미기록 수 | S-23 |
 | `GET /days/{date}` | 오늘 홈 한 번에: 계획 5슬롯 + 기록 상태, 영양 합계(기록/계획 포함 예상/해당 날짜 목표), 영양 누락 수, 추가 간식, 다음 식사, 체중, 완료 상태, 소진 임박 제품 | S-10. §12 미정(묶음 여부) |
 | `GET /meal-records/{date}/{slot}` | 슬롯 상세. 레코드가 없으면 계산된 계획을 `status=unrecorded`, `version=null`로 반환 | 미래 레코드를 만들지 않음(D-01) |
-| `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind, items[{productId, actualQuantity, unit}], outsideMenu, outsideNutrition, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음 |
+| `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind(home|outside), items[{productId, quantity, unit}], outsideMenu, outsideKcal…, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음 |
 | `POST /meal-records/{date}/extra` | 추가 간식 생성 | 같은 날 다건, `id`로 식별(**D-10**) |
 | `PUT /meal-records/{date}/extra/{id}` · `DELETE .../extra/{id}` | 추가 간식 수정·삭제. 삭제 시 차감 전량 복구 | |
 | `GET /days/{date}/completion` | 완료 가능 여부, 활성 슬롯 처리 현황, 미기록 목록, 영양 완전 여부 예측 | ‘계획 없음’ 슬롯 제외는 ERD A3 가정 |
@@ -157,11 +157,11 @@
 
 1. ~~**타인 리소스 응답 코드**~~ → **404로 확정(D-06, 2026-11-05)**. G-03 문구를 ‘찾을 수 없음’으로 맞춤.
 2. ~~**`version` 형식**~~ → **정수 `version` 컬럼으로 확정(D-08, 2026-11-05)**. ERD 수정 완료.
-3. **오늘 홈 조회**: `GET /days/{date}` 하나로 묶을지, 슬롯·체중·재고를 따로 호출할지 (권고 묶음, 모바일 LCP 목표).
-4. **주간 계획 저장 단위**: 셀 단위만 둘지 격자 전체 교체도 둘지 (권고 둘 다).
+3. ~~**오늘 홈 조회**~~ → **`GET /days/{date}` 하나로 묶음(단계 1 구현, 2026-11-06)**. 단계 2 의 소진 임박·완료 상태도 같은 응답에 붙인다.
+4. ~~**주간 계획 저장 단위**~~ → **셀 단위 + 격자 전체 교체 둘 다(단계 1 구현, 요일 복사는 전체 교체 사용)**.
 5. ~~**추가 간식 식별**~~ → **§8 형태(`id` 경로)로 확정(D-10, 2026-11-05)**.
 6. ~~**낙관적 잠금 범위**~~ → **1차는 식사 기록만(D-08, 2026-11-05)**.
-7. **D-03 보완 흐름** ⏰ **단계 1 착수 전 결정(2026-11-05 사용자 지시: 단계 1 시작 시 리마인드)**: 저장 응답에 건수를 싣고 별도 `backfill` 호출로 2단계 처리할지, 저장 요청에 `applyToUnknown` 플래그로 1단계 처리할지 (권고 2단계, S-33 확인 다이얼로그와 맞음). 현재 §3 표는 2단계 형태로 적혀 있다.
+7. ~~**D-03 보완 흐름**~~ → **2단계(응답 `unknownSnapshotCount` + `backfill`)로 확정(D-16, DEC-054, 2026-11-06)**. §3 표 그대로 구현됨.
 8. ~~**OpenAPI 문서**~~ → **NestJS Swagger로 생성하고 프런트 타입을 그 산출물에서 생성(D-05, 2026-11-05)**.
 9. `POST /push/test`, `GET /notifications` 포함 여부 (screens §9-5와 연동).
 

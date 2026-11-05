@@ -1,6 +1,6 @@
 # 식단·재고·체중 관리 웹앱 — 운영 문서
 
-버전: v0.1 (2026-11-05, 단계 0) / 근거: [`requirements-phase1.md`](requirements-phase1.md) NFR-04·05·06·07, [`decisions.md`](decisions.md) DEC-010·011·014·037·045·047~053
+버전: v0.2 (2026-11-06, 단계 1) / 근거: [`requirements-phase1.md`](requirements-phase1.md) NFR-04·05·06·07, [`decisions.md`](decisions.md) DEC-010·011·014·037·045·047~053
 
 NFR-07이 요구하는 운영 문서(로컬 실행, 환경 변수, 배포, 백업·복원, 도메인 갱신, 장애 대응, 비용 확인)를 한곳에 둔다. 도메인·VM 구매 전(2026-11-06 예정)이라 배포 절은 **절차만** 적고 실제 값은 비워 둔다.
 
@@ -42,7 +42,7 @@ pnpm --filter @diet/web dev                # 웹 :3000   (/api/* 는 :4000 으�
 | --- | --- |
 | `pnpm typecheck` | 세 패키지 `tsc --noEmit` (strict) |
 | `pnpm test` | shared 단위 테스트, API 단위·e2e 테스트. e2e는 `DATABASE_URL`이 없으면 embedded-postgres를 임시로 띄운다(`apps/api/test/run-with-db.mjs`) |
-| `pnpm --filter @diet/api test:e2e` | 단계 0 인수 테스트만: 카카오 로그인 흐름(HTTP는 fetch 수준 대체), 사용자 격리(시나리오 7), CSRF, 422 검증, 로그아웃, 소프트 삭제 |
+| `pnpm --filter @diet/api test:e2e` | 인수 테스트: 단계 0(카카오 로그인 흐름, 격리, CSRF, 422, 로그아웃, 소프트 삭제) + 단계 1(시나리오 1·2·3·4·5·7, 외부 식사·추가 간식·D-03 보완·구매·목표·체중·오늘 화면, 동시 수정·멱등성 경쟁) |
 | `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types` | OpenAPI → `apps/web/src/lib/api-types.d.ts` 재생성. 둘 다 커밋하며 CI가 최신 여부를 검사한다 |
 | `pnpm build` | shared → api(`nest build`) → web(`next build`, standalone) |
 | `pnpm format:check` | Prettier |
@@ -124,7 +124,13 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 도메인·VM 실제 금액은 구매 후 [`decisions.md`](decisions.md) §F와 여기 기록한다.
 - 도메인 갱신: 자동 갱신 켜기, 만료 30일 전 알림. 등록기관 계정 2단계 인증.
 
-## 10. 단계 0 상태 (2026-11-05)
+## 10. 단계 1 상태 (2026-11-06)
+
+- 완료: API §2·§3·§4·§6·§7·§8(완료 제외)·§9 전부, 마이그레이션 `phase1_core`, 단위 테스트 22건·e2e 27건 통과, 웹 화면 S-03·S-10~S-13·S-20~S-24·S-30~S-35·S-50·S-51·S-70, `next build`·SSR 스모크(모든 화면 200, 404·비로그인 307) 확인.
+- 단계 2 로 넘긴 것: 하루 완료 API·S-14, 재고 현황·원장 화면·예측·보정(S-40~S-42), `POST /plans/overrides/batch/preview`, 통계·알림·PWA, 통계 탭, 알림 설정·계정 삭제 화면.
+- 사용자 확인 필요: 실제 브라우저에서 각 화면의 조작(먹었음 1탭, 품목 수정, 영양 보완 다이얼로그, 받았음 처리, 캘린더 예외) — SSR 렌더만 자동 확인했고 클라이언트 조작은 e2e 범위 밖이다.
+
+## 11. 단계 0 상태 (2026-11-05)
 
 - 완료: 모노레포, 카카오 로그인(API 콜백·JWT 쿠키), 사용자 격리·CSRF·소프트 삭제, `/me`, `/health`, Swagger·OpenAPI 타입 생성, 마이그레이션, e2e 11건·단위 13건 통과, 로컬 API·웹 기동 확인, 실제 카카오 앱으로 로그인 확인(2026-11-05), Dockerfile·Compose·Caddyfile·CI·백업 스크립트 작성.
 - 미완료(도메인·VM 구매 후): HTTPS 배포, 이미지 빌드(CI), 백업·복원 시험, 메모리 실측, 예산 견적 기록. Dockerfile·compose·백업 스크립트는 Docker가 없는 개발 PC에서 **실행해 보지 않았다**.

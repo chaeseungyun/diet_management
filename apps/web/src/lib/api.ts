@@ -1,9 +1,11 @@
 import 'server-only';
 import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
 import { API_PREFIX } from '@diet/shared';
 import type { components } from './api-types';
 
-export type MeDto = components['schemas']['MeDto'];
+export type Schemas = components['schemas'];
+export type MeDto = Schemas['MeDto'];
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
@@ -18,6 +20,14 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     headers: { ...(init.headers ?? {}), cookie: cookieHeader },
     cache: 'no-store',
   });
+}
+
+/** GET 후 JSON. 404 는 Next 의 not-found 로, 그 외 실패는 예외 */
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await apiFetch(path);
+  if (res.status === 404) notFound();
+  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+  return (await res.json()) as T;
 }
 
 /** 로그인 사용자. 미인증이면 null. */

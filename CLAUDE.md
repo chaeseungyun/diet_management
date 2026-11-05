@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 0 코드가 있다(2026-11-05). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. 도메인·VM은 2026-11-06 구매 예정이라 배포·HTTPS·백업 복원 확인은 아직이다.
+단계 1 코드가 있다(2026-11-06; 단계 0 은 2026-11-05). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. 도메인·VM은 2026-11-06 구매 예정이라 배포·HTTPS·백업 복원 확인은 아직이다.
 
 명령(저장소 루트에서):
 
@@ -13,13 +13,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 실행: `pnpm --filter @diet/api dev`(:4000, Swagger `/api/v1/docs`), `pnpm --filter @diet/web dev`(:3000, `/api/*`를 :4000으로 rewrite). 브라우저는 항상 :3000.
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
-- 린트: 미도입(단계 1에서 ESLint). Prettier는 `pnpm format:check`.
+- 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.
+- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra)·`weights`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,ui,shell}`. DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
 
 코드 규칙:
 
 - `apps/api`는 CommonJS + Jest다. ESM 전용 패키지(NestJS 12, jose, cookie v2 등)를 넣지 않는다(DEC-047·049). 런타임 의존성을 늘리기 전에 node 내장으로 되는지 본다.
 - 스키마 변경: `apps/api/prisma/schema.prisma` 수정 → 로컬 DB 띄운 뒤 `pnpm --filter @diet/api prisma:migrate --name <이름>` → 생성 SQL 검토(NULLS NOT DISTINCT 같은 수동 SQL은 파일에 직접) → 커밋. 테이블은 snake_case 복수형, 모델·필드는 camelCase(DEC-052).
-- 새 리소스는 `findFirst({ where: { id, userId } })` 결과에 `assertOwned`(404)를 적용한다. `OriginGuard`(CSRF)·`AuthGuard`가 전역이며 공개 엔드포인트만 `@Public()`.
+- 새 리소스는 `findFirst({ where: { id, userId } })` 결과가 없으면 404 다(`ProductsService.loadOwned` 패턴). 본문의 FK(제품·템플릿 ID)도 소유 검사로 404. 재고에 영향을 주는 쓰기는 `IdempotencyService.run` 안에서 하고, 식사 기록 쓰기는 version 조건부 갱신으로 행을 잠근 뒤 원장을 만든다(DEC-055). `OriginGuard`(CSRF)·`AuthGuard`가 전역이며 공개 엔드포인트만 `@Public()`.
 - 환경 변수는 `src/config/env.ts`의 zod 스키마에 추가하고 `.env.example`과 `deploy/docker-compose.yml`을 함께 갱신한다. 비밀 값은 로그·응답에 싣지 않는다.
 - 웹에서 API 호출은 `src/lib/api.ts`(서버)·같은 오리진 `fetch('/api/v1/…')`(클라이언트)만. 업무 규칙을 Next 쪽에 두지 않는다.
 
@@ -70,7 +71,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 구현 순서
 
-단계 0(로그인·배포·사용자 격리) → 1(제품·식단·기록·체중 + 구매·입고·섭취 차감·복구 원장 API, D-15) → 2(재고 화면·예측·보정·완료 통계·대시보드·알림·PWA). 화면 묶음은 `screens.md` §8, 완료 조건은 `requirements-phase1.md` §4. 정합성·격리·스냅샷·백업 복구를 UI 장식보다 먼저 검증한다. **단계 1 착수 전에 D-03 보완 흐름(`api.md` §12-7, 2단계 backfill vs 1단계 플래그)을 사용자에게 다시 물어 결정한다.** 단계 2 착수 전에는 '계획 없음' 슬롯 완료 조건과 알림 체계 공유 여부를 묻는다(`decisions.md` §F). 핵심 테스트 대상: 사용자 격리, 단위 변환, 재고 트랜잭션·중복 요청·복구, 날짜 예외, 과거 기록 보존, 미기록 통계 제외.
+단계 0(로그인·배포·사용자 격리) → 1(제품·식단·기록·체중 + 구매·입고·섭취 차감·복구 원장 API, D-15) → 2(재고 화면·예측·보정·완료 통계·대시보드·알림·PWA). 화면 묶음은 `screens.md` §8, 완료 조건은 `requirements-phase1.md` §4. 정합성·격리·스냅샷·백업 복구를 UI 장식보다 먼저 검증한다. D-03 보완 흐름은 2단계로 확정됐다(D-16). 단계 2 착수 전에는 '계획 없음' 슬롯 완료 조건과 알림 체계 공유 여부를 묻는다(`decisions.md` §F). 핵심 테스트 대상: 사용자 격리, 단위 변환, 재고 트랜잭션·중복 요청·복구, 날짜 예외, 과거 기록 보존, 미기록 통계 제외.
 
 ## 저장소 관례
 

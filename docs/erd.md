@@ -144,7 +144,7 @@ erDiagram
     WeeklySchedule {
         uuid id PK
         uuid user_id FK
-        smallint weekday "0-6, UK(user_id, weekday, slot)"
+        smallint weekday "ISO 1=월..7=일, UK(user_id, weekday, slot) (D-17)"
         enum slot "breakfast|lunch|dinner|afternoon_snack|evening_snack"
         enum plan_type "template|outside|none"
         uuid template_id FK "nullable, plan_type=template일 때"
@@ -166,8 +166,9 @@ erDiagram
         uuid user_id FK
         date meal_date "사용자 시간대 기준"
         enum slot "5슬롯 + extra"
+        int seq "정규 슬롯 0, extra 는 1,2,… UK(user_id, meal_date, slot, seq) (DEC-055)"
         enum status "unrecorded|eaten|skipped"
-        enum kind "template|outside"
+        enum kind "home|outside (D-17)"
         uuid template_id FK "nullable, 계획 출처"
         string outside_menu "nullable"
         numeric outside_kcal "nullable=미상"
@@ -351,6 +352,12 @@ erDiagram
 | A6 | FR-04 | 식단 품목 테이블을 추가하고, 템플릿은 슬롯과 분리한다(권고 목록 외 추가) | `MealTemplateItem` |
 | A7 | FR-06 | **확정(D-10)** 추가 간식은 `slot=extra`로 같은 날 여러 건 허용, `id`로 식별 | `MealRecord.slot` |
 | A8 | NFR-04 | **확정(D-07)** 세션 저장소 없음. stateless JWT를 HttpOnly 쿠키에 담으므로 세션 테이블·Redis를 두지 않는다 | — |
+
+### 구현 반영 (2026-11-06, DEC-055)
+
+- 부분 유니크·`NULLS NOT DISTINCT` 는 쓰지 않는다(CI 의 `migrate diff` 검사 유지). 현재 영양 버전 1건은 서비스가 보장하고, `MealRecord` 는 `seq` 컬럼으로 정규 슬롯 유니크와 extra 다건을 함께 만든다. `NotificationDelivery` 유니크(D-12)는 단계 2 에서 센티널 값 방식으로 재검토.
+- `StockMovement.meal_record_id` 를 추가해 스냅샷 교체 후에도 식사와의 연결을 남긴다. `MealItemSnapshot.backfilled_at`·`nutrition_source=backfill` 로 사후 보완을 표시한다(D-03).
+- 자식 테이블(`ProductNutritionVersion`·`MealTemplateItem`·`MealItemSnapshot`)은 `user_id` 없이 부모 조인으로 격리한다(§7-7).
 
 ### 남은 미정 (ERD로 결정하지 않음)
 

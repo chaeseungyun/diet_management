@@ -246,6 +246,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | §1 MealRecord | 미기록 / 먹었음 / 안먹음 | `status`: unrecorded / eaten / skipped |
 | §2 계획 유형 | 고정 식단 / 외부 식사 / 계획 없음 | `plan_type`: template / outside / none |
+| §1 식사 종류 | 집 제품 / 외부 식사 | `MealRecord.kind`: home / outside (D-17) |
 | §3-a Purchase | 배송중 / 입고완료 / 취소됨 | `status`: ordered / received / cancelled |
 | §3 StockMovement | 입고·초기 / 섭취 차감 / 섭취 복구 / 보정 / 폐기·타용도 | `reason`: receipt·initial / consume / consume_reverse / adjust / waste·other_use |
 | §5 NotificationDelivery | 예약됨 / 발송됨 / 발송실패 / 취소됨·만료됨 | `status`: pending / sent / failed / skipped |
