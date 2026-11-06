@@ -16,7 +16,7 @@ import { ProductActions } from '@/components/products/product-actions';
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-/** 제품 상세 (S-32). ?edit=1 이면 수정 폼 */
+/** 식품 상세 (S-32). ?edit=1 이면 수정 폼 */
 export default async function ProductPage({
   params,
   searchParams,
@@ -53,7 +53,7 @@ export default async function ProductPage({
     >
       <div className="flex flex-wrap gap-1">
         {p.archivedAt ? <Badge variant="secondary">보관됨</Badge> : null}
-        {!p.isStockTracked ? <Badge variant="secondary">재고 비관리</Badge> : null}
+        {!p.isStockTracked ? <Badge variant="secondary">수량 안 셈</Badge> : null}
         {p.nutrition === null ? <Badge variant="warning">영양 정보 미등록</Badge> : null}
       </div>
 
@@ -61,7 +61,7 @@ export default async function ProductPage({
         <CardContent className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pt-4 text-sm">
           <dt className="text-muted-foreground">브랜드</dt>
           <dd>{p.brand ?? '–'}</dd>
-          <dt className="text-muted-foreground">재고 단위</dt>
+          <dt className="text-muted-foreground">수량 단위</dt>
           <dd>
             {unit}
             {p.packWeightG ? ` (1${unit} = ${formatQuantity(p.packWeightG)}g)` : ''}
@@ -71,7 +71,7 @@ export default async function ProductPage({
             {formatQuantity(p.unitsPerPackage)}
             {unit}
           </dd>
-          <dt className="text-muted-foreground">현재 재고</dt>
+          <dt className="text-muted-foreground">남은 양</dt>
           <dd>
             {p.currentStock === null ? (
               '관리 안 함'
@@ -84,7 +84,7 @@ export default async function ProductPage({
                   : ''}
                 {p.currentStock < 0 ? (
                   <Badge variant="warning" className="ml-2">
-                    재고 확인 필요
+                    남은 양 확인 필요
                   </Badge>
                 ) : null}
                 {p.orderedQuantity > 0 ? (
@@ -148,24 +148,24 @@ export default async function ProductPage({
           </Card>
         ) : (
           <EmptyState>
-            영양 정보 미등록. 이 제품을 쓰는 식단 합계는 불완전으로 표시됩니다.
+            영양 정보 미등록. 이 식품을 쓰는 식단 합계는 불완전으로 표시됩니다.
           </EmptyState>
         )}
       </Section>
 
       <Section
-        title="구매 이력"
+        title="구매 기록"
         actions={
           <Link
             href={`/purchases/new?productId=${p.id}`}
             className="text-xs text-accent-foreground"
           >
-            구매 등록
+            구매 기록
           </Link>
         }
       >
         {p.purchases.length === 0 ? (
-          <EmptyState>구매 이력 없음</EmptyState>
+          <EmptyState>구매 기록 없음</EmptyState>
         ) : (
           <ul className="flex flex-col gap-1 text-sm">
             {p.purchases.map((x) => (

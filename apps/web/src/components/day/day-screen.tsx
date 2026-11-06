@@ -4,6 +4,7 @@ import { SLOT_LABELS } from '@diet/shared';
 import { apiGet, type Schemas } from '@/lib/api';
 import { addDays, dateLabel } from '@/lib/format';
 import { Page, Section } from '@/components/shell/page';
+import { SetupGuide } from '@/components/shell/setup-guide';
 import { buttonClasses } from '@/components/ui/button';
 import { NutritionSummary } from './nutrition-summary';
 import { SlotCard } from './slot-card';
@@ -56,6 +57,8 @@ export async function DayScreen({ date, today }: { date: string; today: string }
         <p className="-mt-2 text-sm text-muted-foreground">{dateLabel(date)}</p>
       ) : null}
 
+      <SetupGuide />
+
       <NutritionSummary nutrition={day.nutrition} />
 
       <Section title="식사">
@@ -74,7 +77,7 @@ export async function DayScreen({ date, today }: { date: string; today: string }
       </Section>
 
       <p className="text-xs text-muted-foreground">
-        하루 완료·소진 임박 제품은 단계 2에서 추가된다. 완료 상태:{' '}
+        하루 완료·떨어질 식품 알림은 단계 2에서 추가된다. 완료 상태:{' '}
         {day.completion ? '완료' : '진행 중'}
         {day.hasOverride ? ' · 이 날은 날짜 예외가 적용됨' : ''}
       </p>

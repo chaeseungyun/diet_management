@@ -4,7 +4,7 @@ import { ThemeScript } from '@/components/settings/theme-script';
 
 export const metadata: Metadata = {
   title: '식단 관리',
-  description: '적은 입력으로 식사·영양·체중을 기록하고 식품 소진을 예측한다.',
+  description: '적은 입력으로 식사·영양·체중을 기록하고 식품이 떨어질 날을 예측한다.',
 };
 
 export const viewport: Viewport = {

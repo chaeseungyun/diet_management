@@ -68,13 +68,13 @@ export class PutMealRecordDto {
   @IsIn(MEAL_STATUSES)
   status!: MealStatus;
 
-  /** home = 집 제품, outside = 외부 식사. 기본 home */
+  /** home = 식단(등록한 제품으로 구성), outside = 외부 식사. 기본 home */
   @ApiPropertyOptional({ enum: MEAL_KINDS, default: 'home' })
   @IsOptional()
   @IsIn(MEAL_KINDS)
   kind?: MealKind;
 
-  /** status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 집 제품' 만 (이 항목만 차감) */
+  /** status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 식단 품목' 만 (이 항목만 차감) */
   @ApiPropertyOptional({ type: MealItemInputDto, isArray: true })
   @IsOptional()
   @IsArray()

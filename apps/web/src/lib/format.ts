@@ -31,7 +31,7 @@ export function grams(n: number | null | undefined): string {
   return n === null || n === undefined ? '미상' : `${formatQuantity(n, 1)}g`;
 }
 
-/** '0.5팩 (50g)' 처럼 재고 단위 + g 병기 (D-02) */
+/** '0.5팩 (50g)' 처럼 수량 단위 + g 병기 (D-02) */
 export function quantityWithGrams(
   qty: number | null | undefined,
   unit: string,

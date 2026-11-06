@@ -99,7 +99,12 @@ export function PlanCellDialog({
         <Button
           disabled={planType === 'template' && !templateId}
           onClick={() =>
-            onSave({ planType, templateId: planType === 'template' ? templateId : null, note })
+            onSave({
+              planType,
+              templateId: planType === 'template' ? templateId : null,
+              // 주간 셀 DTO 에는 note 가 없어 보내면 422 (forbidNonWhitelisted)
+              ...(withNote ? { note } : {}),
+            })
           }
         >
           저장

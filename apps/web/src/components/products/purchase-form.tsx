@@ -9,7 +9,7 @@ import { Checkbox, Field, Input } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker, type ProductDto } from '@/components/products/product-picker';
 
-/** S-34: 제품 선택(기존 재구매 우선), 수량(포장 단위), 구매일, 가격·링크, "이미 받았음" */
+/** S-34: 식품 선택(기존 재구매 우선), 수량(포장 단위), 구매일, 가격·링크, "이미 받았음" */
 export function PurchaseForm({ preset, today }: { preset: ProductDto | null; today: string }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -50,7 +50,7 @@ export function PurchaseForm({ preset, today }: { preset: ProductDto | null; tod
             },
             { idempotencyKey: key },
           ),
-        f.received ? '구매·입고 등록' : '구매 등록 (배송 중)',
+        f.received ? '구매 기록 (받았음)' : '구매 기록 (배송 중)',
       );
       router.push(f.received ? '/purchases?status=received' : '/purchases');
       router.refresh();
@@ -124,15 +124,15 @@ export function PurchaseForm({ preset, today }: { preset: ProductDto | null; tod
         </Field>
       </div>
       <Checkbox
-        label="이미 받았음 (즉시 입고)"
+        label="이미 받았음 (바로 남은 양에 더함)"
         checked={f.received}
         onChange={(e) => setF({ ...f, received: e.target.checked })}
       />
       {f.received && product ? (
         <Field
-          label={`입고 수량 (${displayUnit(product)})`}
+          label={`받은 양 (${displayUnit(product)})`}
           htmlFor="rq"
-          hint={`비우면 ${formatQuantity(defaultReceive)}${displayUnit(product)} (구매 수량 × 포장당 재고 단위)`}
+          hint={`비우면 ${formatQuantity(defaultReceive)}${displayUnit(product)} (산 개수 × 포장 1개 양)`}
         >
           <Input
             id="rq"

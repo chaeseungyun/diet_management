@@ -42,7 +42,14 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
 
   async function saveCell(c: Cell, v: { planType: Cell['planType']; templateId: string | null }) {
     try {
-      await run(() => api('PUT', `/plans/weekly/${c.weekday}/${c.slot}`, v), '계획 저장');
+      await run(
+        () =>
+          api('PUT', `/plans/weekly/${c.weekday}/${c.slot}`, {
+            planType: v.planType,
+            templateId: v.templateId,
+          }),
+        '계획 저장',
+      );
       setEditing(null);
       router.refresh();
     } catch {
@@ -206,7 +213,7 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
         ) : null}
       </Dialog>
       <p className="text-xs text-muted-foreground">
-        <Badge variant="info">외부 식사</Badge> 는 재고를 차감하지 않고,{' '}
+        <Badge variant="info">외부 식사</Badge> 는 남은 양을 줄이지 않고,{' '}
         <Badge variant="secondary">계획 없음</Badge> 은 알림·완료 판정에서 제외됩니다(제안).
       </p>
     </div>

@@ -37,6 +37,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/api.md` | API 엔드포인트 목록(§1~§11, 모두 제안), 공통 규칙(§0), 미정(§12), 단계별 묶음(§13). 확정은 D-04의 `PUT /meal-records/{date}/{slot}`, 404(D-06), JWT 쿠키(D-07), 정수 `version`(D-08), `extra` 경로(D-10) |
 | `docs/design-tokens.md` | 컬러 토큰(`docs/design/globals.css`, Claude Design 생성)의 shadcn/ui(Tailwind v4) 적용 방법, 도메인 상태↔토큰 매핑, 컴포넌트 variant 확장, 대비 검토. 값은 CSS 파일이 기준 |
 | `docs/extension-todo.md` | 단계 3 이후(OCR·사진 분석·크롤링·LLM 추천). **1차 구현 중에는 만들지 않는다** |
+| `docs/food-db-plan.md` | 공공데이터 음식 DB 계획(제안, DEC-058). 전역 읽기 전용 테이블 + 사용자 선택 복사. 단계 2 뒤 배치 권고 |
 | `docs/decisions.md` | 결정 기록(DEC-###). 결정의 맥락·버린 대안·근거·재검토 조건. 상태 확정/제안/미정/대체됨. 열린 결정은 §F, 구현 단계 결정은 §H |
 | `docs/ops.md` | 운영 문서: 로컬 실행, 검증 명령, 배포 절차, 백업·복원, 계정 삭제, 로그·장애 대응, 비용 |
 | `docs/archive/diet-app-requirements-v0.1.md` | 분리 전 원본. 참고용, 수정하지 않는다 |

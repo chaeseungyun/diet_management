@@ -5,7 +5,7 @@ import { Page } from '@/components/shell/page';
 import { buttonClasses } from '@/components/ui/button';
 import { PurchaseList } from '@/components/products/purchase-list';
 
-/** 구매 목록 (S-35): 배송 중 / 입고 완료 / 취소 */
+/** 구매 목록 (S-35): 배송 중 / 받았음 / 취소 */
 export default async function PurchasesPage({
   searchParams,
 }: {
@@ -19,14 +19,14 @@ export default async function PurchasesPage({
 
   return (
     <Page
-      title="구매·입고"
+      title="장보기"
       back="/products"
       actions={
         <Link
           href="/purchases/new"
           className={buttonClasses('default', 'default', 'h-8 px-3 text-xs')}
         >
-          구매 등록
+          구매 기록
         </Link>
       }
     >

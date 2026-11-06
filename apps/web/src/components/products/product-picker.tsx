@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 
 export type ProductDto = Schemas['ProductDto'];
 
-/** 제품 검색·선택 (S-11 품목 추가, S-21, S-34). 없으면 S-31 로 */
+/** 식품 검색·선택 (S-11 품목 추가, S-21, S-34). 없으면 S-31 로 */
 export function ProductPicker({
   onPick,
   exclude = [],
@@ -50,11 +50,11 @@ export function ProductPicker({
   return (
     <div className="flex flex-col gap-2">
       <Input
-        placeholder="제품 검색"
+        placeholder="식품 검색"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         autoFocus={autoFocus}
-        aria-label="제품 검색"
+        aria-label="식품 검색"
       />
       <ul className="max-h-64 overflow-y-auto rounded-lg border border-border">
         {visible.map((p) => (
@@ -70,7 +70,7 @@ export function ProductPicker({
               </span>
               <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                 {p.nutrition === null ? <Badge variant="warning">영양 미등록</Badge> : null}
-                {!p.isStockTracked ? <Badge variant="secondary">재고 비관리</Badge> : null}
+                {!p.isStockTracked ? <Badge variant="secondary">수량 안 셈</Badge> : null}
                 {displayUnit(p)}
               </span>
             </button>
@@ -80,7 +80,7 @@ export function ProductPicker({
           <li className="px-3 py-3 text-sm text-muted-foreground">
             검색 결과 없음.{' '}
             <Link href="/products/new" className="text-accent-foreground underline">
-              새 제품 등록
+              새 식품 등록
             </Link>
           </li>
         ) : null}

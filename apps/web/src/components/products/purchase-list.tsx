@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 
 type Purchase = Schemas['PurchaseDto'];
 
-/** S-35: 받았음(입고 수량 기본 = 구매 수량 × 포장당 재고 단위, 수정 가능, D-11) / 취소 */
+/** S-35: 받았음(받은 양 기본 = 구매 수량 × 포장당 수량 단위, 수정 가능, D-11) / 취소 */
 export function PurchaseList({
   purchases,
   status,
@@ -47,7 +47,7 @@ export function PurchaseList({
               idempotencyKey: newIdempotencyKey(),
             },
           ),
-        '입고 처리 (재고 반영)',
+        '받았음 (남은 양에 더함)',
       );
       setReceiving(null);
       router.refresh();
@@ -82,7 +82,7 @@ export function PurchaseList({
         ))}
       </div>
       {status === 'ordered' ? (
-        <p className="text-xs text-muted-foreground">배송 중 수량은 재고에 포함되지 않습니다.</p>
+        <p className="text-xs text-muted-foreground">배송 중인 양은 남은 양에 포함되지 않습니다.</p>
       ) : null}
       <StatusBanner status={st} />
       {purchases.length === 0 ? (
@@ -99,7 +99,7 @@ export function PurchaseList({
                 <p className="text-xs text-muted-foreground">
                   {p.purchasedOn} · {formatQuantity(p.quantity)}개 포장
                   {p.price !== null ? ` · ${p.price.toLocaleString()}원` : ''}
-                  {p.receipt ? ` · 입고 ${formatQuantity(p.receipt.quantity)}${unit}` : ''}
+                  {p.receipt ? ` · 받음 ${formatQuantity(p.receipt.quantity)}${unit}` : ''}
                 </p>
               </div>
               {p.status === 'ordered' ? (
@@ -132,9 +132,9 @@ export function PurchaseList({
           <>
             <p className="text-sm">{receiving.productName}</p>
             <Field
-              label={`입고 수량 (${displayUnit(receiving)})`}
+              label={`받은 양 (${displayUnit(receiving)})`}
               htmlFor="rq"
-              hint={`기본값 = 구매 수량 ${formatQuantity(receiving.quantity)} × 포장당 재고 단위. 실제 받은 양이 다르면 고치세요`}
+              hint={`기본값 = 구매 수량 ${formatQuantity(receiving.quantity)} × 포장 1개 양. 실제 받은 양이 다르면 고치세요`}
             >
               <Input
                 id="rq"
@@ -146,7 +146,7 @@ export function PurchaseList({
                 onChange={(e) => setQty(e.target.value)}
               />
             </Field>
-            <Button onClick={receive}>입고</Button>
+            <Button onClick={receive}>받았음</Button>
           </>
         ) : null}
       </Dialog>

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsIn,
   IsNumber,
@@ -39,9 +40,10 @@ export class PutTemplateDto {
   @Length(1, NAME_MAX_LENGTH)
   name!: string;
 
-  /** 순서대로 sort_order 가 매겨진다 */
-  @ApiProperty({ type: TemplateItemInputDto, isArray: true })
+  /** 순서대로 sort_order 가 매겨진다. 빈 템플릿은 만들 수 없다(최소 1개, DEC-057) */
+  @ApiProperty({ type: TemplateItemInputDto, isArray: true, minItems: 1 })
   @IsArray()
+  @ArrayMinSize(1, { message: '템플릿에는 품목이 1개 이상 필요합니다' })
   @ArrayMaxSize(50)
   @ValidateNested({ each: true })
   @Type(() => TemplateItemInputDto)

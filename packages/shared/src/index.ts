@@ -59,7 +59,7 @@ export type MealKind = (typeof MEAL_KINDS)[number];
 export const NUTRITION_SOURCES = ['label', 'manual_estimate', 'ai_estimate'] as const;
 export type NutritionSource = (typeof NUTRITION_SOURCES)[number];
 export const NUTRITION_SOURCE_LABELS: Record<NutritionSource | 'backfill', string> = {
-  label: '제품 표시값',
+  label: '포장 표시값',
   manual_estimate: '직접 입력 추정',
   ai_estimate: 'AI 추정',
   backfill: '사후 보완',
@@ -69,7 +69,7 @@ export const PURCHASE_STATUSES = ['ordered', 'received', 'cancelled'] as const;
 export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number];
 export const PURCHASE_STATUS_LABELS: Record<PurchaseStatus, string> = {
   ordered: '배송 중',
-  received: '입고 완료',
+  received: '받았음',
   cancelled: '취소',
 };
 
@@ -133,7 +133,7 @@ export function formatQuantity(n: number | null | undefined, digits = 3): string
   return Number(n.toFixed(digits)).toString();
 }
 
-/** 제품의 표시 단위: g/ml 는 그대로, ea 는 unit_label(팩·개·통) (D-11) */
+/** 식품의 표시 단위: g/ml 는 그대로, ea 는 unit_label(팩·개·통) (D-11) */
 export function displayUnit(p: { stockUnit: StockUnit; unitLabel: string | null }): string {
   return p.stockUnit === 'ea' ? (p.unitLabel ?? '개') : p.stockUnit;
 }

@@ -353,6 +353,12 @@ export class MealsService {
     if (eaten && kind === 'outside' && !dto.outsideMenu?.trim()) {
       throw new UnprocessableEntityException('outsideMenu is required for an outside meal');
     }
+    // 품목 없는 '먹었음' 은 의미가 없다(안 먹음으로 기록해야 한다). 외부 식사는 메뉴명만으로 가능 (DEC-057)
+    if (eaten && kind === 'home' && items.length === 0) {
+      throw new UnprocessableEntityException(
+        'items must not be empty for an eaten home meal; use status=skipped instead',
+      );
+    }
 
     // 품목 검증: 소유 제품(404), 단위 허용(422), 수량 규칙(422)
     const products = await this.products.loadOwnedMany(
@@ -572,7 +578,8 @@ export class MealsService {
       items = record.items.map((s) =>
         MealItemDto.fromSnapshot(s, s.productId ? (versions.get(s.productId) ?? null) : null),
       );
-    } else if (status === 'unrecorded' && ctx.plan.planType === 'template' && view) {
+    } else if (ctx.plan.planType === 'template' && view) {
+      // unrecorded·skipped 모두 계획 품목을 '예정' 으로 돌려준다. 안 먹음에서 먹었음으로 바꿀 때 기준이 된다 (DEC-057)
       items = view.items.map((i) =>
         MealItemDto.planned(i.product, i.quantity.toNumber(), i.unit, i.nutrition, i.version),
       );

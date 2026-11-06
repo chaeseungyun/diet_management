@@ -1006,7 +1006,7 @@ export interface components {
         PutTemplateDto: {
             /** @example 평일 아침 */
             name: string;
-            /** @description 순서대로 sort_order 가 매겨진다 */
+            /** @description 순서대로 sort_order 가 매겨진다. 빈 템플릿은 만들 수 없다(최소 1개, DEC-057) */
             items: components["schemas"]["TemplateItemInputDto"][];
         };
         WeeklyCellDto: {
@@ -1250,12 +1250,12 @@ export interface components {
             /** @enum {string} */
             status: "unrecorded" | "eaten" | "skipped";
             /**
-             * @description home = 집 제품, outside = 외부 식사. 기본 home
+             * @description home = 식단(등록한 제품으로 구성), outside = 외부 식사. 기본 home
              * @default home
              * @enum {string}
              */
             kind: "home" | "outside";
-            /** @description status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 집 제품' 만 (이 항목만 차감) */
+            /** @description status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 식단 품목' 만 (이 항목만 차감) */
             items?: components["schemas"]["MealItemInputDto"][];
             /** @description kind=outside, status=eaten 이면 필수 */
             outsideMenu?: string | null;

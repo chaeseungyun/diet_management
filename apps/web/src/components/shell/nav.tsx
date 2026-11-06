@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CalendarDays, MoreHorizontal, Package, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LogoutButton } from '@/components/logout-button';
 
 /** screens.md §0: 모바일 하단 탭, PC 사이드바. 통계 탭은 단계 2 에서 추가한다 */
 const items = [
@@ -21,7 +22,7 @@ const items = [
   },
   {
     href: '/products',
-    label: '재고',
+    label: '식품',
     icon: Package,
     match: (p: string) =>
       p.startsWith('/products') || p.startsWith('/purchases') || p.startsWith('/stock'),
@@ -68,9 +69,9 @@ export function BottomTabs() {
 export function Sidebar() {
   const pathname = usePathname();
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:block">
+    <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <div className="px-5 py-5 text-lg font-semibold">식단 관리</div>
-      <ul className="flex flex-col gap-1 px-3">
+      <ul className="flex flex-1 flex-col gap-1 px-3">
         {items.map((it) => {
           const active = it.match(pathname);
           return (
@@ -101,8 +102,8 @@ export function Sidebar() {
               {it.href === '/products' ? (
                 <SubLinks
                   links={[
-                    ['/products', '제품'],
-                    ['/purchases', '구매·입고'],
+                    ['/products', '식품 목록'],
+                    ['/purchases', '장보기'],
                   ]}
                   pathname={pathname}
                 />
@@ -120,6 +121,9 @@ export function Sidebar() {
           );
         })}
       </ul>
+      <div className="p-3">
+        <LogoutButton className="w-full" />
+      </div>
     </aside>
   );
 }

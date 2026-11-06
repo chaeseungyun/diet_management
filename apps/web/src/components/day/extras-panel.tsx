@@ -67,7 +67,10 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
 
   async function remove(id: string) {
     try {
-      await run(() => api('DELETE', `/meal-records/${date}/extra/${id}`), '삭제됨 (재고 복구)');
+      await run(
+        () => api('DELETE', `/meal-records/${date}/extra/${id}`),
+        '삭제됨 (남은 양 되돌림)',
+      );
       router.refresh();
     } catch {
       // 배너
@@ -102,7 +105,7 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
               </p>
               <p className="text-xs text-muted-foreground">
                 {x.nutrition.missing > 0 ? '열량 미상' : `${Math.round(x.nutrition.kcal)} kcal`}
-                {x.stockCheckNeeded ? ' · 재고 확인 필요' : ''}
+                {x.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
               </p>
             </div>
             <button
@@ -124,7 +127,7 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
             className="h-8 flex-1 text-xs"
             onClick={() => setOutside(false)}
           >
-            집 제품
+            식단 품목
           </Button>
           <Button
             variant={outside ? 'default' : 'outline'}

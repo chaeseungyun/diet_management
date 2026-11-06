@@ -12,8 +12,8 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 type Product = Schemas['ProductDto'];
 
 /**
- * 제품 등록·수정 (S-31, S-32 수정). 단위 모델은 D-11:
- * 재고 단위(g/ml/개) + 개일 때 표시 단위명 + 포장 1개당 재고 단위 수 + 선택 단위 중량 + 재고 관리 여부.
+ * 식품 등록·수정 (S-31, S-32 수정). 단위 모델은 D-11:
+ * 수량 단위(g/ml/개) + 개일 때 표시 단위명 + 포장 1개에 들어 있는 양 + 선택 단위 중량 + 재고 관리 여부.
  */
 export function ProductForm({
   product,
@@ -57,7 +57,7 @@ export function ProductForm({
     };
     try {
       if (product) {
-        await run(() => api<Product>('PATCH', `/products/${product.id}`, body), '제품 수정');
+        await run(() => api<Product>('PATCH', `/products/${product.id}`, body), '식품 수정');
         router.push(`/products/${product.id}`);
       } else {
         const created = await run(
@@ -68,7 +68,7 @@ export function ProductForm({
                 ? { initialStock: Number(f.initialStock) }
                 : {}),
             }),
-          '제품 등록',
+          '식품 등록',
         );
         router.push(
           next === 'nutrition'
@@ -87,7 +87,7 @@ export function ProductForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <StatusBanner status={status} />
-      <Field label="제품명" htmlFor="name">
+      <Field label="식품명" htmlFor="name">
         <Input
           id="name"
           required
@@ -101,7 +101,7 @@ export function ProductForm({
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label="재고 단위"
+          label="수량 단위"
           htmlFor="stockUnit"
           hint={
             product
@@ -133,9 +133,9 @@ export function ProductForm({
         ) : null}
       </div>
       <Field
-        label={`포장 1개당 재고 단위 수 (${unitName})`}
+        label={`포장 1개에 들어 있는 양 (${unitName})`}
         htmlFor="upp"
-        hint={`입고 수량 기본값 = 구매 수량 × 이 값. 예: 프로틴 1통 = 1000g, 계란 1판 = 30개`}
+        hint={`받은 양 기본값 = 구매 수량 × 이 값. 예: 프로틴 1통 = 1000g, 계란 1판 = 30개`}
       >
         <Input
           id="upp"
@@ -166,7 +166,7 @@ export function ProductForm({
         </Field>
       ) : null}
       <Checkbox
-        label="재고를 관리한다 (소스·양념은 끄기)"
+        label="남은 양을 센다 (소스·양념은 끄기)"
         checked={f.isStockTracked}
         onChange={(e) => setF({ ...f, isStockTracked: e.target.checked })}
       />
@@ -219,7 +219,7 @@ export function ProductForm({
         </div>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        영양 정보는 생략할 수 있습니다. 미등록 제품을 쓰는 식단 합계는 '불완전' 으로 표시됩니다.
+        영양 정보는 생략할 수 있습니다. 미등록 식품을 쓰는 식단 합계는 '불완전' 으로 표시됩니다.
       </p>
       <Button type="submit" size="lg" disabled={busy}>
         {product
@@ -227,7 +227,7 @@ export function ProductForm({
           : next === 'nutrition'
             ? '저장 후 영양 입력'
             : next === 'purchase'
-              ? '저장 후 구매 등록'
+              ? '저장 후 구매 기록'
               : '저장'}
       </Button>
     </form>

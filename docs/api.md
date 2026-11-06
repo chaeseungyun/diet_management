@@ -77,9 +77,9 @@
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
 | `GET /meal-templates` | 목록. 1회 영양 합계(불완전 표시), 사용 중인 요일·슬롯 수 | |
-| `POST /meal-templates` | 생성(`name`, `items[{productId, quantity, unit, sortOrder}]`) | 타인 제품 ID 거부. `unit`은 g/ml/ea, 단위 중량 없는 ea 제품에 g는 `422`(D-02·D-11) |
+| `POST /meal-templates` | 생성(`name`, `items[{productId, quantity, unit, sortOrder}]`) | `items` 는 1개 이상(빈 템플릿 `422`, DEC-057). 타인 제품 ID 거부. `unit`은 g/ml/ea, 단위 중량 없는 ea 제품에 g는 `422`(D-02·D-11) |
 | `GET /meal-templates/{id}` | 상세 | |
-| `PUT /meal-templates/{id}` | 이름·품목 전체 교체 | 과거 스냅샷 불변 |
+| `PUT /meal-templates/{id}` | 이름·품목 전체 교체 | `items` 1개 이상. 과거 스냅샷 불변 |
 | `POST /meal-templates/{id}/archive` · `.../unarchive` | 보관·복구 | |
 
 ## 7. 주간 반복·날짜 예외 (단계 1) — FR-04, D-01, S-22~S-24
@@ -106,7 +106,7 @@
 | `GET /days?from=&to=` | 캘린더·통계용 날짜별 요약: 완료 여부, 예외 유무, 외부 식사, 미기록 수 | S-23 |
 | `GET /days/{date}` | 오늘 홈 한 번에: 계획 5슬롯 + 기록 상태, 영양 합계(기록/계획 포함 예상/해당 날짜 목표), 영양 누락 수, 추가 간식, 다음 식사, 체중, 완료 상태, 소진 임박 제품 | S-10. §12 미정(묶음 여부) |
 | `GET /meal-records/{date}/{slot}` | 슬롯 상세. 레코드가 없으면 계산된 계획을 `status=unrecorded`, `version=null`로 반환 | 미래 레코드를 만들지 않음(D-01) |
-| `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind(home|outside), items[{productId, quantity, unit}], outsideMenu, outsideKcal…, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음 |
+| `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind(home|outside), items[{productId, quantity, unit}], outsideMenu, outsideKcal…, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음. `kind=home` 의 `eaten` 은 `items` 1개 이상(빈 식사는 `422`, 안 먹음으로 기록), 조회는 `skipped` 에도 계획 품목을 '예정' 으로 포함(DEC-057) |
 | `POST /meal-records/{date}/extra` | 추가 간식 생성 | 같은 날 다건, `id`로 식별(**D-10**) |
 | `PUT /meal-records/{date}/extra/{id}` · `DELETE .../extra/{id}` | 추가 간식 수정·삭제. 삭제 시 차감 전량 복구 | |
 | `GET /days/{date}/completion` | 완료 가능 여부, 활성 슬롯 처리 현황, 미기록 목록, 영양 완전 여부 예측 | ‘계획 없음’ 슬롯 제외는 ERD A3 가정 |

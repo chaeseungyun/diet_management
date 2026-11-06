@@ -110,7 +110,7 @@ export function SlotCard({
               ? '열량 미상'
               : `${Math.round(record.nutrition.kcal)} kcal`}
             {record.nutrition.missing > 0 && record.nutrition.kcal > 0 ? ' (일부 미상)' : ''}
-            {record.stockCheckNeeded ? ' · 재고 확인 필요' : ''}
+            {record.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
           </p>
         </Link>
         <div className="flex shrink-0 flex-col items-end gap-2">

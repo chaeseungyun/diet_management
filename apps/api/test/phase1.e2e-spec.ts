@@ -562,10 +562,73 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
     expect(day.body.nutrition.expected.complete).toBe(false); // 소스 영양 미등록
   });
 
+  it('skipped keeps planned items visible and empty eaten home meal is rejected (DEC-057)', async () => {
+    const date = addDays(TODAY, 7); // 같은 요일 → 점심 템플릿이 배정돼 있다
+    const before = await a.get(`/meal-records/${date}/lunch`).expect(200);
+    expect(before.body.status).toBe('unrecorded');
+    expect(before.body.items.length).toBeGreaterThan(0);
+
+    // 먹었음(계획 품목) → 안 먹음: 안 먹음도 미기록과 같이 뺀 양을 전부 되돌린다
+    const stock = async () => (await a.get(`/products/${chicken}`).expect(200)).body.currentStock;
+    const stockBefore = await stock();
+    const eaten = await a
+      .put(`/meal-records/${date}/lunch`)
+      .send({
+        status: 'eaten',
+        kind: 'home',
+        items: before.body.items.map(
+          (i: { productId: string; plannedQuantity: number; unit: string }) => ({
+            productId: i.productId,
+            quantity: i.plannedQuantity,
+            unit: i.unit,
+          }),
+        ),
+        version: null,
+      })
+      .expect(200);
+    expect(await stock()).toBeLessThan(stockBefore);
+    const skipped = await a
+      .put(`/meal-records/${date}/lunch`)
+      .send({ status: 'skipped', version: eaten.body.version })
+      .expect(200);
+    expect(await stock()).toBe(stockBefore);
+    expect(skipped.body.status).toBe('skipped');
+    expect(skipped.body.items.map((i: { productId: string }) => i.productId)).toEqual(
+      before.body.items.map((i: { productId: string }) => i.productId),
+    );
+    expect(skipped.body.items.every((i: { id: string | null }) => i.id === null)).toBe(true);
+    expect(skipped.body.nutrition.kcal).toBe(0);
+
+    await a
+      .put(`/meal-records/${date}/lunch`)
+      .send({ status: 'eaten', kind: 'home', items: [], version: skipped.body.version })
+      .expect(422);
+    // 외부 식사는 품목 없이 메뉴명만으로 가능
+    const outside = await a
+      .put(`/meal-records/${date}/lunch`)
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideMenu: '김밥',
+        items: [],
+        version: skipped.body.version,
+      })
+      .expect(200);
+    await a
+      .put(`/meal-records/${date}/lunch`)
+      .send({ status: 'unrecorded', version: outside.body.version })
+      .expect(200);
+  });
+
   it('rejects archiving referenced templates and products (요구사항 §7-7)', async () => {
     await a.post(`/meal-templates/${template}/archive`).expect(422);
     await a.post(`/products/${chicken}/archive`).expect(422);
-    const t = await a.post('/meal-templates').send({ name: '임시', items: [] }).expect(201);
+    await a.post('/meal-templates').send({ name: '빈 템플릿', items: [] }).expect(422);
+    await a.put(`/meal-templates/${template}`).send({ name: '점심', items: [] }).expect(422);
+    const t = await a
+      .post('/meal-templates')
+      .send({ name: '임시', items: [{ productId: chicken, quantity: 100, unit: 'g' }] })
+      .expect(201);
     const archived = await a.post(`/meal-templates/${t.body.id}/archive`).expect(200);
     expect(archived.body.archivedAt).toEqual(expect.any(String));
     await a

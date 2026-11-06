@@ -24,7 +24,7 @@ export function ProductSearch({ q, archived }: { q: string; archived: boolean })
       <Input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="제품명·브랜드 검색"
+        placeholder="식품명·브랜드 검색"
         aria-label="검색"
       />
       <Checkbox

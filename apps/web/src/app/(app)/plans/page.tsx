@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiGet, type Schemas } from '@/lib/api';
 import { Page } from '@/components/shell/page';
+import { SetupGuide } from '@/components/shell/setup-guide';
 import { buttonClasses } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState } from '@/components/ui/card';
@@ -29,6 +30,7 @@ export default async function PlansPage({
         </Link>
       }
     >
+      <SetupGuide title="식단 준비" />
       <div className="grid grid-cols-2 gap-2">
         <Link href="/plans/weekly" className={buttonClasses('outline', 'default', 'h-12')}>
           주간 반복 계획
@@ -47,10 +49,20 @@ export default async function PlansPage({
         </Link>
       </div>
       {templates.length === 0 ? (
-        <EmptyState>
-          {showArchived
-            ? '보관된 템플릿 없음'
-            : '템플릿이 없습니다. 슬롯에 넣을 제품·수량 묶음을 만들어 두면 "먹었음" 1탭으로 기록할 수 있습니다.'}
+        <EmptyState className="flex flex-col items-center gap-3">
+          {showArchived ? (
+            '보관된 템플릿 없음'
+          ) : (
+            <>
+              <span>
+                아직 템플릿이 없습니다. 템플릿은 한 끼에 먹는 식품·수량 묶음이고, 주간 계획에 넣으면
+                &quot;먹었음&quot; 1탭으로 기록됩니다.
+              </span>
+              <Link href="/plans/templates/new" className={buttonClasses('default', 'lg')}>
+                첫 템플릿 만들기
+              </Link>
+            </>
+          )}
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-2">

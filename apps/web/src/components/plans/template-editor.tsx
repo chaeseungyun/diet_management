@@ -27,7 +27,7 @@ interface Row {
   isStockTracked: boolean;
 }
 
-/** S-21: 템플릿명, 품목(제품·수량·단위·정렬), 영양 합계 미리보기(저장 결과 기준), 미등록 경고. 변경은 과거 스냅샷에 영향 없음 */
+/** S-21: 템플릿명, 품목(식품·수량·단위·정렬), 영양 합계 미리보기(저장 결과 기준), 미등록 경고. 변경은 과거 스냅샷에 영향 없음 */
 export function TemplateEditor({ template }: { template?: Template }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -129,12 +129,12 @@ export function TemplateEditor({ template }: { template?: Template }) {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">품목</h2>
         <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setPicker(true)}>
-          <Plus className="size-4" /> 제품 추가
+          <Plus className="size-4" /> 식품 추가
         </Button>
       </div>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          품목 없음. 제품이 없으면 검색창에서 새 제품을 등록하세요.
+          품목이 없습니다. 식품이 없으면 검색창에서 새 식품을 등록하세요.
         </p>
       ) : null}
       {rows.map((r, idx) => (
@@ -204,7 +204,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
               <span>{Math.round(r.nutritionKcal)} kcal (저장 기준)</span>
             ) : null}
             {!r.nutritionRegistered ? <Badge variant="warning">영양 미등록</Badge> : null}
-            {!r.isStockTracked ? <Badge variant="secondary">재고 비관리</Badge> : null}
+            {!r.isStockTracked ? <Badge variant="secondary">수량 안 셈</Badge> : null}
           </div>
         </div>
       ))}
@@ -222,16 +222,21 @@ export function TemplateEditor({ template }: { template?: Template }) {
       <p className="text-xs text-muted-foreground">
         템플릿 변경은 이미 기록한 과거 식사에 영향을 주지 않습니다 (NFR-02).
       </p>
-      <Button size="lg" onClick={save} disabled={busy || name.trim() === ''}>
+      <Button size="lg" onClick={save} disabled={busy || name.trim() === '' || rows.length === 0}>
         {template ? '저장' : '만들기'}
       </Button>
+      {rows.length === 0 ? (
+        <p className="-mt-2 text-xs text-muted-foreground">
+          품목을 1개 이상 넣어야 {template ? '저장' : '만들기'}할 수 있습니다.
+        </p>
+      ) : null}
       {template ? (
         <Button variant="ghost" className="text-muted-foreground" onClick={toggleArchive}>
           {template.archivedAt ? '보관 해제' : '보관 (주간 계획에서 쓰는 중이면 거부됨)'}
         </Button>
       ) : null}
 
-      <Dialog open={picker} onClose={() => setPicker(false)} title="제품 추가">
+      <Dialog open={picker} onClose={() => setPicker(false)} title="식품 추가">
         <ProductPicker
           autoFocus
           exclude={rows.map((r) => r.productId)}

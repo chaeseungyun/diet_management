@@ -13,7 +13,7 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 type Product = Schemas['ProductDetailDto'];
 
 /**
- * S-33. 기준량·단위(재고 단위 또는 g), kcal, 탄·단·지(미입력은 null), 출처.
+ * S-33. 기준량·단위(수량 단위 또는 g), kcal, 탄·단·지(미입력은 null), 출처.
  * 저장 후 응답의 unknownSnapshotCount > 0 이면 D-03 확인 다이얼로그 → backfill (2단계, DEC-054).
  */
 export function NutritionForm({ product }: { product: Product }) {
@@ -88,7 +88,7 @@ export function NutritionForm({ product }: { product: Product }) {
       <p className="text-xs text-muted-foreground">
         기준량과 섭취량은 분리됩니다. 예: 프로틴 30g 기준 단백질 24g 이면, 45g 섭취 시 36g 으로
         계산됩니다 ("가루 45g ≠ 단백질 45g").
-        {product.stockUnit === 'ea' ? ` "1회분" 은 재고 단위 수량(예: 1${unit})으로 적습니다.` : ''}
+        {product.stockUnit === 'ea' ? ` "1회분" 은 수량 단위(예: 1${unit})으로 적습니다.` : ''}
       </p>
       <div className="grid grid-cols-2 gap-3">
         <Field label="기준량" htmlFor="basis">
@@ -108,7 +108,7 @@ export function NutritionForm({ product }: { product: Product }) {
           htmlFor="bunit"
           hint={
             product.allowedUnits.length === 1
-              ? '재고 단위와 같아야 함'
+              ? '수량 단위와 같아야 함'
               : 'g 는 단위 중량이 있어 허용'
           }
         >
@@ -177,7 +177,7 @@ export function NutritionForm({ product }: { product: Product }) {
           value={f.source}
           onChange={(e) => setF({ ...f, source: e.target.value as 'label' | 'manual_estimate' })}
         >
-          <option value="label">제품 표시값</option>
+          <option value="label">포장 표시값</option>
           <option value="manual_estimate">직접 입력 추정</option>
         </Select>
       </Field>
@@ -191,7 +191,7 @@ export function NutritionForm({ product }: { product: Product }) {
 
       <Dialog open={unknown !== null} onClose={() => backfill(false)} title="영양 미상 기록 보완">
         <p className="text-sm">
-          이 제품을 먹었지만 영양이 미상으로 남은 기록이 <strong>{unknown}건</strong> 있습니다. 방금
+          이 식품을 먹었지만 영양이 미상으로 남은 기록이 <strong>{unknown}건</strong> 있습니다. 방금
           저장한 값으로 채울까요? 이미 값이 있는 기록은 바뀌지 않으며, 채운 기록에는 '사후 보완'
           출처가 남습니다.
         </p>

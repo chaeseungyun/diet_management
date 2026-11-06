@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState } from '@/components/ui/card';
 import { ProductSearch } from '@/components/products/product-search';
 
-/** 제품 목록 (S-30). 재고 현황 화면(S-40)은 단계 2 이므로 여기서 현재 재고를 같이 보여 준다 */
+/** 식품 목록 (S-30). 재고 현황 화면(S-40)은 단계 2 이므로 여기서 남은 양을 같이 보여 준다 */
 export default async function ProductsPage({
   searchParams,
 }: {
@@ -21,20 +21,20 @@ export default async function ProductsPage({
 
   return (
     <Page
-      title="제품"
+      title="식품"
       actions={
         <>
           <Link
             href="/purchases"
             className={buttonClasses('outline', 'default', 'h-8 px-2 text-xs')}
           >
-            구매·입고
+            장보기
           </Link>
           <Link
             href="/products/new"
             className={buttonClasses('default', 'default', 'h-8 px-3 text-xs')}
           >
-            새 제품
+            새 식품
           </Link>
         </>
       }
@@ -45,8 +45,8 @@ export default async function ProductsPage({
           {q
             ? '검색 결과 없음'
             : showArchived
-              ? '보관된 제품 없음'
-              : '등록된 제품이 없습니다. 제품명과 포장 규격만으로 먼저 등록할 수 있습니다.'}
+              ? '보관된 식품 없음'
+              : '등록된 식품이 없습니다. 이름과 포장 규격만으로 먼저 등록할 수 있습니다.'}
         </EmptyState>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -70,11 +70,11 @@ export default async function ProductsPage({
                     </p>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {p.nutrition === null ? <Badge variant="warning">영양 미등록</Badge> : null}
-                      {!p.isStockTracked ? <Badge variant="secondary">재고 비관리</Badge> : null}
+                      {!p.isStockTracked ? <Badge variant="secondary">수량 안 셈</Badge> : null}
                       {p.currentStock !== null && p.currentStock < 0 ? (
-                        <Badge variant="warning">재고 확인 필요</Badge>
+                        <Badge variant="warning">남은 양 확인 필요</Badge>
                       ) : null}
-                      {p.currentStock === 0 ? <Badge variant="destructive">소진</Badge> : null}
+                      {p.currentStock === 0 ? <Badge variant="destructive">다 먹음</Badge> : null}
                     </div>
                   </div>
                   <div className="shrink-0 text-right text-sm">

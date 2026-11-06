@@ -350,7 +350,7 @@ function BatchSheet({
         <Input id="b-note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
       </Field>
       <p className="text-xs text-muted-foreground">
-        이미 기록한 식사는 바뀌지 않고 예정 소비만 줄어듭니다. 예정 소비 감소분·소진일 변화
+        이미 기록한 식사는 바뀌지 않고 예정 소비만 줄어듭니다. 예정 소비 감소분·떨어질 날 변화
         미리보기는 단계 2 에서 추가됩니다.
       </p>
       <Button

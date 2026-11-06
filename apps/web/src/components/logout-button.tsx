@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { clearLocalDrafts } from '@/lib/utils';
 
-export function LogoutButton() {
+export function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +22,7 @@ export function LogoutButton() {
   }
 
   return (
-    <Button variant="outline" onClick={logout} disabled={busy}>
+    <Button variant="outline" onClick={logout} disabled={busy} className={className}>
       {busy ? '로그아웃 중…' : '로그아웃'}
     </Button>
   );
