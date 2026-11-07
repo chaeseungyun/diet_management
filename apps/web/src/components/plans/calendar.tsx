@@ -148,7 +148,7 @@ export function Calendar({
                           {s?.hasOutside ? (
                             <i
                               className="size-1.5 rounded-full bg-info-foreground"
-                              title="외부 식사"
+                              title="식단 외 식사 기록"
                             />
                           ) : null}
                         </span>
@@ -166,7 +166,7 @@ export function Calendar({
           </tbody>
         </table>
         <p className="text-[11px] text-muted-foreground">
-          ● 완료(초록) · 예외(주황) · 외부 식사(파랑). 완료 표시는 단계 2 에서 켜집니다.
+          ● 완료(초록) · 예외(주황) · 식단 외 식사 기록(파랑). 완료 표시는 단계 2 에서 켜집니다.
         </p>
       </div>
 
@@ -261,7 +261,7 @@ function BatchSheet({
   const [f, setF] = useState({
     from,
     to: addDays(from, 2),
-    planType: 'outside' as PlanType,
+    planType: 'none' as PlanType,
     templateId: templates[0]?.id ?? '',
     note: '출장',
   });
@@ -326,7 +326,6 @@ function BatchSheet({
           value={f.planType}
           onChange={(e) => setF({ ...f, planType: e.target.value as PlanType })}
         >
-          <option value="outside">외부 식사</option>
           <option value="none">자유 끼니</option>
           <option value="template">다른 식단</option>
         </Select>

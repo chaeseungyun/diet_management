@@ -62,7 +62,6 @@ const ZERO: NutritionTotals = {
 };
 
 /** 계획은 있지만 추정할 수 없음(외부 식사 예정) → 예상 합계에 '미상 1건' */
-const UNKNOWN_ONE: NutritionTotals = { ...ZERO, complete: false, missing: 1 };
 
 /**
  * 식사 기록 (FR-05, FR-06, D-01, D-04, D-08, D-10, NFR-02).
@@ -217,9 +216,7 @@ export class MealsService {
         // 숨긴 끼니는 기록이 있을 때만 센다 (D-18)
         if (!activeSet.has(slot) && !isRecorded) continue;
         if (plan.source === 'override') hasOverride = true;
-        if (plan.planType === 'outside' || (rec?.status === 'eaten' && rec.kind === 'outside')) {
-          hasOutside = true;
-        }
+        if (rec?.status === 'eaten' && rec.kind === 'outside') hasOutside = true;
         // 자유 끼니(none)는 미기록이면 집계 대상이 아니고, 먹었음·안 먹음이면 센다 (D-18)
         if (plan.planType === 'none' && !isRecorded) continue;
         activeSlots += 1;
@@ -355,7 +352,7 @@ export class MealsService {
       throw new ConflictException('record does not exist; send version=null');
     }
 
-    const kind = dto.kind ?? (plan.planType === 'outside' ? 'outside' : 'home');
+    const kind = dto.kind ?? 'home';
     const eaten = dto.status === 'eaten';
     const items = eaten ? (dto.items ?? []) : [];
     if (eaten && kind === 'outside' && !dto.outsideMenu?.trim()) {
@@ -625,7 +622,6 @@ export class MealsService {
     }
     if (plan.planType === 'template' && view)
       return sumNutrition(view.items.map((i) => i.nutrition));
-    if (plan.planType === 'outside') return UNKNOWN_ONE;
     return ZERO;
   }
 

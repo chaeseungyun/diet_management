@@ -89,7 +89,7 @@ describe('plan resolution (D-01)', () => {
   const resolver = new PlanResolver(
     [
       { weekday: 1, slot: 'breakfast', planType: 'template', templateId: 't-mon' },
-      { weekday: 1, slot: 'dinner', planType: 'outside', templateId: null },
+      { weekday: 1, slot: 'dinner', planType: 'none', templateId: null },
     ],
     [
       {
@@ -116,7 +116,10 @@ describe('plan resolution (D-01)', () => {
       templateId: 't-mon',
       source: 'weekly',
     });
-    expect(resolver.resolve('2026-11-02', 'dinner')).toMatchObject({ planType: 'outside' });
+    expect(resolver.resolve('2026-11-02', 'dinner')).toMatchObject({
+      planType: 'none',
+      source: 'weekly',
+    });
     expect(resolver.resolve('2026-11-03', 'breakfast')).toMatchObject({
       planType: 'none',
       source: 'default',

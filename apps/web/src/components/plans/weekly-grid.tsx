@@ -98,9 +98,7 @@ export function WeeklyGrid({
         'flex min-h-12 w-full flex-col items-start justify-center rounded-lg border px-2 py-1 text-left text-xs',
         c.planType === 'template'
           ? 'border-border bg-card'
-          : c.planType === 'outside'
-            ? 'border-transparent bg-info text-info-foreground'
-            : 'border-dashed border-border bg-secondary text-secondary-foreground',
+          : 'border-dashed border-border bg-secondary text-secondary-foreground',
       )}
     >
       <span className="font-medium">
@@ -114,8 +112,8 @@ export function WeeklyGrid({
       <StatusBanner status={status} />
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          칸을 눌러 식단 / 외부 식사 / 자유 끼니를 정합니다. 날짜 예외가 식단표보다
-          우선합니다. 보이는 끼니는 설정의 &apos;쓰는 끼니&apos; 에서 바꿉니다.
+          칸을 눌러 식단 / 자유 끼니를 정합니다. 날짜 예외가 식단표보다 우선합니다. 보이는 끼니는
+          설정의 &apos;쓰는 끼니&apos; 에서 바꿉니다.
         </p>
         <Button
           variant="outline"
@@ -222,9 +220,9 @@ export function WeeklyGrid({
         ) : null}
       </Dialog>
       <p className="text-xs text-muted-foreground">
-        <Badge variant="info">외부 식사</Badge> 는 남은 양을 줄이지 않고,{' '}
-        <Badge variant="secondary">자유 끼니</Badge> 는 미기록이면 완료 판정·집계에서 빠지고
-        먹었으면 기록대로 집계됩니다(D-18).
+        <Badge variant="secondary">자유 끼니</Badge> 는 식단표에 없는 끼니입니다. 안 먹어도 되고,
+        먹었으면(배달·외식·내 식품 모두) 기록합니다. 미기록이면 완료 판정·집계에서 빠지고 기록하면
+        그대로 집계됩니다(D-18·D-19).
       </p>
     </div>
   );

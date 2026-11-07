@@ -45,7 +45,7 @@ export function PlanCellDialog({
 
   return (
     <Dialog open={open} onClose={onClose} title={title}>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {PLAN_TYPES.map((t) => (
           <Button
             key={t}

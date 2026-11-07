@@ -38,11 +38,11 @@ export const SLOT_LABELS: Record<AnySlot, string> = {
 export const STOCK_UNITS = ['g', 'ml', 'ea'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
-export const PLAN_TYPES = ['template', 'outside', 'none'] as const;
+/** 계획 유형은 둘뿐 (D-19). '외부 식사 예정' 은 자유 끼니에 합쳐졌다 */
+export const PLAN_TYPES = ['template', 'none'] as const;
 export type PlanType = (typeof PLAN_TYPES)[number];
 export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   template: '식단',
-  outside: '외부 식사',
   none: '자유 끼니',
 };
 
@@ -56,6 +56,11 @@ export const MEAL_STATUS_LABELS: Record<MealStatus, string> = {
 
 export const MEAL_KINDS = ['home', 'outside'] as const;
 export type MealKind = (typeof MEAL_KINDS)[number];
+/** home = 내 식품(재고 차감), outside = 식단 외 식사(배달·외식·본가 집밥처럼 내 식품을 안 쓴 식사, D-19) */
+export const MEAL_KIND_LABELS: Record<MealKind, string> = {
+  home: '내 식품',
+  outside: '식단 외 식사',
+};
 
 export const NUTRITION_SOURCES = ['label', 'manual_estimate', 'ai_estimate'] as const;
 export type NutritionSource = (typeof NUTRITION_SOURCES)[number];

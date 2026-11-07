@@ -68,7 +68,7 @@ export class PutMealRecordDto {
   @IsIn(MEAL_STATUSES)
   status!: MealStatus;
 
-  /** home = 식단(등록한 제품으로 구성), outside = 외부 식사. 기본 home */
+  /** home = 내 식품(등록한 제품으로 구성, 재고 차감), outside = 식단 외 식사(배달·외식·본가 집밥, 메뉴명·영양 직접 입력, D-19). 기본 home */
   @ApiPropertyOptional({ enum: MEAL_KINDS, default: 'home' })
   @IsOptional()
   @IsIn(MEAL_KINDS)
@@ -320,7 +320,7 @@ export class MealRecordDto {
       date: ctx.date,
       slot: ctx.slot,
       status: record?.status ?? 'unrecorded',
-      kind: record?.kind ?? (ctx.plan.planType === 'outside' ? 'outside' : 'home'),
+      kind: record?.kind ?? 'home',
       version: record?.version ?? null,
       planType: ctx.plan.planType,
       planSource: ctx.plan.source,
@@ -410,7 +410,7 @@ export class DaySummaryDto {
   @ApiProperty()
   hasOverride!: boolean;
 
-  /** 계획 또는 기록에 외부 식사가 있는가 */
+  /** 식단 외 식사(kind=outside) 로 먹은 기록이 있는가 */
   @ApiProperty()
   hasOutside!: boolean;
 

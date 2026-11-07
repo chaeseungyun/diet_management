@@ -343,7 +343,7 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
     }
     const batch = await a
       .post('/plans/overrides/batch')
-      .send({ from, to, slots: ['dinner'], planType: 'outside', note: '출장' })
+      .send({ from, to, slots: ['dinner'], planType: 'none', note: '출장' })
       .expect(201);
     expect(batch.body.count).toBe(3);
 
@@ -352,7 +352,7 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
     expect(
       dinners.every(
         (r: { planType: string; source: string }) =>
-          r.planType === 'outside' && r.source === 'override',
+          r.planType === 'none' && r.source === 'override',
       ),
     ).toBe(true);
     const lunches = resolved.body.filter(
@@ -366,9 +366,10 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
 
     const days = await a.get(`/days?from=${TODAY}&to=${to}`).expect(200);
     expect(days.body).toHaveLength(4);
+    // 자유 끼니 예외는 계획일 뿐이라 hasOutside(식단 외 식사 기록) 는 false (D-19)
     expect(days.body[1]).toMatchObject({
       hasOverride: true,
-      hasOutside: true,
+      hasOutside: false,
       unrecordedCount: null,
     });
 

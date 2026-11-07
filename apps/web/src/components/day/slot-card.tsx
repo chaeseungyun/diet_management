@@ -76,7 +76,7 @@ export function SlotCard({
 
   const summary =
     record.status === 'eaten' && record.kind === 'outside'
-      ? `외부 식사 · ${record.outsideMenu ?? ''}`
+      ? `식단 외 · ${record.outsideMenu ?? ''}`
       : record.items.length > 0
         ? record.items
             .map(
@@ -84,11 +84,9 @@ export function SlotCard({
                 `${i.productName} ${formatQuantity(i.actualQuantity ?? i.plannedQuantity)}${i.displayUnit}`,
             )
             .join(', ')
-        : record.planType === 'outside'
-          ? '외부 식사 예정'
-          : record.planType === 'none'
-            ? '자유 끼니 · 먹었으면 기록'
-            : '품목 없음';
+        : record.planType === 'none'
+          ? '자유 끼니 · 먹었으면 기록'
+          : '품목 없음';
 
   return (
     <Card className={cn('flex flex-col gap-2 p-3', highlight && 'ring-2 ring-ring/40')}>
@@ -96,7 +94,6 @@ export function SlotCard({
         <Link href={`/day/${date}/${record.slot as MealSlot}`} className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-medium">{SLOT_LABELS[record.slot]}</span>
-            {record.planType === 'outside' ? <Badge variant="info">외부 식사</Badge> : null}
             {record.planType === 'none' ? <Badge variant="secondary">자유 끼니</Badge> : null}
             {record.planType === 'template' && record.templateName ? (
               <span className="text-xs text-muted-foreground">{record.templateName}</span>

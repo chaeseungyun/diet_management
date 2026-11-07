@@ -32,7 +32,8 @@ export async function loadSetupSteps(): Promise<Step[]> {
     {
       key: 'templates',
       title: '식단 만들기',
-      description: '한 끼에 먹는 식품과 수량을 묶은 것이 식단입니다. 예: 아침 = 오트밀 50g + 우유 1팩.',
+      description:
+        '한 끼에 먹는 식품과 수량을 묶은 것이 식단입니다. 예: 아침 = 오트밀 50g + 우유 1팩.',
       href: '/plans/templates/new',
       action: '식단 만들기',
       done: templates.length > 0,

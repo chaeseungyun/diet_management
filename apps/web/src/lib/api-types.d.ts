@@ -1018,7 +1018,7 @@ export interface components {
             /** @enum {string} */
             slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /** Format: uuid */
             templateId: string | null;
             templateName: string | null;
@@ -1029,7 +1029,7 @@ export interface components {
         };
         PutPlanCellDto: {
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /**
              * Format: uuid
              * @description planType=template 이면 필수
@@ -1038,7 +1038,7 @@ export interface components {
         };
         WeeklyGridCellInputDto: {
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /**
              * Format: uuid
              * @description planType=template 이면 필수
@@ -1061,7 +1061,7 @@ export interface components {
             /** @enum {string} */
             slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /** Format: uuid */
             templateId: string | null;
             templateName: string | null;
@@ -1073,7 +1073,7 @@ export interface components {
         };
         BatchOverrideDto: {
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /**
              * Format: uuid
              * @description planType=template 이면 필수
@@ -1094,7 +1094,7 @@ export interface components {
         };
         PutOverrideDto: {
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /**
              * Format: uuid
              * @description planType=template 이면 필수
@@ -1108,7 +1108,7 @@ export interface components {
             /** @enum {string} */
             slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
             /** @enum {string} */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /** Format: uuid */
             templateId: string | null;
             templateName: string | null;
@@ -1126,7 +1126,7 @@ export interface components {
             date: string;
             completed: boolean;
             hasOverride: boolean;
-            /** @description 계획 또는 기록에 외부 식사가 있는가 */
+            /** @description 식단 외 식사(kind=outside) 로 먹은 기록이 있는가 */
             hasOutside: boolean;
             /** @description 집계 대상 슬롯 수: 쓰는 끼니 중 계획이 있는 슬롯 + 기록된 자유 끼니 (D-18) */
             activeSlots: number;
@@ -1184,7 +1184,7 @@ export interface components {
              * @description 그 날짜·슬롯의 적용 계획 (D-01). extra 는 항상 none
              * @enum {string}
              */
-            planType: "template" | "outside" | "none";
+            planType: "template" | "none";
             /** @enum {string} */
             planSource: "override" | "weekly" | "default";
             /** Format: uuid */
@@ -1256,7 +1256,7 @@ export interface components {
             /** @enum {string} */
             status: "unrecorded" | "eaten" | "skipped";
             /**
-             * @description home = 식단(등록한 제품으로 구성), outside = 외부 식사. 기본 home
+             * @description home = 내 식품(등록한 제품으로 구성, 재고 차감), outside = 식단 외 식사(배달·외식·본가 집밥, 메뉴명·영양 직접 입력, D-19). 기본 home
              * @default home
              * @enum {string}
              */

@@ -65,7 +65,7 @@ function draftFromRecord(r: MealRecord): {
   outside: OutsideValues;
 } {
   return {
-    kind: r.status === 'eaten' ? r.kind : r.planType === 'outside' ? 'outside' : 'home',
+    kind: r.status === 'eaten' ? r.kind : 'home',
     items: r.items.map(fromItem),
     menu: r.outsideMenu ?? '',
     outside: {
@@ -99,9 +99,9 @@ const STATUS_SELECTED_CLASS: Record<Status, string> = {
 };
 
 /**
- * S-11 식사 슬롯 상세·기록 + S-12 외부 식사 모드.
+ * S-11 식사 슬롯 상세·기록 + S-12 식단 외 식사 모드.
  * 상태 선택기가 유일한 상태 변경 수단이다. 저장된 상태를 강조하고, 누르면 바로 저장한다('먹었음' 은 아래 품목으로).
- * 아래 '변경 사항 저장' 버튼은 이미 먹었음인 기록의 품목·외부 식사 입력을 고쳤을 때만 나타난다.
+ * 아래 '변경 사항 저장' 버튼은 이미 먹었음인 기록의 품목·식단 외 식사 입력을 고쳤을 때만 나타난다.
  * 품목이 없는 '먹었음' 은 서버가 422 로 거부하므로(DEC-057) 선택기에서도 막는다.
  * 저장은 항상 PUT 상태 설정 + version (D-04, D-08). 재고 부족은 막지 않고 '남은 양 확인 필요' 로 표시.
  */
@@ -177,14 +177,14 @@ export function MealRecordEditor({
   const eatenBlockedReason = noItems
     ? "품목이 없으면 '먹었음' 으로 저장할 수 없습니다. 품목을 추가하거나 '안 먹음' 을 고르세요."
     : kind === 'outside' && menu.trim() === ''
-      ? '외부 식사는 메뉴명을 입력해야 저장됩니다.'
+      ? '식단 외 식사는 메뉴명을 입력해야 저장됩니다.'
       : null;
 
   function applySaved(saved: MealRecord) {
     const d = draftFromRecord(saved);
     setRecord(saved);
     setItems(d.items);
-    // 안 먹음·미기록으로 바꿔도 입력 중이던 유형·외부 식사 값은 유지한다
+    // 안 먹음·미기록으로 바꿔도 입력 중이던 유형·식단 외 식사 값은 유지한다
     const nextKind = saved.status === 'eaten' ? d.kind : kind;
     setKind(nextKind);
     if (saved.status === 'eaten') {
@@ -338,7 +338,7 @@ export function MealRecordEditor({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {record.status === 'eaten'
                 ? '고치면 아래 "변경 사항 저장" 으로 반영됩니다.'
-                : "계획대로 먹었으면 그대로 위의 '먹었음' 을 누르세요. 밖에서 먹었으면 외부 식사로 바꾼 뒤 누르세요."}
+                : "계획대로 먹었으면 그대로 위의 '먹었음' 을 누르세요. 배달·외식·본가 집밥처럼 내 식품을 안 썼으면 '식단 외 식사' 로 바꾼 뒤 누르세요."}
             </p>
           </div>
 
@@ -349,8 +349,8 @@ export function MealRecordEditor({
           >
             {(
               [
-                ['home', '식단'],
-                ['outside', '외부 식사'],
+                ['home', '내 식품'],
+                ['outside', '식단 외 식사'],
               ] as const
             ).map(([value, label]) => (
               <button
@@ -408,7 +408,7 @@ export function MealRecordEditor({
 
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">
-              {kind === 'outside' ? '곁들인 식단 품목' : '품목'}
+              {kind === 'outside' ? '곁들인 내 식품' : '품목'}
             </h3>
             <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setPicker(true)}>
               <Plus className="size-4" /> 품목 추가
@@ -416,7 +416,7 @@ export function MealRecordEditor({
           </div>
           {kind === 'outside' ? (
             <p className="-mt-2 text-xs text-muted-foreground">
-              외부 식사에 곁들여 먹은 집 식품만 적습니다. 이 항목만 남은 양에서 뺍니다.
+              식단 외 식사에 곁들여 먹은 내 식품만 적습니다. 이 항목만 남은 양에서 뺍니다.
             </p>
           ) : null}
           {items.length === 0 ? <p className="text-sm text-muted-foreground">품목 없음</p> : null}

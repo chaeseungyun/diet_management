@@ -2960,7 +2960,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3004,7 +3003,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3026,7 +3024,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3100,7 +3097,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3146,7 +3142,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3216,7 +3211,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3257,7 +3251,6 @@
           "planType": {
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3316,7 +3309,7 @@
           },
           "hasOutside": {
             "type": "boolean",
-            "description": "계획 또는 기록에 외부 식사가 있는가"
+            "description": "식단 외 식사(kind=outside) 로 먹은 기록이 있는가"
           },
           "activeSlots": {
             "type": "number",
@@ -3494,7 +3487,6 @@
             "description": "그 날짜·슬롯의 적용 계획 (D-01). extra 는 항상 none",
             "enum": [
               "template",
-              "outside",
               "none"
             ],
             "type": "string"
@@ -3771,7 +3763,7 @@
             "type": "string"
           },
           "kind": {
-            "description": "home = 식단(등록한 제품으로 구성), outside = 외부 식사. 기본 home",
+            "description": "home = 내 식품(등록한 제품으로 구성, 재고 차감), outside = 식단 외 식사(배달·외식·본가 집밥, 메뉴명·영양 직접 입력, D-19). 기본 home",
             "enum": [
               "home",
               "outside"

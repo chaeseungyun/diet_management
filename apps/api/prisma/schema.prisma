@@ -61,9 +61,9 @@ enum MealSlot {
   extra
 }
 
+/// 계획 유형 (D-19). '외부 식사 예정'(outside) 은 자유 끼니(none) 에 합쳐졌다
 enum PlanType {
   template
-  outside
   none
 }
 

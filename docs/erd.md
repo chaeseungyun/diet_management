@@ -147,7 +147,7 @@ erDiagram
         uuid user_id FK
         smallint weekday "ISO 1=월..7=일, UK(user_id, weekday, slot) (D-17)"
         enum slot "breakfast|lunch|dinner|afternoon_snack|evening_snack"
-        enum plan_type "template|outside|none"
+        enum plan_type "template|none (D-19)"
         uuid template_id FK "nullable, plan_type=template일 때"
         timestamptz updated_at
     }
@@ -156,7 +156,7 @@ erDiagram
         uuid user_id FK
         date on_date "UK(user_id, on_date, slot)"
         enum slot
-        enum plan_type "template|outside|none"
+        enum plan_type "template|none (D-19)"
         uuid template_id FK "nullable"
         uuid batch_id "nullable, 출장 일괄 변경 묶음"
         string note "nullable"
@@ -238,7 +238,7 @@ erDiagram
     NotificationDelivery {
         uuid id PK
         uuid user_id FK
-        enum type "meal_check|outside_pre|unrecorded_remind|stock_depletion"
+        enum type "meal_check|unrecorded_remind|stock_depletion (outside_pre 는 D-19 로 폐기)"
         date target_date "UK(user_id, type, target_date, slot, product_id) NULLS NOT DISTINCT (D-12)"
         enum slot "nullable"
         uuid product_id FK "nullable"
@@ -332,7 +332,7 @@ erDiagram
 1. **먹었음 체크** (시나리오 3·4): 한 트랜잭션에서 `IdempotencyKey` 삽입 → `MealRecord.status=eaten` → `MealItemSnapshot` 생성(현재 `ProductNutritionVersion` 복사) → `deducts_stock` 항목마다 `StockMovement(consume, delta=-actual)`. 키 충돌 시 저장된 응답을 반환하고 재차감하지 않는다. 동시 수정은 정수 `MealRecord.version` 비교(낙관적 잠금, D-08)로 거부하고 응답에 새 `version`을 돌려준다.
 2. **수량 수정·취소** (FR-03, 시나리오 3): 기존 스냅샷의 차감분을 `consume_reverse(+)`로 복구한 뒤 새 수량을 `consume(-)`로 기록한다. 취소는 복구만 수행하고 `status`를 `unrecorded`로 되돌린다. 원장은 지우지 않는다.
 2-1. **입고** (FR-03): `POST /purchases/{id}/receive`는 입고 수량 기본값을 구매 수량 × `units_per_package`로 계산하고 요청의 `quantity`로 덮어쓸 수 있다(D-11). `StockReceipt`와 `StockMovement(receipt)`를 같은 트랜잭션에서 만든다.
-3. **외부 식사** (FR-05): `MealRecord.kind=outside`, 메뉴명·영양 추정값은 선택. 집 제품을 추가했을 때만 `MealItemSnapshot(deducts_stock=true)`로 차감한다.
+3. **외부 식사 = 식단 외 식사** (FR-05, D-19): `MealRecord.kind=outside`. 배달·외식·본가 집밥처럼 집 제품을 쓰지 않은 식사이며 계획 유형이 아니라 기록 종류다. 메뉴명·영양 추정값은 선택. 집 제품을 추가했을 때만 `MealItemSnapshot(deducts_stock=true)`로 차감한다.
 4. **날짜 예외와 계획 조회** (FR-04): 어느 날짜·슬롯의 계획 = `DateOverride`가 있으면 그것, 없으면 `WeeklySchedule[weekday]`. 계획 변경은 기존 `MealRecord`를 수정하지 않는다.
 5. **소진 예측** (FR-08, 시나리오 5): 저장하지 않고 계산한다. 현재 재고 = `SUM(StockMovement.delta)`(배송 중 `Purchase` 제외). 오늘부터 순차로 각 날짜·슬롯의 계획(4번 규칙) 품목 수량을 차감하되, 오늘 이미 `eaten`인 슬롯은 건너뛴다. 음수가 되는 첫 날짜가 소진 예정일. 계획 소비량이 0이면 ‘예정 소비 없음’.
 6. **하루 완료·통계** (FR-06): 활성 슬롯 = 당일 계획이 `none`이 아닌 5슬롯. 모두 `eaten|skipped`이면 완료 가능. `nutrition_complete` = 먹은 모든 스냅샷·외부 식사의 kcal이 null이 아님. 주간·월간 평균은 `DayCompletion`이 있고 해당 지표가 완전한 날만 포함한다.

@@ -95,7 +95,7 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
             <div className="min-w-0">
               <p className="truncate">
                 {x.kind === 'outside'
-                  ? `외부 · ${x.outsideMenu ?? ''}`
+                  ? `식단 외 · ${x.outsideMenu ?? ''}`
                   : x.items
                       .map(
                         (i) =>
@@ -127,14 +127,14 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
             className="h-8 flex-1 text-xs"
             onClick={() => setOutside(false)}
           >
-            식단 품목
+            내 식품
           </Button>
           <Button
             variant={outside ? 'default' : 'outline'}
             className="h-8 flex-1 text-xs"
             onClick={() => setOutside(true)}
           >
-            외부 식사
+            식단 외 식사
           </Button>
         </div>
         {outside ? (
