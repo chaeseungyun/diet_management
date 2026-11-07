@@ -1,4 +1,9 @@
 # HTTPS 자동 발급(Let's Encrypt). 같은 오리진에서 /api/* 만 NestJS 로 보낸다 (D-14).
+# www 는 apex 로 301. DNS 는 A @ → VM IP, CNAME www → apex, 둘 다 Cloudflare 프록시 끔(DNS only).
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
+
 {$DOMAIN} {
 	encode zstd gzip
 

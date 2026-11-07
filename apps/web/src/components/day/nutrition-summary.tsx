@@ -1,10 +1,11 @@
+import Link from 'next/link';
 import type { Schemas } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatQuantity } from '@diet/shared';
 
 /**
- * S-10 ② 영양 요약: 기록된 합계(primary) / 계획 포함 예상(planned) / 목표.
+ * S-10 ② 영양 요약: 기록된 합계(primary) / 계획 포함 예상(planned) / 목표 대비(남음·초과, D-20).
  * 열량 진행률은 primary + planned 2단 채움 (design-tokens.md §4). 미상이 섞이면 '기록된 합계' 로 표시.
  */
 export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutritionDto'] }) {
@@ -12,6 +13,7 @@ export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutriti
   const target = goal?.dailyKcal ?? null;
   const pct = (v: number) => (target ? Math.min(100, (v / target) * 100) : 0);
   const over = target !== null && recorded.kcal > target;
+  const diff = target !== null ? Math.round(Math.abs(target - recorded.kcal)) : 0;
 
   return (
     <Card>
@@ -28,7 +30,15 @@ export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutriti
           </div>
           <div className="text-right text-xs text-muted-foreground">
             <p>계획 포함 예상 {Math.round(expected.kcal)} kcal</p>
-            <p>{target !== null ? `목표 ${target} kcal` : '목표 미설정'}</p>
+            {target !== null ? (
+              <p>
+                목표 {target} kcal · {over ? `초과 ${diff}` : `남음 ${diff}`}
+              </p>
+            ) : (
+              <Link href="/settings/goals" className="text-accent-foreground underline">
+                목표 설정하기
+              </Link>
+            )}
           </div>
         </div>
         {target !== null ? (
@@ -76,7 +86,10 @@ export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutriti
               예상 합계에 미상 {expected.missing - recorded.missing}건
             </Badge>
           ) : null}
-          {over ? <Badge variant="warning">목표 초과</Badge> : null}
+          {over ? <Badge variant="warning">목표 초과 +{diff} kcal</Badge> : null}
+          {target !== null && !over && recorded.complete && recorded.kcal > 0 ? (
+            <Badge variant="success">목표 내</Badge>
+          ) : null}
         </div>
       </CardContent>
     </Card>

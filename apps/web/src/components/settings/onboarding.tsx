@@ -13,7 +13,7 @@ import { GoalForm } from './goal-form';
 import { COMMON_TIMEZONES } from './profile-form';
 import { ActiveSlotsField } from './active-slots-field';
 
-/** S-03: 시간대 확인 → 목표(선택) → 완료 표시(PATCH /me onboarded). 건너뛰어도 완료로 표시한다 */
+/** S-03: 시간대·끼니 → 목표(필수, D-20) → 완료 표시(PATCH /me onboarded) */
 export function Onboarding({ me, today }: { me: MeDto; today: string }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -64,16 +64,17 @@ export function Onboarding({ me, today }: { me: MeDto; today: string }) {
       {step === 'goal' ? (
         <Card>
           <CardContent className="flex flex-col gap-3 pt-4">
-            <h2 className="font-semibold">2. 목표 (선택)</h2>
+            <h2 className="font-semibold">2. 목표</h2>
+            <p className="text-xs text-muted-foreground">
+              일일 열량 목표는 오늘 화면의 목표 대비 표시와 통계의 목표 달성일에 씁니다. 나중에
+              설정에서 바꿀 수 있습니다.
+            </p>
             <GoalForm
               current={null}
               today={today}
               submitLabel="목표 저장 후 시작"
               onSaved={finish}
             />
-            <Button variant="ghost" onClick={finish}>
-              건너뛰기
-            </Button>
           </CardContent>
         </Card>
       ) : null}

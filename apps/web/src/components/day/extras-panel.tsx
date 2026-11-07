@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { formatQuantity, type StockUnit } from '@diet/shared';
 import type { Schemas } from '@/lib/api';
 import { api, newIdempotencyKey } from '@/lib/client';
@@ -16,11 +16,32 @@ import { ProductPicker, type ProductDto } from '@/components/products/product-pi
 
 type Record = Schemas['MealRecordDto'];
 
-/** S-10 ④ 추가 간식 목록 + S-13 입력 시트 (slot=extra, D-10) */
-export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }) {
+/** S-10 ④ 추가 간식 목록 + S-13 입력 시트 (slot=extra, D-10). 진입은 식사 섹션의 '+ 식사 추가' (D-20) */
+export function ExtrasPanel({
+  date,
+  dayHref,
+  extras,
+  initialOpen = false,
+}: {
+  date: string;
+  /** 이 날의 오늘 화면 경로. 시트를 닫을 때 ?extra=1 을 지우는 데 쓴다 */
+  dayHref: string;
+  extras: Record[];
+  /** '+ 식사 추가 → 추가 간식'(?extra=1) 으로 들어왔을 때 시트를 연다 */
+  initialOpen?: boolean;
+}) {
   const router = useRouter();
   const { status, run } = useStatus();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
+  // 같은 페이지 안에서 ?extra=1 로 이동하면 컴포넌트가 유지되므로 prop 변화로 연다
+  useEffect(() => {
+    if (initialOpen) setOpen(true);
+  }, [initialOpen]);
+
+  function close() {
+    setOpen(false);
+    if (initialOpen) router.replace(dayHref, { scroll: false });
+  }
   const [product, setProduct] = useState<ProductDto | null>(null);
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState<StockUnit>('g');
@@ -57,7 +78,7 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
           api('POST', `/meal-records/${date}/extra`, body, { idempotencyKey: newIdempotencyKey() }),
         '추가 간식 저장',
       );
-      setOpen(false);
+      close();
       reset();
       router.refresh();
     } catch {
@@ -78,17 +99,10 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
   }
 
   return (
-    <Section
-      title="추가 간식"
-      actions={
-        <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setOpen(true)}>
-          <Plus className="size-4" /> 추가
-        </Button>
-      }
-    >
+    <Section title="추가 간식">
       <StatusBanner status={status} />
       {extras.length === 0 ? (
-        <EmptyState>추가 간식 없음</EmptyState>
+        <EmptyState>추가 간식 없음. 위 &apos;식사 추가&apos; 에서 넣습니다.</EmptyState>
       ) : (
         extras.map((x) => (
           <Card key={x.id} className="flex items-center justify-between gap-2 p-3 text-sm">
@@ -120,7 +134,7 @@ export function ExtrasPanel({ date, extras }: { date: string; extras: Record[] }
         ))
       )}
 
-      <Dialog open={open} onClose={() => setOpen(false)} title="추가 간식">
+      <Dialog open={open} onClose={close} title="추가 간식">
         <div className="flex gap-2 text-sm">
           <Button
             variant={outside ? 'outline' : 'default'}

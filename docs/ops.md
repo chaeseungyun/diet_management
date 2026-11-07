@@ -2,7 +2,7 @@
 
 버전: v0.2 (2026-11-06, 단계 1) / 근거: [`requirements-phase1.md`](requirements-phase1.md) NFR-04·05·06·07, [`decisions.md`](decisions.md) DEC-010·011·014·037·045·047~053
 
-NFR-07이 요구하는 운영 문서(로컬 실행, 환경 변수, 배포, 백업·복원, 도메인 갱신, 장애 대응, 비용 확인)를 한곳에 둔다. 도메인·VM 구매 전(2026-11-06 예정)이라 배포 절은 **절차만** 적고 실제 값은 비워 둔다.
+NFR-07이 요구하는 운영 문서(로컬 실행, 환경 변수, 배포, 백업·복원, 도메인 갱신, 장애 대응, 비용 확인)를 한곳에 둔다. 도메인·VM 은 2026-11-07 구매했다(§4 표, §9). 첫 배포·HTTPS·백업 복원 확인 결과는 수행한 뒤 §11 에 적는다.
 
 ## 1. 구성 요약
 
@@ -51,29 +51,63 @@ pnpm --filter @diet/web dev                # 웹 :3000   (/api/* 는 :4000 으�
 
 CI(`.github/workflows/ci.yml`)는 push·PR마다 위를 모두 돌리고, `main` push면 두 이미지를 GHCR에 올린다(태그 `latest`, `<sha>`).
 
-## 4. 배포 (VM) — 절차. 값은 구매 후 채운다
+## 4. 배포 (VM)
 
-사전: 도메인 A 레코드 → VM 공인 IP, VM 2GB급(DEC-010), Ubuntu LTS, 방화벽 22/80/443만.
+실제 값(2026-11-07 구매, DEC-062):
+
+| 항목 | 값 |
+| --- | --- |
+| VM | AWS Lightsail, 월 12달러 플랜(RAM 2GB·SSD 60GB), 고정 IP `16.179.16.224`, 방화벽 22/80/443 |
+| 도메인 | `kkinilog.com`, Cloudflare Registrar(연 11.17달러, 자동 갱신·Transfer lock·WHOIS 비공개) |
+| DNS | Cloudflare. `A @ → 16.179.16.224`, `CNAME www → kkinilog.com`, 둘 다 **DNS only**(프록시 끔). Caddy 가 Let's Encrypt 를 직접 받으므로 프록시를 켜면 발급이 실패한다 |
+| 이미지 | GHCR 공개 패키지 `ghcr.io/chaeseungyun/diet-api`, `diet-web`. 익명 pull 가능, `docker login` 불필요 |
+| 배포 | `main` push → CI `verify` → `images` → `deploy`(SSH 로 VM 에서 pull·up, 아래 4-2) |
+
+### 4-1. VM 1회 준비
 
 ```bash
-# VM 1회 준비
-sudo apt update && sudo apt install -y docker.io docker-compose-v2 age rclone
-sudo usermod -aG docker $USER   # 재로그인
-git clone https://github.com/chaeseungyun/diet_management.git ~/diet && cd ~/diet
-cp deploy/.env.example deploy/.env && nano deploy/.env   # DOMAIN, POSTGRES_PASSWORD, JWT_SECRET, KAKAO_*, BACKUP_*
-echo "<GHCR 토큰>" | docker login ghcr.io -u <github-id> --password-stdin   # 공개 패키지면 불필요
+# (로컬) Lightsail 키로 접속. 기본 사용자는 Ubuntu 이미지 기준 ubuntu
+ssh -i <키>.pem ubuntu@16.179.16.224
 
-# 기동·갱신
+# 패키지·스왑(2GB RAM 이라 이미지 pull·마이그레이션 때 여유용)
+sudo apt update && sudo apt install -y docker.io docker-compose-v2 age rclone git
+sudo usermod -aG docker $USER && newgrp docker
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# 저장소·환경 변수 (deploy/.env 는 커밋하지 않는다)
+git clone https://github.com/chaeseungyun/diet_management.git ~/diet && cd ~/diet
+cp deploy/.env.example deploy/.env && nano deploy/.env
+#   DOMAIN=kkinilog.com, POSTGRES_PASSWORD=$(openssl rand -base64 24), JWT_SECRET=$(openssl rand -base64 48),
+#   KAKAO_CLIENT_ID / KAKAO_CLIENT_SECRET, BACKUP_PASSPHRASE(비밀번호 관리자에도 보관), BACKUP_REMOTE(rclone 원격, 없으면 비움)
+chmod 600 deploy/.env
+
+# 첫 기동(이후는 CD 가 한다)
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
-curl -fsS https://$DOMAIN/api/v1/health
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env logs caddy | tail -20   # certificate obtained 확인
+curl -fsS https://kkinilog.com/api/v1/health
+
+# 배포 전용 SSH 키(Lightsail .pem 은 GitHub 에 올리지 않는다)
+ssh-keygen -t ed25519 -N '' -C deploy@github -f ~/.ssh/deploy_key
+cat ~/.ssh/deploy_key.pub >> ~/.ssh/authorized_keys
+cat ~/.ssh/deploy_key          # → GitHub secret DEPLOY_SSH_KEY (전체, BEGIN~END)
+ssh-keyscan -t ed25519 16.179.16.224 2>/dev/null   # → DEPLOY_HOST_KEY (한 줄)
+rm ~/.ssh/deploy_key           # 개인키는 GitHub 에만 둔다
 ```
 
+### 4-2. 자동 배포(CD)
+
+- GitHub → Settings → Secrets and variables → Actions 에 `DEPLOY_HOST`(`16.179.16.224`), `DEPLOY_USER`(`ubuntu`), `DEPLOY_SSH_KEY`, `DEPLOY_HOST_KEY` 를 넣는다.
+- `main` 에 push 하면 `verify` 통과 → 두 이미지를 `latest`·`<sha>` 로 GHCR 에 올림 → `deploy` job 이 VM 에서 `git pull --ff-only` 뒤 `<sha>` 태그로 `pull`·`up -d` 하고 `/api/v1/health` 를 확인한다. 동시 배포는 `deploy-production` 그룹으로 직렬화한다.
+- VM 의 `~/diet` 는 `main` 을 추적하고 로컬 수정이 없어야 한다(`deploy/.env` 는 untracked 라 괜찮다). compose·Caddyfile 변경도 이 `git pull` 로 반영된다.
+- 수동 배포가 필요하면 4-1 의 "첫 기동" 명령을 그대로 친다(`latest` = 마지막 성공 push).
+
 - API 컨테이너는 기동 시 `prisma migrate deploy`를 실행한다. **DB 변경이 이전 앱 버전과 호환되는지**(컬럼 삭제·NOT NULL 추가 등) 배포 전에 확인한다(NFR-05).
-- 롤백: `deploy/.env`의 `API_IMAGE`/`WEB_IMAGE`를 이전 `<sha>` 태그로 바꾸고 `up -d`. 마이그레이션은 되돌리지 않으므로 호환성 확인이 롤백의 전제다.
-- 카카오 콘솔에 운영 Redirect URI `https://<DOMAIN>/api/v1/auth/kakao/callback`을 추가한다. 출시 대상 계정 정책은 미정(DEC-038).
-- 단계 0 완료 조건의 배포·HTTPS·백업 복원 확인은 VM 구매 후 수행하고 결과를 이 문서에 적는다.
+- 롤백: Actions 에서 이전에 성공한 run 의 `deploy` job 을 Re-run 하거나, VM 에서 `API_IMAGE=…:<이전 sha> WEB_IMAGE=…:<이전 sha>` 를 앞에 붙여 `up -d`. 마이그레이션은 되돌리지 않으므로 호환성 확인이 롤백의 전제다.
+- 카카오 콘솔에 운영 Redirect URI `https://kkinilog.com/api/v1/auth/kakao/callback` 과 플랫폼 Web 사이트 도메인 `https://kkinilog.com` 을 추가한다. 출시 대상 계정 정책은 미정(DEC-038).
+- 단계 0 완료 조건의 배포·HTTPS·백업 복원 확인은 첫 배포 때 수행하고 결과를 §11 에 적는다.
 
 ## 5. 백업·복원 (DEC-014: 매일 1회, 7일 보관, RPO/RTO 24h)
 
@@ -123,7 +157,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 ## 9. 비용·도메인 (NFR-06)
 
 - 월 환산 20,000원 상한. 확인 주기: 매월 1일 공급자 청구서 + 도메인 갱신일(연 1회) 캘린더 등록.
-- 도메인·VM 실제 금액은 구매 후 [`decisions.md`](decisions.md) §F와 여기 기록한다.
+- 실제 금액(2026-11-07): Lightsail 월 12달러 + 도메인 연 11.17달러(월 환산 약 0.93달러) = 월 약 12.93달러. 환율 1,400원이면 약 18,100원으로 상한 안이지만 여유가 2천원 안쪽이라 환율·스냅샷·전송량 초과를 매월 확인한다(DEC-012). 도메인 선결제는 11월 한 달에 몰린다.
 - 도메인 갱신: 자동 갱신 켜기, 만료 30일 전 알림. 등록기관 계정 2단계 인증.
 
 ## 10. 단계 1 상태 (2026-11-06)

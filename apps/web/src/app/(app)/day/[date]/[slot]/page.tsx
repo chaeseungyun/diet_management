@@ -8,10 +8,12 @@ import { dateLabel } from '@/lib/format';
 /** 식사 슬롯 상세·기록 (S-11, S-12) */
 export default async function SlotPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ date: string; slot: string }>;
+  searchParams: Promise<{ action?: string }>;
 }) {
-  const { date, slot } = await params;
+  const [{ date, slot }, sp] = await Promise.all([params, searchParams]);
   if (!isValidDateString(date) || !(MEAL_SLOTS as readonly string[]).includes(slot)) notFound();
   const me = await getMe();
   if (!me) redirect('/login');
@@ -31,6 +33,7 @@ export default async function SlotPage({
         slot={slot as MealSlot}
         today={today}
         templates={templates}
+        autoStart={sp.action === 'eat'}
       />
     </Page>
   );

@@ -8,14 +8,17 @@ import { SLOT_LABELS, formatQuantity, type MealSlot } from '@diet/shared';
 import type { Schemas } from '@/lib/api';
 import { api, newIdempotencyKey } from '@/lib/client';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 
 type Record = Schemas['MealRecordDto'];
 
-/** S-10 ③ 슬롯 카드. '먹었음' 1탭은 계획 그대로 상태 설정 (D-04) */
+/**
+ * S-10 ③ 슬롯 카드. 식단 끼니의 '먹었음' 1탭은 계획 그대로 상태 설정 (D-04).
+ * 자유 끼니도 같은 크기의 '먹었음' 버튼을 두되 S-11 의 선택 시트(무엇을 먹었나요?)로 보낸다 (D-20).
+ */
 export function SlotCard({
   record,
   date,
@@ -28,6 +31,8 @@ export function SlotCard({
   const router = useRouter();
   const { status, run } = useStatus();
   const [busy, setBusy] = useState(false);
+  const slotHref = `/day/${date}/${record.slot as MealSlot}`;
+  const freeUnrecorded = record.planType === 'none' && record.status === 'unrecorded';
   const canQuickEat =
     record.status === 'unrecorded' && record.planType === 'template' && record.items.length > 0;
 
@@ -68,9 +73,9 @@ export function SlotCard({
       <Badge variant="secondary">
         <Minus className="size-3" /> 안 먹음
       </Badge>
-    ) : (
+    ) : freeUnrecorded ? null : (
       <Badge variant="outline">
-        <Circle className="size-3" /> 미기록
+        <Circle className="size-3" /> 기록 전
       </Badge>
     );
 
@@ -84,14 +89,20 @@ export function SlotCard({
                 `${i.productName} ${formatQuantity(i.actualQuantity ?? i.plannedQuantity)}${i.displayUnit}`,
             )
             .join(', ')
-        : record.planType === 'none'
-          ? '자유 끼니 · 먹었으면 기록'
+        : freeUnrecorded
+          ? '식단표에 없는 끼니. 먹었으면 기록'
           : '품목 없음';
 
   return (
-    <Card className={cn('flex flex-col gap-2 p-3', highlight && 'ring-2 ring-ring/40')}>
+    <Card
+      className={cn(
+        'flex flex-col gap-2 p-3',
+        highlight && 'ring-2 ring-ring/40',
+        freeUnrecorded && 'border-dashed bg-card/60',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/day/${date}/${record.slot as MealSlot}`} className="min-w-0 flex-1">
+        <Link href={slotHref} className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-medium">{SLOT_LABELS[record.slot]}</span>
             {record.planType === 'none' ? <Badge variant="secondary">자유 끼니</Badge> : null}
@@ -101,14 +112,16 @@ export function SlotCard({
             {record.planSource === 'override' ? <Badge variant="outline">예외</Badge> : null}
           </div>
           <p className="mt-1 truncate text-sm text-muted-foreground">{summary}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {record.status === 'unrecorded' && record.planType === 'template' ? '예상 ' : ''}
-            {record.nutrition.missing > 0 && record.nutrition.kcal === 0
-              ? '열량 미상'
-              : `${Math.round(record.nutrition.kcal)} kcal`}
-            {record.nutrition.missing > 0 && record.nutrition.kcal > 0 ? ' (일부 미상)' : ''}
-            {record.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
-          </p>
+          {!freeUnrecorded ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {record.status === 'unrecorded' && record.planType === 'template' ? '예상 ' : ''}
+              {record.nutrition.missing > 0 && record.nutrition.kcal === 0
+                ? '열량 미상'
+                : `${Math.round(record.nutrition.kcal)} kcal`}
+              {record.nutrition.missing > 0 && record.nutrition.kcal > 0 ? ' (일부 미상)' : ''}
+              {record.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
+            </p>
+          ) : null}
         </Link>
         <div className="flex shrink-0 flex-col items-end gap-2">
           {statusBadge}
@@ -116,12 +129,16 @@ export function SlotCard({
             <Button size="default" className="h-8 px-3 text-xs" onClick={quickEat} disabled={busy}>
               먹었음
             </Button>
-          ) : (
+          ) : record.status === 'unrecorded' ? (
             <Link
-              href={`/day/${date}/${record.slot as MealSlot}`}
-              className="text-xs text-accent-foreground"
+              href={`${slotHref}?action=eat`}
+              className={buttonClasses('outline', 'default', 'h-8 px-3 text-xs')}
             >
-              {record.status === 'unrecorded' ? '기록' : '수정'}
+              먹었음
+            </Link>
+          ) : (
+            <Link href={slotHref} className="text-xs text-accent-foreground">
+              수정
             </Link>
           )}
         </div>

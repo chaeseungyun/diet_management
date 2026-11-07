@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { SLOT_LABELS, type MealSlot } from '@diet/shared';
+import { MEAL_SLOTS, SLOT_LABELS, type MealSlot } from '@diet/shared';
 import { apiGet, type Schemas } from '@/lib/api';
 import { addDays, dateLabel } from '@/lib/format';
 import { Page, Section } from '@/components/shell/page';
@@ -9,15 +9,29 @@ import { buttonClasses } from '@/components/ui/button';
 import { NutritionSummary } from './nutrition-summary';
 import { SlotCard } from './slot-card';
 import { ExtrasPanel } from './extras-panel';
+import { AddMealMenu } from './add-meal-menu';
 import { WeightQuick } from './weight-quick';
 
 /** 오늘 홈 (S-10 ①~⑥). ⑦ 소진 임박·⑧ 하루 완료는 단계 2 */
-export async function DayScreen({ date, today }: { date: string; today: string }) {
+export async function DayScreen({
+  date,
+  today,
+  openExtra = false,
+}: {
+  date: string;
+  today: string;
+  /** '+ 식사 추가 → 추가 간식' 으로 들어왔을 때 간식 시트를 열어 둔다 */
+  openExtra?: boolean;
+}) {
   const day = await apiGet<Schemas['DayDto']>(`/days/${date}`);
   const link = (d: string) => (d === today ? '/' : `/day/${d}`);
-  // 자유 끼니(계획 없음)는 미기록이면 집계 대상이 아니라 접어서 보인다. 기록이 있으면 일반 카드 (D-18)
+  const dayHref = link(date);
+  // 식단·기록 있는 끼니를 먼저, 미기록 자유 끼니는 뒤에 흐리게 (D-18·D-20)
   const planned = day.slots.filter((s) => s.planType !== 'none' || s.status !== 'unrecorded');
   const free = day.slots.filter((s) => s.planType === 'none' && s.status === 'unrecorded');
+  // 카드가 없는 끼니 = 설정에서 숨긴 끼니(기록 없음). '+ 식사 추가' 에서만 들어간다
+  const shown = new Set(day.slots.map((s) => s.slot));
+  const hidden = MEAL_SLOTS.filter((s) => !shown.has(s)) as MealSlot[];
 
   return (
     <Page
@@ -64,37 +78,28 @@ export async function DayScreen({ date, today }: { date: string; today: string }
 
       <NutritionSummary nutrition={day.nutrition} />
 
-      <Section title="식사">
+      <Section
+        title="식사"
+        actions={<AddMealMenu date={date} dayHref={dayHref} hiddenSlots={hidden} />}
+      >
         {planned.map((s) => (
           <SlotCard key={s.slot} record={s} date={date} highlight={day.nextSlot === s.slot} />
         ))}
-        {planned.length === 0 ? (
+        {planned.length === 0 && free.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            이 날은 계획된 끼니가 없습니다. 먹었으면 아래 자유 끼니에서 기록하세요.
+            이 날 보이는 끼니가 없습니다. 설정의 &apos;쓰는 끼니&apos; 를 확인하거나 &apos;식사
+            추가&apos; 로 기록하세요.
           </p>
         ) : null}
         {day.nextSlot ? (
           <p className="text-xs text-muted-foreground">다음 식사: {SLOT_LABELS[day.nextSlot]}</p>
         ) : null}
-        {free.length > 0 ? (
-          <div className="rounded-xl border border-dashed border-border px-3 py-2 text-sm">
-            <span className="text-muted-foreground">자유 끼니 · 먹었으면 눌러서 기록: </span>
-            {free.map((s, i) => (
-              <span key={s.slot}>
-                {i > 0 ? <span className="text-muted-foreground"> · </span> : null}
-                <Link
-                  href={`/day/${date}/${s.slot as MealSlot}`}
-                  className="font-medium text-accent-foreground underline-offset-2 hover:underline"
-                >
-                  {SLOT_LABELS[s.slot]}
-                </Link>
-              </span>
-            ))}
-          </div>
-        ) : null}
+        {free.map((s) => (
+          <SlotCard key={s.slot} record={s} date={date} highlight={false} />
+        ))}
       </Section>
 
-      <ExtrasPanel date={date} extras={day.extras} />
+      <ExtrasPanel date={date} dayHref={dayHref} extras={day.extras} initialOpen={openExtra} />
 
       <Section title="체중">
         <WeightQuick date={date} weight={day.weight} />
