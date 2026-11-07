@@ -5,7 +5,7 @@ import { buttonClasses } from '@/components/ui/button';
 
 /**
  * 랜딩·로그인 (S-01). 비로그인 접근은 모두 여기로 온다.
- * 앱이 무엇을 하는지, 시작하려면 무엇을 준비해야 하는지(식품 → 템플릿 → 주간 계획)를 보여 주고
+ * 앱이 무엇을 하는지, 시작하려면 무엇을 준비해야 하는지(식품 → 식단 → 식단표)를 보여 주고
  * 카카오 로그인으로 들어간다. 실패(state 불일치·거부)는 `?error=1` 로 돌아오며 사유를 표시하지 않는다(D-14).
  */
 export default async function LoginPage({
@@ -101,12 +101,12 @@ export default async function LoginPage({
               '자주 먹는 식품을 이름과 포장 규격(예: 1박스 = 30팩)으로 등록합니다. 영양 성분은 나중에 채워도 됩니다.',
             ],
             [
-              '식단 템플릿',
+              '식단',
               '한 끼에 먹는 식품과 수량을 묶습니다. 예: 아침 = 오트밀 50g + 우유 1팩.',
             ],
             [
-              '주간 반복 계획',
-              '요일·끼니마다 템플릿을 배정합니다. 출장 같은 예외는 날짜별로 바꿉니다.',
+              '식단표',
+              '요일·끼니마다 식단을 넣습니다. 출장 같은 예외는 날짜별로 바꿉니다.',
             ],
           ].map(([title, body], i) => (
             <li key={title} className="flex gap-3 rounded-xl border border-border bg-card p-4">

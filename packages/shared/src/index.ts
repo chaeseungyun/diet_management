@@ -41,7 +41,7 @@ export type StockUnit = (typeof STOCK_UNITS)[number];
 export const PLAN_TYPES = ['template', 'outside', 'none'] as const;
 export type PlanType = (typeof PLAN_TYPES)[number];
 export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
-  template: '고정 식단',
+  template: '식단',
   outside: '외부 식사',
   none: '자유 끼니',
 };

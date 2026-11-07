@@ -4,7 +4,7 @@ import { MEAL_SLOTS, SLOT_LABELS, type MealSlot } from '@diet/shared';
 import { Checkbox } from '@/components/ui/input';
 
 /**
- * 쓰는 끼니 선택 (D-18). 오늘 화면·주간 계획에 보이는 끼니다.
+ * 쓰는 끼니 선택 (D-18). 오늘 화면·식단표에 보이는 끼니다.
  * 숨긴 끼니도 기록이 있으면 그날은 보이므로 과거 기록은 사라지지 않는다.
  */
 export function ActiveSlotsField({
@@ -34,7 +34,7 @@ export function ActiveSlotsField({
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        고르지 않은 끼니는 오늘 화면과 주간 계획에 보이지 않습니다. 기록이 있는 날에는 보입니다.
+        고르지 않은 끼니는 오늘 화면과 식단표에 보이지 않습니다. 기록이 있는 날에는 보입니다.
       </p>
     </fieldset>
   );

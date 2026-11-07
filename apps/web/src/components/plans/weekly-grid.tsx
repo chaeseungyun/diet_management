@@ -24,7 +24,7 @@ import { PlanCellDialog, type TemplateRef } from './plan-cell-dialog';
 type Grid = Schemas['WeeklyGridDto'];
 type Cell = Schemas['WeeklyCellDto'];
 
-/** S-22: 요일 7 × 슬롯 5. 모바일은 요일별 세로 목록, PC 는 격자. 요일 복사는 격자 전체 교체 API */
+/** S-22 식단표: 요일 7 × 쓰는 끼니. 모바일은 요일별 세로 목록, PC 는 격자. 요일 복사는 격자 전체 교체 API */
 export function WeeklyGrid({
   grid,
   templates,
@@ -104,7 +104,7 @@ export function WeeklyGrid({
       )}
     >
       <span className="font-medium">
-        {c.planType === 'template' ? (c.templateName ?? '템플릿') : PLAN_TYPE_LABELS[c.planType]}
+        {c.planType === 'template' ? (c.templateName ?? '식단') : PLAN_TYPE_LABELS[c.planType]}
       </span>
     </button>
   );
@@ -114,7 +114,7 @@ export function WeeklyGrid({
       <StatusBanner status={status} />
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          셀을 눌러 고정 식단 / 외부 식사 / 자유 끼니를 정합니다. 날짜 예외가 이 계획보다
+          칸을 눌러 식단 / 외부 식사 / 자유 끼니를 정합니다. 날짜 예외가 식단표보다
           우선합니다. 보이는 끼니는 설정의 &apos;쓰는 끼니&apos; 에서 바꿉니다.
         </p>
         <Button

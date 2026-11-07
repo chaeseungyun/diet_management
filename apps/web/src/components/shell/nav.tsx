@@ -92,8 +92,8 @@ export function Sidebar() {
               {it.href === '/plans' ? (
                 <SubLinks
                   links={[
-                    ['/plans', '템플릿'],
-                    ['/plans/weekly', '주간 반복'],
+                    ['/plans', '식단 목록'],
+                    ['/plans/weekly', '식단표'],
                     ['/plans/calendar', '캘린더·예외'],
                   ]}
                   pathname={pathname}

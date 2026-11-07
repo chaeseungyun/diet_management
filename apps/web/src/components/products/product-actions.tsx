@@ -6,7 +6,7 @@ import { api } from '@/lib/client';
 import { Button } from '@/components/ui/button';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 
-/** 보관·복구 (S-32). 활성 템플릿이 참조하면 API 가 422 로 거부한다 */
+/** 보관·복구 (S-32). 활성 식단이 참조하면 API 가 422 로 거부한다 */
 export function ProductActions({ product }: { product: Schemas['ProductDto'] }) {
   const router = useRouter();
   const { status, run } = useStatus();

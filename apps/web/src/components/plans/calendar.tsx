@@ -78,7 +78,7 @@ export function Calendar({
     try {
       await run(
         () => api('DELETE', `/plans/overrides/${r.date}/${r.slot}`),
-        '예외 해제 → 반복 계획',
+        '예외 해제 → 식단표대로',
       );
       setEditing(null);
       router.refresh();
@@ -187,7 +187,7 @@ export function Calendar({
               <p className="font-medium">{SLOT_LABELS[r.slot]}</p>
               <p className="truncate text-xs text-muted-foreground">
                 {r.planType === 'template'
-                  ? (r.templateName ?? '템플릿')
+                  ? (r.templateName ?? '식단')
                   : PLAN_TYPE_LABELS[r.planType]}
                 {r.note ? ` · ${r.note}` : ''}
               </p>
@@ -196,7 +196,7 @@ export function Calendar({
               {r.source === 'override' ? (
                 <Badge variant="warning">예외</Badge>
               ) : (
-                <Badge variant="outline">반복</Badge>
+                <Badge variant="outline">식단표</Badge>
               )}
               <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setEditing(r)}>
                 변경
@@ -328,11 +328,11 @@ function BatchSheet({
         >
           <option value="outside">외부 식사</option>
           <option value="none">자유 끼니</option>
-          <option value="template">다른 템플릿</option>
+          <option value="template">다른 식단</option>
         </Select>
       </Field>
       {f.planType === 'template' ? (
-        <Field label="템플릿" htmlFor="b-template">
+        <Field label="식단" htmlFor="b-template">
           <Select
             id="b-template"
             value={f.templateId}

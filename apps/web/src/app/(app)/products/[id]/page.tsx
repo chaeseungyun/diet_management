@@ -189,7 +189,7 @@ export default async function ProductPage({
         )}
       </Section>
 
-      <Section title="사용 중인 템플릿">
+      <Section title="사용 중인 식단">
         {p.templates.length === 0 ? (
           <p className="text-sm text-muted-foreground">없음</p>
         ) : (

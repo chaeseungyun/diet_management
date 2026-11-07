@@ -17,7 +17,7 @@ export interface PlanCellValue {
   note?: string;
 }
 
-/** 셀 유형·템플릿 선택 시트 (S-22 셀 탭, S-23 슬롯 예외) */
+/** 칸 유형·식단 선택 시트 (S-22 칸 탭, S-23 슬롯 예외) */
 export function PlanCellDialog({
   open,
   title,
@@ -59,9 +59,9 @@ export function PlanCellDialog({
       </div>
       {planType === 'template' ? (
         <Field
-          label="템플릿"
+          label="식단"
           htmlFor="pc-template"
-          hint={templates.length === 0 ? '먼저 템플릿을 만드세요' : undefined}
+          hint={templates.length === 0 ? '먼저 식단을 만드세요' : undefined}
         >
           <Select
             id="pc-template"

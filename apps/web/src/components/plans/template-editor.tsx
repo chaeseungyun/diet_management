@@ -27,7 +27,7 @@ interface Row {
   isStockTracked: boolean;
 }
 
-/** S-21: 템플릿명, 품목(식품·수량·단위·정렬), 영양 합계 미리보기(저장 결과 기준), 미등록 경고. 변경은 과거 스냅샷에 영향 없음 */
+/** S-21: 식단명, 품목(식품·수량·단위·정렬), 영양 합계 미리보기(저장 결과 기준), 미등록 경고. 변경은 과거 스냅샷에 영향 없음 */
 export function TemplateEditor({ template }: { template?: Template }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -70,7 +70,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
       if (template) {
         const saved = await run(
           () => api<Template>('PUT', `/meal-templates/${template.id}`, body),
-          '템플릿 저장',
+          '식단 저장',
         );
         setRows((prev) =>
           prev.map((r) => {
@@ -87,7 +87,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
       } else {
         const created = await run(
           () => api<Template>('POST', '/meal-templates', body),
-          '템플릿 생성',
+          '식단 생성',
         );
         router.push(`/plans/templates/${created.id}`);
       }
@@ -109,7 +109,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
       );
       router.refresh();
     } catch {
-      // 배너 (주간 계획이 참조하면 422)
+      // 배너 (식단표가 참조하면 422)
     }
   }
 
@@ -118,7 +118,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
   return (
     <div className="flex flex-col gap-4">
       <StatusBanner status={status} />
-      <Field label="템플릿명" htmlFor="tname">
+      <Field label="식단 이름" htmlFor="tname">
         <Input
           id="tname"
           value={name}
@@ -220,7 +220,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
         </p>
       ) : null}
       <p className="text-xs text-muted-foreground">
-        템플릿 변경은 이미 기록한 과거 식사에 영향을 주지 않습니다 (NFR-02).
+        식단을 바꿔도 이미 기록한 과거 식사는 바뀌지 않습니다 (NFR-02).
       </p>
       <Button size="lg" onClick={save} disabled={busy || name.trim() === '' || rows.length === 0}>
         {template ? '저장' : '만들기'}
@@ -232,7 +232,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
       ) : null}
       {template ? (
         <Button variant="ghost" className="text-muted-foreground" onClick={toggleArchive}>
-          {template.archivedAt ? '보관 해제' : '보관 (주간 계획에서 쓰는 중이면 거부됨)'}
+          {template.archivedAt ? '보관 해제' : '보관 (식단표에서 쓰는 중이면 거부됨)'}
         </Button>
       ) : null}
 

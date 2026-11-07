@@ -31,25 +31,25 @@ export async function loadSetupSteps(): Promise<Step[]> {
     },
     {
       key: 'templates',
-      title: '식단 템플릿 만들기',
-      description: '한 끼에 먹는 식품과 수량을 묶습니다. 예: 아침 = 오트밀 50g + 우유 1팩.',
+      title: '식단 만들기',
+      description: '한 끼에 먹는 식품과 수량을 묶은 것이 식단입니다. 예: 아침 = 오트밀 50g + 우유 1팩.',
       href: '/plans/templates/new',
-      action: '템플릿 만들기',
+      action: '식단 만들기',
       done: templates.length > 0,
     },
     {
       key: 'weekly',
-      title: '주간 반복 계획 넣기',
-      description: '요일·끼니마다 템플릿을 배정하면 오늘 화면에서 "먹었음" 1탭으로 기록됩니다.',
+      title: '식단표 채우기',
+      description: '요일·끼니마다 식단을 넣으면 오늘 화면에서 "먹었음" 1탭으로 기록됩니다.',
       href: '/plans/weekly',
-      action: '주간 계획 설정하기',
+      action: '식단표 채우기',
       done: weekly.cells.some((c) => c.planType !== 'none'),
     },
   ];
 }
 
 /**
- * 시작 가이드. 식품 → 템플릿 → 주간 계획 순서를 보여 주고, 다음 할 일을 강조한다.
+ * 시작 가이드. 식품 → 식단 → 식단표 순서를 보여 주고, 다음 할 일을 강조한다.
  * 세 단계가 모두 끝나면 아무것도 그리지 않는다.
  */
 export async function SetupGuide({

@@ -6,7 +6,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, EmptyState } from '@/components/ui/card';
 
-/** 식단 템플릿 목록 (S-20) */
+/** 식단 목록 (S-20). 코드·API 의 '템플릿'(MealTemplate) 을 화면에서는 '식단' 이라 부른다 (DEC-060) */
 export default async function PlansPage({
   searchParams,
 }: {
@@ -26,21 +26,21 @@ export default async function PlansPage({
           href="/plans/templates/new"
           className={buttonClasses('default', 'default', 'h-8 px-3 text-xs')}
         >
-          새 템플릿
+          새 식단
         </Link>
       }
     >
       <SetupGuide title="식단 준비" />
       <div className="grid grid-cols-2 gap-2">
         <Link href="/plans/weekly" className={buttonClasses('outline', 'default', 'h-12')}>
-          주간 반복 계획
+          식단표
         </Link>
         <Link href="/plans/calendar" className={buttonClasses('outline', 'default', 'h-12')}>
           캘린더·날짜 예외
         </Link>
       </div>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted-foreground">템플릿</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground">식단</h2>
         <Link
           href={showArchived ? '/plans' : '/plans?archived=true'}
           className="text-xs text-accent-foreground"
@@ -51,15 +51,15 @@ export default async function PlansPage({
       {templates.length === 0 ? (
         <EmptyState className="flex flex-col items-center gap-3">
           {showArchived ? (
-            '보관된 템플릿 없음'
+            '보관된 식단 없음'
           ) : (
             <>
               <span>
-                아직 템플릿이 없습니다. 템플릿은 한 끼에 먹는 식품·수량 묶음이고, 주간 계획에 넣으면
+                아직 식단이 없습니다. 식단은 한 끼에 먹는 식품·수량 묶음이고, 식단표에 넣으면
                 &quot;먹었음&quot; 1탭으로 기록됩니다.
               </span>
               <Link href="/plans/templates/new" className={buttonClasses('default', 'lg')}>
-                첫 템플릿 만들기
+                첫 식단 만들기
               </Link>
             </>
           )}
@@ -77,7 +77,7 @@ export default async function PlansPage({
                       {t.items.map((i) => i.productName).join(', ') || '비어 있음'}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      주간 {t.usage.weeklyCells}셀 · 예정 예외 {t.usage.upcomingOverrides}건
+                      식단표 {t.usage.weeklyCells}칸 · 예정 예외 {t.usage.upcomingOverrides}건
                     </p>
                   </div>
                   <div className="shrink-0 text-right text-sm">
