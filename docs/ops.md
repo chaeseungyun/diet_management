@@ -78,7 +78,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 # 저장소·환경 변수 (deploy/.env 는 커밋하지 않는다)
 git clone https://github.com/chaeseungyun/diet_management.git ~/diet && cd ~/diet
 cp deploy/.env.example deploy/.env && nano deploy/.env
-#   DOMAIN=kkinilog.com, POSTGRES_PASSWORD=$(openssl rand -base64 24), JWT_SECRET=$(openssl rand -base64 48),
+#   DOMAIN=kkinilog.com, POSTGRES_PASSWORD=<openssl rand -hex 24 출력>, JWT_SECRET=<openssl rand -hex 48 출력>(hex: 접속 URL 에 안전),
 #   KAKAO_CLIENT_ID / KAKAO_CLIENT_SECRET, BACKUP_PASSPHRASE(비밀번호 관리자에도 보관), BACKUP_REMOTE(rclone 원격, 없으면 비움)
 chmod 600 deploy/.env
 
@@ -142,7 +142,17 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
 - API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
 - 확인 항목(주 1회): `df -h`(디스크), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔).
-- 메모리 실측 결과(단계 0 완료 조건, 요구사항 §7-5)는 여기 표로 남긴다: (VM 구매 후 기록)
+- 메모리 실측(단계 0 완료 조건, 요구사항 §7-5). 2026-11-07 첫 배포 직후, 사용자 0명 유휴 상태의 `docker stats --no-stream`:
+
+  | 컨테이너 | 메모리 | 비고 |
+  | --- | --- | --- |
+  | `diet-api-1` | 67 MiB | NestJS + Prisma |
+  | `diet-caddy-1` | 56 MiB | 인증서 발급 직후 |
+  | `diet-web-1` | 50 MiB | Next standalone |
+  | `diet-db-1` | 46 MiB | PostgreSQL 18, 기본 설정 |
+  | 합계 | 약 219 MiB / 1.86 GiB (12%) | CPU 0%. 스왑 2GB 별도 |
+
+  유휴 기준이라 실사용·마이그레이션·백업 시점에 다시 재서 비교한다. 2GB 플랜은 여유가 충분하고 Next 정적 내보내기 대안(DEC-010)은 필요 없다.
 
 ## 8. 장애 대응
 
@@ -170,3 +180,11 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 
 - 완료: 모노레포, 카카오 로그인(API 콜백·JWT 쿠키), 사용자 격리·CSRF·소프트 삭제, `/me`, `/health`, Swagger·OpenAPI 타입 생성, 마이그레이션, e2e 11건·단위 13건 통과, 로컬 API·웹 기동 확인, 실제 카카오 앱으로 로그인 확인(2026-11-05), Dockerfile·Compose·Caddyfile·CI·백업 스크립트 작성.
 - 미완료(도메인·VM 구매 후): HTTPS 배포, 이미지 빌드(CI), 백업·복원 시험, 메모리 실측, 예산 견적 기록. Dockerfile·compose·백업 스크립트는 Docker가 없는 개발 PC에서 **실행해 보지 않았다**.
+
+## 12. 첫 배포 결과 (2026-11-07)
+
+- VM: Lightsail `ap-southeast-2`(시드니) 2GB, 고정 IP `16.179.16.224`. 서울 리전으로는 옮기지 않기로 함(사용자 결정, 2026-11-07). 한국→시드니 왕복 지연 약 130ms 는 감수한다.
+- CD: run `42354235785`(커밋 `be5b0e3`)의 `deploy` job 이 secret 등록 뒤 Re-run 으로 성공. 이후 `main` push 마다 자동 배포.
+- 외부 확인(2026-11-07 08:41 UTC): `/api/v1/health` → `{"status":"ok","db":"ok"}`, `/` → 307 `/login`, `http://` → 308 https, `www` → 301 apex, 인증서 Let's Encrypt(`CN=kkinilog.com`, 만료 2027-02-05, 자동 갱신), HSTS·nosniff 헤더 확인.
+- 카카오 콘솔 운영 Redirect URI·플랫폼 등록 완료(2026-11-07). 메모리 실측은 §7 표.
+- 남은 것: `scripts/backup.sh` 1회 + 복원 시험(§5), cron 등록. 이것이 끝나야 단계 0 완료 조건(배포·HTTPS·백업 복원 확인)이 닫힌다.

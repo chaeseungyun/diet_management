@@ -605,11 +605,11 @@
 - **맥락**: 2026-11-06~07 에 VM 과 도메인을 샀다. 후보 이름(밥한끼·밥상머리·냠얌 등)은 식당·밀키트 상호처럼 읽히는 문제가 있어 '끼니 + 기록' 을 담은 이름으로 갔다. CI 는 이미지를 GHCR 에 올리기만 하고 VM 반영은 수동이었다.
 - **결정**:
   - 도메인 **`kkinilog.com`**, Cloudflare Registrar(연 11.17달러, 갱신가 기준 `.com` 선택 — `.app` 은 첫해만 싸고 HSTS 강제 이점은 Caddy 가 이미 HTTPS 를 강제해 남지 않음, DEC-013). 자동 갱신·Transfer lock·WHOIS 비공개. DNS 는 Cloudflare 에 두되 **프록시 끔(DNS only)**: Caddy 가 Let's Encrypt 인증서를 직접 받는다. `A @`, `CNAME www → apex`, `www` 는 Caddy 가 apex 로 301. 메일 미사용이라 `v=spf1 -all`·DMARC reject 권고.
-  - VM **AWS Lightsail 월 12달러**(RAM 2GB·SSD 60GB), 고정 IP, 방화벽 22/80/443. 2GB 스왑 추가.
+  - VM **AWS Lightsail 월 12달러**(RAM 2GB·SSD 60GB), 리전 `ap-southeast-2`(시드니, 서울로 이전하지 않기로 함), 고정 IP, 방화벽 22/80/443. 2GB 스왑 추가. 첫 배포 유휴 메모리 합계 약 219 MiB(ops.md §7).
   - **CD**: `main` push → `verify` → `images`(`latest`·`<sha>`) → `deploy`. `deploy` 는 배포 전용 ed25519 키로 VM 에 SSH 해 `git pull --ff-only` 뒤 `<sha>` 태그로 `compose pull`·`up -d` 하고 `/api/v1/health` 를 확인한다. 호스트 키는 secret 에 고정(`StrictHostKeyChecking=yes`), 동시 배포는 concurrency 그룹으로 직렬화. 롤백은 이전 run 의 `deploy` 재실행.
 - **버린 대안**: (a) Cloudflare 프록시 + Origin 인증서 — 쿠키·원격 IP·WebSocket 처리가 바뀌고 인증서 두 겹을 관리. 단일 VM 에 이득이 없다. (b) VM 에서 `watchtower` 등으로 `latest` 를 폴링 — 어떤 커밋이 떠 있는지 추적이 어렵고 실패해도 CI 가 모른다. (c) 서드파티 SSH 액션 — 비밀을 다른 액션에 넘기지 않기 위해 `ssh` 직접 호출. (d) Lightsail `.pem` 을 GitHub secret 으로 — 콘솔 접근 키와 배포 키는 분리한다.
 - **근거**: DEC-011(CI 빌드, VM 은 실행만)의 마지막 단계를 자동화해 배포가 "push 하면 끝" 이 되고, 어떤 SHA 가 떠 있는지 Actions 로그로 남는다. DNS only 는 DEC-045(같은 오리진·Caddy 종단)와 충돌하지 않는 가장 단순한 구성이다.
-- **재검토 조건**: 월 비용이 환율로 20,000원을 넘으면 DEC-012 재검토(스냅샷·전송량 포함). 트래픽·DDoS 가 문제가 되면 프록시 + Full(strict) 로 전환하되 Caddy 인증서 발급을 DNS-01 로 바꿔야 한다. 리전·실측 메모리는 첫 배포 뒤 `ops.md` §7 에 적는다.
+- **재검토 조건**: 월 비용이 환율로 20,000원을 넘으면 DEC-012 재검토(스냅샷·전송량 포함). 트래픽·DDoS 가 문제가 되면 프록시 + Full(strict) 로 전환하되 Caddy 인증서 발급을 DNS-01 로 바꿔야 한다. 시드니 지연이 체감 문제가 되면 서울 리전 재검토(스냅샷 복사 또는 §4-1 재수행 + A 레코드·`DEPLOY_HOST`·`DEPLOY_HOST_KEY` 교체).
 
 ---
 
@@ -620,7 +620,6 @@
 | 항목 | 출처 | 언제 | 메모 |
 | --- | --- | --- | --- |
 | 도메인 선결제 월의 현금 상한 처리 | 요구사항 §5 | 2026-11 청구서 확인 시 | DEC-012. 11월에 도메인 연 11.17달러 + VM 12달러가 함께 나간다. 월 환산으로 볼지 결정 |
-| VM 메모리 실측·리전 기록 | 요구사항 §7-5 | 첫 배포 뒤 | DEC-062. `docker stats` 결과를 ops.md §7 표에 |
 | 카카오 출시 대상 계정 정책 | 요구사항 §5 | 도메인 확정 후 | DEC-015, DEC-038. 개발 중 localhost는 확정 |
 | JWT 만료 기간·갱신 토큰·CSRF 세부 | 요구사항 §7-6 | 사용자 확정 대기 | DEC-037·DEC-051. 구현 기본값(7일·갱신 없음·SameSite=Lax + Origin 검사·CSRF 403) 적용됨 |
 | 음수 재고와 소진 예측 표시 | 요구사항 §7-3 | 단계 2 착수 전 | DEC-026 |
