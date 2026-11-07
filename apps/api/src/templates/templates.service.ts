@@ -91,7 +91,7 @@ export class TemplatesService {
       .map((v) =>
         TemplateDto.from(
           v,
-          v.items.map((i) => TemplateItemDto.from(i, i.nutrition)),
+          v.items.map((i) => TemplateItemDto.from(i, i.nutrition, i.version !== null)),
           sumNutrition(v.items.map((i) => i.nutrition)),
           usage(v.id),
         ),

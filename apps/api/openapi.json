@@ -2771,6 +2771,22 @@
           "sortOrder": {
             "type": "number"
           },
+          "allowedUnits": {
+            "type": "array",
+            "description": "이 제품에 입력할 수 있는 단위 (재고 단위, 단위 중량이 있으면 g 도. D-02)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "g",
+                "ml",
+                "ea"
+              ]
+            }
+          },
+          "nutritionRegistered": {
+            "type": "boolean",
+            "description": "현재 영양 버전이 있는가"
+          },
           "nutrition": {
             "description": "현재 영양 버전 기준 1회 영양. 미등록이면 전부 null",
             "allOf": [
@@ -2790,6 +2806,8 @@
           "unit",
           "displayUnit",
           "sortOrder",
+          "allowedUnits",
+          "nutritionRegistered",
           "nutrition"
         ]
       },

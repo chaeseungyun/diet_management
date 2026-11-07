@@ -17,6 +17,7 @@ import { NAME_MAX_LENGTH, STOCK_UNITS, displayUnit, type StockUnit } from '@diet
 import { NutritionTotalsDto, NutritionValuesDto } from '../common/nutrition.dto';
 import type { NutritionTotals, NutritionValues } from '../domain/nutrition';
 import { numReq } from '../common/decimal';
+import { allowedUnits } from '../domain/units';
 
 export class TemplateItemInputDto {
   @ApiProperty({ format: 'uuid' })
@@ -79,11 +80,23 @@ export class TemplateItemDto {
   @ApiProperty()
   sortOrder!: number;
 
+  /** 이 제품에 입력할 수 있는 단위 (재고 단위, 단위 중량이 있으면 g 도. D-02) */
+  @ApiProperty({ enum: STOCK_UNITS, isArray: true })
+  allowedUnits!: StockUnit[];
+
+  /** 현재 영양 버전이 있는가 */
+  @ApiProperty()
+  nutritionRegistered!: boolean;
+
   /** 현재 영양 버전 기준 1회 영양. 미등록이면 전부 null */
   @ApiProperty({ type: NutritionValuesDto })
   nutrition!: NutritionValuesDto;
 
-  static from(i: MealTemplateItem & { product: Product }, n: NutritionValues): TemplateItemDto {
+  static from(
+    i: MealTemplateItem & { product: Product },
+    n: NutritionValues,
+    nutritionRegistered: boolean,
+  ): TemplateItemDto {
     return {
       id: i.id,
       productId: i.productId,
@@ -94,6 +107,8 @@ export class TemplateItemDto {
       unit: i.unit,
       displayUnit: i.unit === 'ea' ? displayUnit(i.product) : i.unit,
       sortOrder: i.sortOrder,
+      allowedUnits: allowedUnits(i.product),
+      nutritionRegistered,
       nutrition: NutritionValuesDto.from(n),
     };
   }

@@ -965,6 +965,10 @@ export interface components {
             /** @description 화면 표시 단위(g/ml 또는 unit_label) */
             displayUnit: string;
             sortOrder: number;
+            /** @description 이 제품에 입력할 수 있는 단위 (재고 단위, 단위 중량이 있으면 g 도. D-02) */
+            allowedUnits: ("g" | "ml" | "ea")[];
+            /** @description 현재 영양 버전이 있는가 */
+            nutritionRegistered: boolean;
             /** @description 현재 영양 버전 기준 1회 영양. 미등록이면 전부 null */
             nutrition: components["schemas"]["NutritionValuesDto"];
         };

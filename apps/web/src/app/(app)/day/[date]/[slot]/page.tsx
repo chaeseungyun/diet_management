@@ -30,7 +30,7 @@ export default async function SlotPage({
         date={date}
         slot={slot as MealSlot}
         today={today}
-        templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+        templates={templates}
       />
     </Page>
   );

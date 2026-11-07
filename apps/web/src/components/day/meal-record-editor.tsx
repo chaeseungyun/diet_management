@@ -13,11 +13,12 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker } from '@/components/products/product-picker';
-import { PlanCellDialog, type TemplateRef } from '@/components/plans/plan-cell-dialog';
+import { PlanCellDialog } from '@/components/plans/plan-cell-dialog';
 import { cn } from '@/lib/utils';
 
 type MealRecord = Schemas['MealRecordDto'];
 type Item = Schemas['MealItemDto'];
+type Template = Schemas['TemplateDto'];
 type Status = MealRecord['status'];
 type Kind = 'home' | 'outside';
 
@@ -116,7 +117,8 @@ export function MealRecordEditor({
   date: string;
   slot: MealSlot;
   today: string;
-  templates: TemplateRef[];
+  /** 활성 식단 전체. '식단 추가'(품목 채우기)와 날짜 예외 선택에 쓴다 */
+  templates: Template[];
 }) {
   const router = useRouter();
   const { status, run, set } = useStatus();
@@ -130,11 +132,13 @@ export function MealRecordEditor({
     draftKey(first.kind, first.items, first.menu, first.outside),
   );
   const [picker, setPicker] = useState(false);
+  const [templatePicker, setTemplatePicker] = useState(false);
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [planDialog, setPlanDialog] = useState(false);
-  // 계획 바꾸기(날짜 예외, D-01): 아직 먹지 않은 오늘·미래 끼니만. 과거는 기록으로 말한다
-  const canChangePlan = record.status !== 'eaten' && date >= today;
+  // 계획 바꾸기(날짜 예외, D-01): 식단 끼니의 미래 날짜만 (D-19). 오늘·과거는 기록으로 말하고,
+  // 자유 끼니에는 바꿀 계획이 없으므로 버튼을 두지 않는다(미래 자유 끼니의 계획은 캘린더에서)
+  const canChangePlan = record.status !== 'eaten' && date > today && record.planType === 'template';
 
   async function changePlan(v: {
     planType: MealRecord['planType'];
@@ -249,6 +253,27 @@ export function MealRecordEditor({
     const fresh = await api<MealRecord>('GET', `/meal-records/${date}/${slot}`);
     applySaved(fresh);
     set({ kind: 'idle' });
+  }
+
+  /** 식단의 품목을 통째로 가져온다. 이미 있는 식품은 건너뛰고(수량 유지), 보관된 식품은 넣지 않는다 */
+  function addTemplate(t: Template) {
+    const have = new Set(items.map((i) => i.productId));
+    const added: EditItem[] = t.items
+      .filter((i) => !i.productArchived && !have.has(i.productId))
+      .map((i) => ({
+        productId: i.productId,
+        productName: i.productName,
+        quantity: String(i.quantity),
+        unit: i.unit,
+        allowedUnits: i.allowedUnits,
+        displayUnit: i.displayUnit,
+        isStockTracked: i.isStockTracked,
+        nutritionRegistered: i.nutritionRegistered,
+        plannedQuantity: null,
+        saved: null,
+      }));
+    setItems([...items, ...added]);
+    setTemplatePicker(false);
   }
 
   function update(idx: number, patch: Partial<EditItem>) {
@@ -410,16 +435,33 @@ export function MealRecordEditor({
             <h3 className="text-sm font-medium">
               {kind === 'outside' ? '곁들인 내 식품' : '품목'}
             </h3>
-            <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setPicker(true)}>
-              <Plus className="size-4" /> 품목 추가
-            </Button>
+            <div className="flex items-center gap-1">
+              {kind === 'home' ? (
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => setTemplatePicker(true)}
+                >
+                  <Plus className="size-4" /> 식단 추가
+                </Button>
+              ) : null}
+              <Button variant="ghost" className="h-8 px-2 text-xs" onClick={() => setPicker(true)}>
+                <Plus className="size-4" /> 품목 추가
+              </Button>
+            </div>
           </div>
           {kind === 'outside' ? (
             <p className="-mt-2 text-xs text-muted-foreground">
               식단 외 식사에 곁들여 먹은 내 식품만 적습니다. 이 항목만 남은 양에서 뺍니다.
             </p>
           ) : null}
-          {items.length === 0 ? <p className="text-sm text-muted-foreground">품목 없음</p> : null}
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {kind === 'home'
+                ? "품목 없음. '식단 추가' 로 식단을 통째로 가져오거나 '품목 추가' 로 식품을 고르세요."
+                : '품목 없음'}
+            </p>
+          ) : null}
           {items.map((it, idx) => (
             <div
               key={`${it.productId}-${idx}`}
@@ -530,6 +572,40 @@ export function MealRecordEditor({
           onClear={record.planSource === 'override' ? clearPlanOverride : undefined}
         />
       ) : null}
+
+      <Dialog open={templatePicker} onClose={() => setTemplatePicker(false)} title="식단 추가">
+        <p className="text-xs text-muted-foreground">
+          고른 식단의 품목·수량을 아래 목록에 넣습니다. 이미 있는 식품은 건너뜁니다. 식단표는 바뀌지
+          않습니다.
+        </p>
+        {templates.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            아직 식단이 없습니다. 식단 탭에서 먼저 만드세요.
+          </p>
+        ) : (
+          <ul className="flex max-h-80 flex-col gap-1 overflow-y-auto">
+            {templates.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => addTemplate(t)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-border p-2 text-left text-sm hover:bg-accent/50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{t.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {t.items.map((i) => i.productName).join(', ') || '품목 없음'}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {t.nutrition.complete ? `${Math.round(t.nutrition.kcal)} kcal` : '영양 불완전'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Dialog>
 
       <Dialog open={picker} onClose={() => setPicker(false)} title="품목 추가">
         <ProductPicker
