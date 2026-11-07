@@ -25,7 +25,7 @@ export class MeController {
   }
 
   @Patch()
-  @ApiOperation({ summary: '닉네임·시간대 수정, 온보딩 완료 표시' })
+  @ApiOperation({ summary: '닉네임·시간대·쓰는 끼니 수정, 온보딩 완료 표시' })
   @ApiOkResponse({ type: MeDto })
   async update(@CurrentUser() user: User, @Body() body: UpdateMeDto): Promise<MeDto> {
     const updated = await this.prisma.user.update({
@@ -34,6 +34,7 @@ export class MeController {
         ...(body.nickname !== undefined ? { nickname: body.nickname } : {}),
         ...(body.timezone !== undefined ? { timezone: body.timezone } : {}),
         ...(body.onboarded === true && !user.onboardedAt ? { onboardedAt: new Date() } : {}),
+        ...(body.activeSlots !== undefined ? { activeSlots: body.activeSlots } : {}),
       },
     });
     // TODO(단계 2): 시간대 변경 시 pending 알림 재예약 (api.md §1)

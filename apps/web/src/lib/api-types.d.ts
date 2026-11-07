@@ -70,7 +70,7 @@ export interface paths {
         delete: operations["MeController_remove"];
         options?: never;
         head?: never;
-        /** 닉네임·시간대 수정, 온보딩 완료 표시 */
+        /** 닉네임·시간대·쓰는 끼니 수정, 온보딩 완료 표시 */
         patch: operations["MeController_update"];
         trace?: never;
     };
@@ -623,6 +623,8 @@ export interface components {
             timezone: string;
             /** Format: date-time */
             onboardedAt: string | null;
+            /** @description 쓰는 끼니, 하루 순서 (D-18) */
+            activeSlots: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
             /** Format: date-time */
             createdAt: string;
         };
@@ -636,6 +638,8 @@ export interface components {
             timezone?: string;
             /** @description true 면 첫 설정(S-03) 완료로 표시한다 */
             onboarded?: boolean;
+            /** @description 오늘 화면·주간 계획에 보이는 끼니(D-18). 1개 이상, extra 불가. 숨긴 끼니도 기록이 있으면 보인다 */
+            activeSlots?: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
         };
         GoalDto: {
             /** Format: uuid */
@@ -1124,7 +1128,7 @@ export interface components {
             hasOverride: boolean;
             /** @description 계획 또는 기록에 외부 식사가 있는가 */
             hasOutside: boolean;
-            /** @description 계획이 '없음'이 아닌 슬롯 수 */
+            /** @description 집계 대상 슬롯 수: 쓰는 끼니 중 계획이 있는 슬롯 + 기록된 자유 끼니 (D-18) */
             activeSlots: number;
             /** @description 활성 슬롯 중 먹었음/안 먹음 처리된 수 */
             recordedSlots: number;
@@ -1186,6 +1190,8 @@ export interface components {
             /** Format: uuid */
             templateId: string | null;
             templateName: string | null;
+            /** @description 날짜 예외의 메모 (예: 출장). 예외가 아니면 null */
+            planNote: string | null;
             /** @description 레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용) */
             planChanged: boolean;
             outsideMenu: string | null;
@@ -1225,7 +1231,7 @@ export interface components {
             /** @example 2026-11-06 */
             date: string;
             isToday: boolean;
-            /** @description 5슬롯, 하루 순서 */
+            /** @description 쓰는 끼니(+기록이 있는 숨긴 끼니), 하루 순서 (D-18) */
             slots: components["schemas"]["MealRecordDto"][];
             extras: components["schemas"]["MealRecordDto"][];
             nutrition: components["schemas"]["DayNutritionDto"];

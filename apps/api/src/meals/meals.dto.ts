@@ -275,6 +275,10 @@ export class MealRecordDto {
   @ApiProperty({ type: String, nullable: true })
   templateName!: string | null;
 
+  /** 날짜 예외의 메모 (예: 출장). 예외가 아니면 null */
+  @ApiProperty({ type: String, nullable: true })
+  planNote!: string | null;
+
   /** 레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용) */
   @ApiProperty()
   planChanged!: boolean;
@@ -322,6 +326,7 @@ export class MealRecordDto {
       planSource: ctx.plan.source,
       templateId: record?.templateId ?? ctx.plan.templateId,
       templateName: ctx.templateName,
+      planNote: ctx.plan.note ?? null,
       planChanged: record?.planChanged ?? false,
       outsideMenu: record?.outsideMenu ?? null,
       outsideNutrition: {
@@ -371,7 +376,7 @@ export class DayDto {
   @ApiProperty()
   isToday!: boolean;
 
-  /** 5슬롯, 하루 순서 */
+  /** 쓰는 끼니(+기록이 있는 숨긴 끼니), 하루 순서 (D-18) */
   @ApiProperty({ type: MealRecordDto, isArray: true })
   slots!: MealRecordDto[];
 
@@ -409,7 +414,7 @@ export class DaySummaryDto {
   @ApiProperty()
   hasOutside!: boolean;
 
-  /** 계획이 '없음'이 아닌 슬롯 수 */
+  /** 집계 대상 슬롯 수: 쓰는 끼니 중 계획이 있는 슬롯 + 기록된 자유 끼니 (D-18) */
   @ApiProperty()
   activeSlots!: number;
 

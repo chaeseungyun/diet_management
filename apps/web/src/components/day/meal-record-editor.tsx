@@ -13,6 +13,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker } from '@/components/products/product-picker';
+import { PlanCellDialog, type TemplateRef } from '@/components/plans/plan-cell-dialog';
 import { cn } from '@/lib/utils';
 
 type MealRecord = Schemas['MealRecordDto'];
@@ -108,10 +109,14 @@ export function MealRecordEditor({
   initial,
   date,
   slot,
+  today,
+  templates,
 }: {
   initial: MealRecord;
   date: string;
   slot: MealSlot;
+  today: string;
+  templates: TemplateRef[];
 }) {
   const router = useRouter();
   const { status, run, set } = useStatus();
@@ -127,6 +132,43 @@ export function MealRecordEditor({
   const [picker, setPicker] = useState(false);
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState(false);
+  const [planDialog, setPlanDialog] = useState(false);
+  // 계획 바꾸기(날짜 예외, D-01): 아직 먹지 않은 오늘·미래 끼니만. 과거는 기록으로 말한다
+  const canChangePlan = record.status !== 'eaten' && date >= today;
+
+  async function changePlan(v: {
+    planType: MealRecord['planType'];
+    templateId: string | null;
+    note?: string;
+  }) {
+    try {
+      await run(
+        () =>
+          api('PUT', `/plans/overrides/${date}/${slot}`, {
+            planType: v.planType,
+            templateId: v.templateId,
+            note: v.note?.trim() ? v.note.trim() : null,
+          }),
+        '이 날 계획 변경',
+      );
+      setPlanDialog(false);
+      await reload();
+      router.refresh();
+    } catch {
+      // 배너
+    }
+  }
+
+  async function clearPlanOverride() {
+    try {
+      await run(() => api('DELETE', `/plans/overrides/${date}/${slot}`), '예외 해제');
+      setPlanDialog(false);
+      await reload();
+      router.refresh();
+    } catch {
+      // 배너
+    }
+  }
 
   const num = (s: string): number | null => (s.trim() === '' ? null : Number(s));
   const dirty = draftKey(kind, items, menu, outside) !== baseline;
@@ -217,11 +259,23 @@ export function MealRecordEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-muted-foreground">
-        계획: {PLAN_TYPE_LABELS[record.planType]}
-        {record.templateName ? ` · ${record.templateName}` : ''}
-        {record.planSource === 'override' ? ' (날짜 예외)' : ''}
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          계획: {PLAN_TYPE_LABELS[record.planType]}
+          {record.templateName ? ` · ${record.templateName}` : ''}
+          {record.planSource === 'override' ? ' (날짜 예외)' : ''}
+          {record.planNote ? ` · ${record.planNote}` : ''}
+        </p>
+        {canChangePlan ? (
+          <Button
+            variant="ghost"
+            className="h-7 px-2 text-xs text-accent-foreground"
+            onClick={() => setPlanDialog(true)}
+          >
+            이 날은 다르게 먹을 예정
+          </Button>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-1">
         <div
@@ -458,6 +512,23 @@ export function MealRecordEditor({
               '저장하면 이전에 뺀 남은 양을 되돌리고 새 품목·수량으로 다시 뺍니다.'}
           </p>
         </div>
+      ) : null}
+
+      {planDialog ? (
+        <PlanCellDialog
+          open
+          title="이 날 이 끼니의 계획"
+          initial={{
+            planType: record.planType,
+            templateId: record.templateId,
+            note: record.planNote ?? '',
+          }}
+          templates={templates}
+          withNote
+          onClose={() => setPlanDialog(false)}
+          onSave={changePlan}
+          onClear={record.planSource === 'override' ? clearPlanOverride : undefined}
+        />
       ) : null}
 
       <Dialog open={picker} onClose={() => setPicker(false)} title="품목 추가">

@@ -1,6 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   Length,
@@ -8,7 +12,7 @@ import {
   type ValidationOptions,
 } from 'class-validator';
 import type { User } from '@prisma/client';
-import { NICKNAME_MAX_LENGTH, isValidTimezone } from '@diet/shared';
+import { MEAL_SLOTS, NICKNAME_MAX_LENGTH, isValidTimezone, type MealSlot } from '@diet/shared';
 
 /** IANA 시간대 검증 데코레이터 */
 function IsTimezone(options?: ValidationOptions) {
@@ -44,6 +48,15 @@ export class UpdateMeDto {
   @IsOptional()
   @IsBoolean()
   onboarded?: boolean;
+
+  /** 오늘 화면·주간 계획에 보이는 끼니(D-18). 1개 이상, extra 불가. 숨긴 끼니도 기록이 있으면 보인다 */
+  @ApiPropertyOptional({ enum: MEAL_SLOTS, isArray: true, minItems: 1 })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1, { message: '쓰는 끼니는 1개 이상이어야 합니다' })
+  @ArrayUnique()
+  @IsIn(MEAL_SLOTS, { each: true })
+  activeSlots?: MealSlot[];
 }
 
 export class MeDto {
@@ -59,6 +72,10 @@ export class MeDto {
   @ApiProperty({ type: String, nullable: true, format: 'date-time' })
   onboardedAt!: string | null;
 
+  /** 쓰는 끼니, 하루 순서 (D-18) */
+  @ApiProperty({ enum: MEAL_SLOTS, isArray: true })
+  activeSlots!: MealSlot[];
+
   @ApiProperty({ format: 'date-time' })
   createdAt!: string;
 
@@ -68,6 +85,7 @@ export class MeDto {
     dto.nickname = user.nickname;
     dto.timezone = user.timezone;
     dto.onboardedAt = user.onboardedAt ? user.onboardedAt.toISOString() : null;
+    dto.activeSlots = MEAL_SLOTS.filter((s) => (user.activeSlots as string[]).includes(s));
     dto.createdAt = user.createdAt.toISOString();
     return dto;
   }

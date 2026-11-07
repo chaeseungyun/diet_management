@@ -54,6 +54,7 @@ erDiagram
         string kakao_id UK
         string nickname
         string timezone "default Asia/Seoul"
+        enum[] active_slots "쓰는 끼니, 기본 5개 (D-18)"
         timestamptz created_at
         timestamptz deleted_at "null=활성"
     }
@@ -306,7 +307,7 @@ erDiagram
 
 | 엔터티 | 역할 | 핵심 제약·비고 | 관련 요구 |
 | --- | --- | --- | --- |
-| User | 카카오 로그인 계정 | `kakao_id` 유니크. `timezone`으로 날짜 경계 결정. 삭제는 `deleted_at` 소프트 삭제 후 개인 데이터 삭제 절차 적용 | FR-01, NFR-02, NFR-04 |
+| User | 카카오 로그인 계정 | `kakao_id` 유니크. `timezone`으로 날짜 경계 결정. `active_slots`는 오늘 화면·격자에 보이는 끼니(D-18, 기록이 있으면 숨긴 끼니도 보임). 삭제는 `deleted_at` 소프트 삭제 후 개인 데이터 삭제 절차 적용 | FR-01, NFR-02, NFR-04 |
 | GoalHistory | 목표 체중·칼로리·탄단지 이력 | `effective_from`부터 적용. 특정 날짜의 목표는 그 날짜 이하 중 가장 늦은 행. 탄수화물·지방은 선택 | FR-01 |
 | Product | 사용자별 제품 마스터 | `stock_unit`이 재고 원장 단위이며 이동이 있으면 변경 불가(D-13). `unit_label`은 ea 제품의 표시 단위명, `units_per_package`는 포장 1개당 재고 단위 수로 입고 환산에 쓴다(D-11). `pack_weight_g`가 있을 때만 ea↔g 변환 허용. `is_stock_tracked=false`면 소스처럼 재고 차감 제외 | FR-02, FR-03, D-11, D-13 |
 | ProductNutritionVersion | 영양 정보 버전 | 제품당 `superseded_at IS NULL`인 행 최대 1개(부분 유니크 인덱스). 없으면 ‘영양 정보 미등록’. 기준량과 섭취량을 분리. `basis_unit`은 제품 `stock_unit`과 같거나 g(ea 제품은 `pack_weight_g` 필요), 아니면 저장 거부(D-11) | FR-02, D-11 |
@@ -346,7 +347,7 @@ erDiagram
 | --- | --- | --- | --- |
 | A1 | 요구사항 D-02 | **확정(D-02·D-11)** 재고 원장은 제품별 기준 단위 하나(g/ml/ea)로 기록하고 소수 수량을 허용한다. ea↔g 변환은 `pack_weight_g`가 있을 때만. 변환 불가 시 재고를 차감하지 않고 확인 필요로 표시 | `Product.stock_unit`, `Product.pack_weight_g`, `MealItemSnapshot.stock_check_needed` |
 | A2 | 요구사항 §7-1 | **확정(D-09)** 소스는 별도 유형이 아니라 플래그. 기본 추정 섭취량의 영양 출처는 `manual_estimate` | `Product.is_stock_tracked`, `Product.default_serving_amount` |
-| A3 | 요구사항 §7-2 | ‘계획 없음’ 슬롯은 하루 완료 판정의 활성 슬롯에 포함하지 않는다 | `DayCompletion` 판정 로직 |
+| A3 | 요구사항 §7-2 → D-18 확정 | ‘계획 없음’(자유 끼니) 슬롯은 미기록이면 활성 슬롯에 포함하지 않고, 먹었음·안 먹음이면 포함한다 | `DayCompletion` 판정 로직 |
 | A4 | 요구사항 §7-4 | 소진 알림과 식사 알림은 같은 발송·중복 방지 체계를 쓴다 | `NotificationDelivery.type`, `NotificationSetting.kind` |
 | A5 | NFR-02 | 멱등성 키를 별도 테이블로 둔다(권고 목록 외 추가) | `IdempotencyKey` |
 | A6 | FR-04 | 식단 품목 테이블을 추가하고, 템플릿은 슬롯과 분리한다(권고 목록 외 추가) | `MealTemplateItem` |

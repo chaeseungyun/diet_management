@@ -2,12 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { NICKNAME_MAX_LENGTH } from '@diet/shared';
+import { NICKNAME_MAX_LENGTH, type MealSlot } from '@diet/shared';
 import type { MeDto } from '@/lib/api';
 import { api } from '@/lib/client';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
+import { ActiveSlotsField } from './active-slots-field';
 
 export const COMMON_TIMEZONES = [
   'Asia/Seoul',
@@ -26,11 +27,12 @@ export function ProfileForm({ me }: { me: MeDto }) {
   const { status, run } = useStatus();
   const [nickname, setNickname] = useState(me.nickname);
   const [timezone, setTimezone] = useState(me.timezone);
+  const [activeSlots, setActiveSlots] = useState<MealSlot[]>(me.activeSlots as MealSlot[]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await run(() => api('PATCH', '/me', { nickname, timezone }), '프로필 저장');
+      await run(() => api('PATCH', '/me', { nickname, timezone, activeSlots }), '프로필 저장');
       router.refresh();
     } catch {
       // 배너
@@ -65,10 +67,15 @@ export function ProfileForm({ me }: { me: MeDto }) {
           ))}
         </datalist>
       </Field>
+      <ActiveSlotsField value={activeSlots} onChange={setActiveSlots} />
       <Button
         type="submit"
         variant="outline"
-        disabled={nickname === me.nickname && timezone === me.timezone}
+        disabled={
+          nickname === me.nickname &&
+          timezone === me.timezone &&
+          activeSlots.join() === me.activeSlots.join()
+        }
       >
         저장
       </Button>

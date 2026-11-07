@@ -87,7 +87,7 @@ export function SlotCard({
         : record.planType === 'outside'
           ? '외부 식사 예정'
           : record.planType === 'none'
-            ? '계획 없음'
+            ? '자유 끼니 · 먹었으면 기록'
             : '품목 없음';
 
   return (
@@ -97,7 +97,7 @@ export function SlotCard({
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-medium">{SLOT_LABELS[record.slot]}</span>
             {record.planType === 'outside' ? <Badge variant="info">외부 식사</Badge> : null}
-            {record.planType === 'none' ? <Badge variant="secondary">계획 없음</Badge> : null}
+            {record.planType === 'none' ? <Badge variant="secondary">자유 끼니</Badge> : null}
             {record.planType === 'template' && record.templateName ? (
               <span className="text-xs text-muted-foreground">{record.templateName}</span>
             ) : null}

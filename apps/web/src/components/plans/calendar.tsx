@@ -327,7 +327,7 @@ function BatchSheet({
           onChange={(e) => setF({ ...f, planType: e.target.value as PlanType })}
         >
           <option value="outside">외부 식사</option>
-          <option value="none">계획 없음</option>
+          <option value="none">자유 끼니</option>
           <option value="template">다른 템플릿</option>
         </Select>
       </Field>

@@ -562,6 +562,57 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
     expect(day.body.nutrition.expected.complete).toBe(false); // 소스 영양 미등록
   });
 
+  it('hides inactive slots unless recorded and counts eaten free slots (D-18)', async () => {
+    const date = addDays(TODAY, 14); // 같은 요일: 아침·점심 템플릿, 나머지 자유 끼니
+    const full = await a.get(`/days/${date}`).expect(200);
+    expect(full.body.slots.map((s: { slot: string }) => s.slot)).toEqual([
+      'breakfast',
+      'lunch',
+      'afternoon_snack',
+      'dinner',
+      'evening_snack',
+    ]);
+
+    // 자유 끼니(저녁)를 먹었음으로 기록 → 집계에 포함
+    const dinner = await a
+      .put(`/meal-records/${date}/dinner`)
+      .send({
+        status: 'eaten',
+        kind: 'home',
+        items: [{ productId: chicken, quantity: 100, unit: 'g' }],
+        version: null,
+      })
+      .expect(200);
+    expect(dinner.body.planType).toBe('none');
+    let summary = (await a.get(`/days?from=${date}&to=${date}`).expect(200)).body[0];
+    expect(summary).toMatchObject({ activeSlots: 3, recordedSlots: 1 }); // 아침·점심(계획) + 저녁(기록된 자유 끼니)
+
+    // 쓰는 끼니를 점심만으로 → 아침은 숨고, 저녁은 기록이 있어 보인다
+    const me = await a
+      .patch('/me')
+      .send({ activeSlots: ['lunch'] })
+      .expect(200);
+    expect(me.body.activeSlots).toEqual(['lunch']);
+    const narrowed = await a.get(`/days/${date}`).expect(200);
+    expect(narrowed.body.slots.map((s: { slot: string }) => s.slot)).toEqual(['lunch', 'dinner']);
+    summary = (await a.get(`/days?from=${date}&to=${date}`).expect(200)).body[0];
+    expect(summary).toMatchObject({ activeSlots: 2, recordedSlots: 1 });
+
+    await a.patch('/me').send({ activeSlots: [] }).expect(422);
+    await a
+      .patch('/me')
+      .send({ activeSlots: ['extra'] })
+      .expect(422);
+    await a
+      .patch('/me')
+      .send({ activeSlots: ['breakfast', 'lunch', 'afternoon_snack', 'dinner', 'evening_snack'] })
+      .expect(200);
+    await a
+      .put(`/meal-records/${date}/dinner`)
+      .send({ status: 'unrecorded', version: dinner.body.version })
+      .expect(200);
+  });
+
   it('skipped keeps planned items visible and empty eaten home meal is rejected (DEC-057)', async () => {
     const date = addDays(TODAY, 7); // 같은 요일 → 점심 템플릿이 배정돼 있다
     const before = await a.get(`/meal-records/${date}/lunch`).expect(200);

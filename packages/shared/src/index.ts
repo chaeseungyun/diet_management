@@ -13,6 +13,7 @@ export const DEFAULT_TIMEZONE = 'Asia/Seoul';
 export const SESSION_COOKIE = 'session';
 
 /** 식사 슬롯 5종, 하루 순서대로 (api.md §0). 추가 간식은 EXTRA_SLOT (D-10) */
+/** 하루 끼니(extra 제외). 사용자가 설정에서 쓰는 끼니를 고른다 (D-18) */
 export const MEAL_SLOTS = [
   'breakfast',
   'lunch',
@@ -42,7 +43,7 @@ export type PlanType = (typeof PLAN_TYPES)[number];
 export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   template: '고정 식단',
   outside: '외부 식사',
-  none: '계획 없음',
+  none: '자유 끼니',
 };
 
 export const MEAL_STATUSES = ['unrecorded', 'eaten', 'skipped'] as const;

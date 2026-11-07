@@ -88,6 +88,8 @@ model User {
   timezone    String    @default("Asia/Seoul")
   /// 첫 설정(S-03) 완료 시각. null이면 미완료 (요구사항 §7-7 권고)
   onboardedAt DateTime? @map("onboarded_at") @db.Timestamptz(6)
+  /// 오늘 화면·주간 계획에 보이는 끼니 (D-18). extra 는 넣지 않는다. 숨긴 끼니도 기록이 있으면 보인다
+  activeSlots MealSlot[] @default([breakfast, lunch, afternoon_snack, dinner, evening_snack]) @map("active_slots")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   /// null = 활성. 값이 있으면 로그인·모든 요청 거부
   deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)

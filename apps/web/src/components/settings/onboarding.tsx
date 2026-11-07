@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { MealSlot } from '@diet/shared';
 import type { MeDto } from '@/lib/api';
 import { api } from '@/lib/client';
 import { Button } from '@/components/ui/button';
@@ -10,17 +11,19 @@ import { Field, Input } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { GoalForm } from './goal-form';
 import { COMMON_TIMEZONES } from './profile-form';
+import { ActiveSlotsField } from './active-slots-field';
 
 /** S-03: 시간대 확인 → 목표(선택) → 완료 표시(PATCH /me onboarded). 건너뛰어도 완료로 표시한다 */
 export function Onboarding({ me, today }: { me: MeDto; today: string }) {
   const router = useRouter();
   const { status, run } = useStatus();
   const [timezone, setTimezone] = useState(me.timezone);
+  const [activeSlots, setActiveSlots] = useState<MealSlot[]>(me.activeSlots as MealSlot[]);
   const [step, setStep] = useState<'tz' | 'goal'>('tz');
 
   async function finish() {
     try {
-      await run(() => api('PATCH', '/me', { timezone, onboarded: true }), '설정 완료');
+      await run(() => api('PATCH', '/me', { timezone, activeSlots, onboarded: true }), '설정 완료');
       router.replace('/');
       router.refresh();
     } catch {
@@ -31,12 +34,12 @@ export function Onboarding({ me, today }: { me: MeDto; today: string }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        안녕하세요, {me.nickname}님. 두 가지만 확인하면 바로 기록을 시작할 수 있습니다.
+        안녕하세요, {me.nickname}님. 몇 가지만 확인하면 바로 기록을 시작할 수 있습니다.
       </p>
       <StatusBanner status={status} />
       <Card>
         <CardContent className="flex flex-col gap-3 pt-4">
-          <h2 className="font-semibold">1. 시간대</h2>
+          <h2 className="font-semibold">1. 시간대와 끼니</h2>
           <Field
             label="날짜 경계 기준 시간대"
             htmlFor="ob-tz"
@@ -54,6 +57,7 @@ export function Onboarding({ me, today }: { me: MeDto; today: string }) {
               ))}
             </datalist>
           </Field>
+          <ActiveSlotsField value={activeSlots} onChange={setActiveSlots} />
           {step === 'tz' ? <Button onClick={() => setStep('goal')}>다음</Button> : null}
         </CardContent>
       </Card>

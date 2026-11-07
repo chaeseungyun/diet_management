@@ -130,9 +130,12 @@ export class MealsService {
     let recorded = ZERO;
     let expected = ZERO;
     let nextSlot: MealSlot | null = null;
+    const active = new Set<string>(user.activeSlots);
     for (const slot of MEAL_SLOTS) {
       const plan = plans.get(slot) ?? NO_PLAN;
       const record = records.find((r) => r.slot === slot && r.seq === 0) ?? null;
+      // 숨긴 끼니(D-18)는 기록이 있을 때만 보인다
+      if (!active.has(slot) && (!record || record.status === 'unrecorded')) continue;
       const view = plan.templateId ? views.get(plan.templateId) : undefined;
       const dto = this.assemble(
         record,
@@ -195,6 +198,7 @@ export class MealsService {
       }),
     ]);
     const completed = new Set(completions.map((c) => fromDbDate(c.onDate)));
+    const activeSet = new Set<string>(user.activeSlots);
     const byDate = new Map<string, typeof records>();
     for (const r of records) {
       const d = fromDbDate(r.mealDate);
@@ -209,13 +213,17 @@ export class MealsService {
       for (const slot of MEAL_SLOTS) {
         const plan = resolver.resolve(date, slot);
         const rec = recs.find((r) => r.slot === slot && r.seq === 0);
+        const isRecorded = Boolean(rec && rec.status !== 'unrecorded');
+        // 숨긴 끼니는 기록이 있을 때만 센다 (D-18)
+        if (!activeSet.has(slot) && !isRecorded) continue;
         if (plan.source === 'override') hasOverride = true;
         if (plan.planType === 'outside' || (rec?.status === 'eaten' && rec.kind === 'outside')) {
           hasOutside = true;
         }
-        if (plan.planType === 'none') continue;
+        // 자유 끼니(none)는 미기록이면 집계 대상이 아니고, 먹었음·안 먹음이면 센다 (D-18)
+        if (plan.planType === 'none' && !isRecorded) continue;
         activeSlots += 1;
-        if (rec && rec.status !== 'unrecorded') recordedSlots += 1;
+        if (isRecorded) recordedSlots += 1;
       }
       return {
         date,

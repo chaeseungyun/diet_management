@@ -25,7 +25,16 @@ type Grid = Schemas['WeeklyGridDto'];
 type Cell = Schemas['WeeklyCellDto'];
 
 /** S-22: 요일 7 × 슬롯 5. 모바일은 요일별 세로 목록, PC 는 격자. 요일 복사는 격자 전체 교체 API */
-export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: TemplateRef[] }) {
+export function WeeklyGrid({
+  grid,
+  templates,
+  slots,
+}: {
+  grid: Grid;
+  templates: TemplateRef[];
+  /** 쓰는 끼니 (D-18). 숨긴 끼니는 격자에 보이지 않는다 */
+  slots: MealSlot[];
+}) {
   const router = useRouter();
   const { status, run } = useStatus();
   const [editing, setEditing] = useState<Cell | null>(null);
@@ -105,8 +114,8 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
       <StatusBanner status={status} />
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          셀을 눌러 고정 식단 / 외부 식사 / 계획 없음을 정합니다. 날짜 예외가 이 계획보다
-          우선합니다.
+          셀을 눌러 고정 식단 / 외부 식사 / 자유 끼니를 정합니다. 날짜 예외가 이 계획보다
+          우선합니다. 보이는 끼니는 설정의 &apos;쓰는 끼니&apos; 에서 바꿉니다.
         </p>
         <Button
           variant="outline"
@@ -122,7 +131,7 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
         {WEEKDAYS.map((w) => (
           <section key={w} className="flex flex-col gap-1">
             <h2 className="text-sm font-semibold">{WEEKDAY_LABELS[w]}요일</h2>
-            {MEAL_SLOTS.map((s) => (
+            {slots.map((s) => (
               <div key={s} className="grid grid-cols-[5rem_1fr] items-center gap-2">
                 <span className="text-xs text-muted-foreground">{SLOT_LABELS[s]}</span>
                 <CellButton c={cell(w, s)} />
@@ -146,7 +155,7 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
             </tr>
           </thead>
           <tbody>
-            {MEAL_SLOTS.map((s) => (
+            {slots.map((s) => (
               <tr key={s}>
                 <th className="text-left font-medium text-muted-foreground">{SLOT_LABELS[s]}</th>
                 {WEEKDAYS.map((w) => (
@@ -204,7 +213,7 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
               </Field>
             </div>
             <p className="text-xs text-muted-foreground">
-              대상 요일의 5개 슬롯을 원본과 같게 바꿉니다.
+              대상 요일의 모든 끼니를 원본과 같게 바꿉니다.
             </p>
             <Button onClick={copyWeekday} disabled={copy.from === copy.to}>
               복사
@@ -214,7 +223,8 @@ export function WeeklyGrid({ grid, templates }: { grid: Grid; templates: Templat
       </Dialog>
       <p className="text-xs text-muted-foreground">
         <Badge variant="info">외부 식사</Badge> 는 남은 양을 줄이지 않고,{' '}
-        <Badge variant="secondary">계획 없음</Badge> 은 알림·완료 판정에서 제외됩니다(제안).
+        <Badge variant="secondary">자유 끼니</Badge> 는 미기록이면 완료 판정·집계에서 빠지고
+        먹었으면 기록대로 집계됩니다(D-18).
       </p>
     </div>
   );

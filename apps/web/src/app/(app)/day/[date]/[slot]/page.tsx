@@ -15,14 +15,23 @@ export default async function SlotPage({
   if (!isValidDateString(date) || !(MEAL_SLOTS as readonly string[]).includes(slot)) notFound();
   const me = await getMe();
   if (!me) redirect('/login');
-  const record = await apiGet<Schemas['MealRecordDto']>(`/meal-records/${date}/${slot}`);
+  const [record, templates] = await Promise.all([
+    apiGet<Schemas['MealRecordDto']>(`/meal-records/${date}/${slot}`),
+    apiGet<Schemas['TemplateDto'][]>('/meal-templates'),
+  ]);
   const today = todayIn(me.timezone);
   return (
     <Page
       title={`${dateLabel(date)} ${SLOT_LABELS[slot as MealSlot]}`}
       back={date === today ? '/' : `/day/${date}`}
     >
-      <MealRecordEditor initial={record} date={date} slot={slot as MealSlot} />
+      <MealRecordEditor
+        initial={record}
+        date={date}
+        slot={slot as MealSlot}
+        today={today}
+        templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+      />
     </Page>
   );
 }

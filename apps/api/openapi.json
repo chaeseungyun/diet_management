@@ -92,7 +92,7 @@
             }
           }
         },
-        "summary": "닉네임·시간대 수정, 온보딩 완료 표시",
+        "summary": "닉네임·시간대·쓰는 끼니 수정, 온보딩 완료 표시",
         "tags": [
           "me"
         ]
@@ -1743,6 +1743,20 @@
             "nullable": true,
             "format": "date-time"
           },
+          "activeSlots": {
+            "type": "array",
+            "description": "쓰는 끼니, 하루 순서 (D-18)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ]
+            }
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1753,6 +1767,7 @@
           "nickname",
           "timezone",
           "onboardedAt",
+          "activeSlots",
           "createdAt"
         ]
       },
@@ -1773,6 +1788,22 @@
           "onboarded": {
             "type": "boolean",
             "description": "true 면 첫 설정(S-03) 완료로 표시한다"
+          },
+          "activeSlots": {
+            "type": "array",
+            "description": "오늘 화면·주간 계획에 보이는 끼니(D-18). 1개 이상, extra 불가. 숨긴 끼니도 기록이 있으면 보인다",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ]
+            }
           }
         }
       },
@@ -3289,7 +3320,7 @@
           },
           "activeSlots": {
             "type": "number",
-            "description": "계획이 '없음'이 아닌 슬롯 수"
+            "description": "집계 대상 슬롯 수: 쓰는 끼니 중 계획이 있는 슬롯 + 기록된 자유 끼니 (D-18)"
           },
           "recordedSlots": {
             "type": "number",
@@ -3485,6 +3516,11 @@
             "type": "string",
             "nullable": true
           },
+          "planNote": {
+            "type": "string",
+            "nullable": true,
+            "description": "날짜 예외의 메모 (예: 출장). 예외가 아니면 null"
+          },
           "planChanged": {
             "type": "boolean",
             "description": "레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용)"
@@ -3541,6 +3577,7 @@
           "planSource",
           "templateId",
           "templateName",
+          "planNote",
           "planChanged",
           "outsideMenu",
           "outsideNutrition",
@@ -3634,7 +3671,7 @@
             "type": "boolean"
           },
           "slots": {
-            "description": "5슬롯, 하루 순서",
+            "description": "쓰는 끼니(+기록이 있는 숨긴 끼니), 하루 순서 (D-18)",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MealRecordDto"
