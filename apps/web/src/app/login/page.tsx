@@ -52,6 +52,11 @@ export default async function LoginPage({
           </p>
         ) : null}
         {kakaoButton}
+        {process.env.NODE_ENV !== 'production' ? (
+          <a href="/api/v1/auth/dev" className={buttonClasses('outline', 'default', 'w-full')}>
+            개발용 계정으로 들어가기 (tester)
+          </a>
+        ) : null}
         <p className="text-xs text-muted-foreground">
           카카오 계정의 닉네임만 저장합니다. 계정과 데이터는 설정에서 삭제할 수 있습니다.
         </p>

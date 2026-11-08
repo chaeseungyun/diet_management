@@ -34,6 +34,7 @@ pnpm --filter @diet/web dev                # 웹 :3000   (/api/* 는 :4000 으�
 
 - 루트의 `pnpm dev`는 API·웹을 동시에 띄운다. Nest는 컴파일 때문에 웹보다 5~10초 늦게 뜨므로 그 사이 접속하면 "화면을 불러오지 못했습니다"(`app/error.tsx`)가 보인다. API 로그에 `Found 0 errors`가 찍힌 뒤 "다시 시도"를 누르면 된다.
 - Prisma 스키마를 바꿀 때는 API dev 서버를 먼저 끈다. 실행 중인 API 프로세스가 쿼리 엔진 DLL을 잠가 `prisma generate`가 EPERM으로 실패한다(Windows).
+- **개발·테스트용 계정**(DEC-067): `apps/api/.env` 에 `DEV_LOGIN_ENABLED=true` 가 있으면 로그인 화면에 '개발용 계정으로 들어가기' 버튼이 생기고 `GET /api/v1/auth/dev` 가 `dev:tester`(닉네임 '테스터') 계정으로 세션 쿠키를 발급한다. `/api/v1/auth/dev?as=second` 처럼 이름을 바꾸면 다른 계정이라 사용자 격리를 손으로 확인할 수 있다. 로컬 DB 에는 `dev:tester` 가 2026-11-08 에 만들어져 있다. production 에서 이 변수가 있으면 API 가 부팅을 거부하므로 운영에 샐 수 없다.
 - 브라우저는 항상 `http://localhost:3000`으로 접근한다. 카카오 리다이렉트 URI도 `http://localhost:3000/api/v1/auth/kakao/callback`이어야 쿠키가 같은 오리진에 설정된다.
 - 카카오 개발자 콘솔: 앱 생성 → 플랫폼 Web `http://localhost:3000` 등록 → 카카오 로그인 활성화 → Redirect URI 위 값 등록 → REST API 키를 `KAKAO_CLIENT_ID`, (보안 탭에서 켰다면) Client Secret을 `KAKAO_CLIENT_SECRET`에. 동의 항목은 닉네임만.
 - Docker Desktop이 있으면 `deploy/docker-compose.yml`로 운영과 같은 구성을 로컬에서 띄울 수 있다(§4). 단계 0 개발 PC에는 Docker가 없어 embedded-postgres로 대체했다(DEC-050).

@@ -15,6 +15,7 @@ describe('loadEnv', () => {
     expect(env.JWT_TTL_DAYS).toBe(7);
     expect(env.WEB_ORIGIN).toBe('http://localhost:3000');
     expect(env.cookieSecure).toBe(false);
+    expect(env.devLoginEnabled).toBe(false);
   });
 
   it('forces secure cookies in production unless overridden', () => {
@@ -26,5 +27,12 @@ describe('loadEnv', () => {
 
   it('rejects a short JWT secret', () => {
     expect(() => loadEnv({ ...base, JWT_SECRET: 'short' })).toThrow(/JWT_SECRET/);
+  });
+
+  it('allows the dev login outside production only (DEC-067)', () => {
+    expect(loadEnv({ ...base, DEV_LOGIN_ENABLED: 'true' }).devLoginEnabled).toBe(true);
+    expect(() => loadEnv({ ...base, NODE_ENV: 'production', DEV_LOGIN_ENABLED: 'true' })).toThrow(
+      /DEV_LOGIN_ENABLED/,
+    );
   });
 });

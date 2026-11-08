@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - 준비: `pnpm install && pnpm --filter @diet/shared build && pnpm --filter @diet/api prisma:generate`. 환경 변수는 `apps/api/.env.example`, `apps/web/.env.example`를 복사.
 - 로컬 DB: `pnpm db:dev`(embedded-postgres, 127.0.0.1:54320, Docker 불필요) → `pnpm --filter @diet/api prisma:deploy`.
-- 실행: `pnpm --filter @diet/api dev`(:4000, Swagger `/api/v1/docs`), `pnpm --filter @diet/web dev`(:3000, `/api/*`를 :4000으로 rewrite). 브라우저는 항상 :3000.
+- 실행: `pnpm --filter @diet/api dev`(:4000, Swagger `/api/v1/docs`), `pnpm --filter @diet/web dev`(:3000, `/api/*`를 :4000으로 rewrite). 브라우저는 항상 :3000. 로컬 로그인은 `DEV_LOGIN_ENABLED=true` 일 때 로그인 화면의 '개발용 계정' 버튼(`GET /api/v1/auth/dev?as=<name>`, DEC-067). production 에서 이 변수가 있으면 부팅 거부.
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
 - 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.

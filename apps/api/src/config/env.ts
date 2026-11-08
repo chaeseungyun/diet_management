@@ -20,9 +20,11 @@ const schema = z.object({
   KAKAO_REDIRECT_URI: z.string().url(),
   WEB_ORIGIN: z.string().url(),
   COOKIE_SECURE: boolFromString,
+  /** 개발·테스트용 로그인(GET /auth/dev). production 에서는 켤 수 없다 */
+  DEV_LOGIN_ENABLED: boolFromString,
 });
 
-export type Env = z.infer<typeof schema> & { cookieSecure: boolean };
+export type Env = z.infer<typeof schema> & { cookieSecure: boolean; devLoginEnabled: boolean };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = schema.safeParse(source);
@@ -31,12 +33,16 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     throw new Error(`Invalid environment: ${issues}`);
   }
   const env = parsed.data;
+  if (env.NODE_ENV === 'production' && env.DEV_LOGIN_ENABLED) {
+    throw new Error('Invalid environment: DEV_LOGIN_ENABLED must not be set in production');
+  }
   // WEB_ORIGIN은 오리진만 남긴다(경로·슬래시 제거) → Origin 헤더와 그대로 비교
   const webOrigin = new URL(env.WEB_ORIGIN).origin;
   return {
     ...env,
     WEB_ORIGIN: webOrigin,
     cookieSecure: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
+    devLoginEnabled: env.DEV_LOGIN_ENABLED ?? false,
   };
 }
 

@@ -1,4 +1,15 @@
-import { Controller, Get, HttpCode, Inject, Logger, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Logger,
+  NotFoundException,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
@@ -19,6 +30,9 @@ import {
 const STATE_TTL_SECONDS = 10 * 60;
 const STATE_COOKIE_PATH = '/api/v1/auth';
 const DEFAULT_NICKNAME = '사용자';
+/** 개발용 계정의 kakaoId 접두사. 실제 카카오 id 는 숫자라 겹치지 않는다 */
+const DEV_KAKAO_PREFIX = 'dev:';
+const DEV_ACCOUNT_RE = /^[a-z0-9-]{1,30}$/;
 
 /**
  * 카카오 로그인 (FR-01, NFR-04, D-07, D-14).
@@ -91,6 +105,41 @@ export class AuthController {
         data: { kakaoId, nickname: nickname ?? DEFAULT_NICKNAME },
       }));
 
+    const jwt = this.tokens.sign(user.id);
+    appendCookie(
+      res,
+      SESSION_COOKIE,
+      jwt,
+      sessionCookieOptions(this.env.cookieSecure, this.tokens.ttl),
+    );
+    res.redirect(302, `${this.env.WEB_ORIGIN}/`);
+  }
+
+  /**
+   * 개발·테스트용 로그인 (DEC-067). DEV_LOGIN_ENABLED=true 인 development/test 에서만 열리고
+   * 그 외에는 라우트가 없는 것처럼 404. 카카오 없이 `dev:<name>` 계정으로 세션 쿠키를 발급한다.
+   * `?as=<name>` 으로 계정을 바꿀 수 있어 사용자 격리를 손으로 확인할 때 쓴다(기본 tester).
+   */
+  @Public()
+  @Get('dev')
+  @ApiExcludeEndpoint()
+  async devLogin(@Res() res: Response, @Query('as') as?: string): Promise<void> {
+    if (!this.env.devLoginEnabled) throw new NotFoundException();
+    const name = as ?? 'tester';
+    if (!DEV_ACCOUNT_RE.test(name)) throw new NotFoundException();
+    const kakaoId = `${DEV_KAKAO_PREFIX}${name}`;
+    const existing = await this.prisma.user.findUnique({ where: { kakaoId } });
+    if (existing?.deletedAt) {
+      this.log.warn(`dev login refused: ${kakaoId} is deleted`);
+      res.redirect(302, `${this.env.WEB_ORIGIN}/login?error=1`);
+      return;
+    }
+    const user =
+      existing ??
+      (await this.prisma.user.create({
+        data: { kakaoId, nickname: name === 'tester' ? '테스터' : name },
+      }));
+    this.log.log(`dev login as ${kakaoId}`);
     const jwt = this.tokens.sign(user.id);
     appendCookie(
       res,

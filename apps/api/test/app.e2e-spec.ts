@@ -109,6 +109,10 @@ describe('phase 0: auth, isolation, account', () => {
     await request(server).get('/api/v1/nope').expect(404);
   });
 
+  it('hides the dev login unless DEV_LOGIN_ENABLED (DEC-067)', async () => {
+    await request(server).get('/api/v1/auth/dev').expect(404);
+  });
+
   it('rejects requests without a valid session', async () => {
     await request(server).get('/api/v1/me').expect(401);
     await request(server).get('/api/v1/me').set('Cookie', 'session=garbage').expect(401);

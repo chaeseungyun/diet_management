@@ -35,6 +35,7 @@ services:
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
       KAKAO_REDIRECT_URI: https://${DOMAIN}/api/v1/auth/kakao/callback
       WEB_ORIGIN: https://${DOMAIN}
+      # DEV_LOGIN_ENABLED 는 운영에 넣지 않는다(켜져 있으면 API 가 부팅을 거부한다, DEC-067)
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/api/v1/health']
       interval: 30s
