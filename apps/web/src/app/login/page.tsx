@@ -79,7 +79,7 @@ export default async function LoginPage({
             {
               Icon: Scale,
               title: '영양·체중 한눈에',
-              body: '하루 영양 합계를 목표와 비교하고 체중 추세를 봅니다. 모르는 값은 0 이 아니라 "미상" 으로 둡니다.',
+              body: '하루 영양 합계를 목표와 비교하고 체중 추세를 봅니다. 모르는 값은 0 이 아니라 "미확인" 으로 둡니다.',
             },
           ].map(({ Icon, title, body }) => (
             <li key={title} className="rounded-xl border border-border bg-card p-4">

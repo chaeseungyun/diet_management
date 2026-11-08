@@ -71,7 +71,7 @@ export function NutritionForm({ product }: { product: Product }) {
         await run(
           () =>
             api<Schemas['BackfillResultDto']>('POST', `/products/${product.id}/nutrition/backfill`),
-          '영양 미상 기록 보완',
+          '영양 미확인 기록 보완',
         );
       } catch {
         return;
@@ -126,7 +126,7 @@ export function NutritionForm({ product }: { product: Product }) {
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="열량 (kcal)" htmlFor="kcal" hint="비우면 미상">
+        <Field label="열량 (kcal)" htmlFor="kcal" hint="비우면 미확인">
           <Input
             id="kcal"
             type="number"
@@ -182,18 +182,18 @@ export function NutritionForm({ product }: { product: Product }) {
         </Select>
       </Field>
       <p className="text-xs text-muted-foreground">
-        수정은 새 버전으로 저장되며 과거 기록(스냅샷)은 바뀌지 않습니다. 영양 미상으로 남은 과거
+        수정은 새 버전으로 저장되며 과거 기록(스냅샷)은 바뀌지 않습니다. 영양 미확인으로 남은 과거
         기록이 있으면 저장 후 보완 여부를 묻습니다.
       </p>
       <Button type="submit" size="lg" disabled={busy}>
         저장
       </Button>
 
-      <Dialog open={unknown !== null} onClose={() => backfill(false)} title="영양 미상 기록 보완">
+      <Dialog open={unknown !== null} onClose={() => backfill(false)} title="영양 미확인 기록 보완">
         <p className="text-sm">
-          이 식품을 먹었지만 영양이 미상으로 남은 기록이 <strong>{unknown}건</strong> 있습니다. 방금
-          저장한 값으로 채울까요? 이미 값이 있는 기록은 바뀌지 않으며, 채운 기록에는 '사후 보완'
-          출처가 남습니다.
+          이 식품을 먹었지만 영양이 미확인으로 남은 기록이 <strong>{unknown}건</strong> 있습니다.
+          방금 저장한 값으로 채울까요? 이미 값이 있는 기록은 바뀌지 않으며, 채운 기록에는 '사후
+          보완' 출처가 남습니다.
         </p>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="outline" onClick={() => backfill(false)}>

@@ -214,7 +214,7 @@ export function TemplateEditor({ template }: { template?: Template }) {
           {formatQuantity(totals.carbG, 1)}g · 지 {formatQuantity(totals.fatG, 1)}g
           {!totals.complete ? (
             <Badge variant="warning" className="ml-2">
-              영양 불완전 {totals.missing}건
+              영양 미확인 {totals.missing}건
             </Badge>
           ) : null}
         </p>

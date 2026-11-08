@@ -450,10 +450,10 @@ export function MealRecordEditor({
             <p className="text-xs text-muted-foreground">
               계획 기준 예상:{' '}
               {totals.missing > 0 && totals.kcal === 0
-                ? '열량 미상'
+                ? '열량 미확인'
                 : `${Math.round(totals.kcal)} kcal`}{' '}
               · 단백질 {formatQuantity(totals.proteinG, 1)}g
-              {totals.missing > 0 ? ` · 미상 ${totals.missing}건` : ''}
+              {totals.missing > 0 ? ` · 미확인 ${totals.missing}건` : ''}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={() => startEditing('home')}>
@@ -543,7 +543,7 @@ export function MealRecordEditor({
                   />
                 </Field>
                 <p className="text-xs text-muted-foreground">
-                  영양 추정값은 직접 입력합니다. 비우면 &apos;미상&apos; 으로 남고 메뉴명으로 자동
+                  영양 추정값은 직접 입력합니다. 비우면 &apos;미확인&apos; 으로 남고 메뉴명으로 자동
                   계산하지 않습니다 (FR-05).
                 </p>
                 <div className="grid grid-cols-4 gap-2">
@@ -651,7 +651,7 @@ export function MealRecordEditor({
                     <span>
                       ·{' '}
                       {it.saved.nutrition.kcal === null
-                        ? '열량 미상'
+                        ? '열량 미확인'
                         : `${Math.round(it.saved.nutrition.kcal)} kcal`}
                       {it.saved.nutritionSource === 'backfill' ? ' (사후 보완)' : ''}
                     </span>
@@ -671,11 +671,11 @@ export function MealRecordEditor({
               <p className="text-xs text-muted-foreground">
                 실제 합계:{' '}
                 {totals.missing > 0 && totals.kcal === 0
-                  ? '열량 미상'
+                  ? '열량 미확인'
                   : `${Math.round(totals.kcal)} kcal`}{' '}
                 · 단백질 {formatQuantity(totals.proteinG, 1)}g
-                {totals.missing > 0 ? ` · 미상 ${totals.missing}건` : ''}. 저장하면 실제량 기준으로
-                다시 계산됩니다.
+                {totals.missing > 0 ? ` · 미확인 ${totals.missing}건` : ''}. 저장하면 실제량
+                기준으로 다시 계산됩니다.
               </p>
             ) : null}
           </CardContent>
@@ -766,7 +766,9 @@ export function MealRecordEditor({
                     </span>
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {t.nutrition.complete ? `${Math.round(t.nutrition.kcal)} kcal` : '영양 불완전'}
+                    {t.nutrition.complete
+                      ? `${Math.round(t.nutrition.kcal)} kcal`
+                      : '영양 일부 미확인'}
                   </span>
                 </button>
               </li>

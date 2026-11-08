@@ -118,7 +118,7 @@ export function ExtrasPanel({
                       .join(', ')}
               </p>
               <p className="text-xs text-muted-foreground">
-                {x.nutrition.missing > 0 ? '열량 미상' : `${Math.round(x.nutrition.kcal)} kcal`}
+                {x.nutrition.missing > 0 ? '열량 미확인' : `${Math.round(x.nutrition.kcal)} kcal`}
                 {x.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
               </p>
             </div>
@@ -156,7 +156,11 @@ export function ExtrasPanel({
             <Field label="메뉴명" htmlFor="extra-menu">
               <Input id="extra-menu" value={menu} onChange={(e) => setMenu(e.target.value)} />
             </Field>
-            <Field label="열량 (kcal, 선택)" htmlFor="extra-kcal" hint="비우면 '미상' 으로 남는다">
+            <Field
+              label="열량 (kcal, 선택)"
+              htmlFor="extra-kcal"
+              hint="비우면 '미확인' 으로 남는다"
+            >
               <Input
                 id="extra-kcal"
                 type="number"

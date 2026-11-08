@@ -83,7 +83,7 @@ export default async function PlansPage({
                   <div className="shrink-0 text-right text-sm">
                     <p>{Math.round(t.nutrition.kcal)} kcal</p>
                     {!t.nutrition.complete ? (
-                      <Badge variant="warning">영양 불완전</Badge>
+                      <Badge variant="warning">영양 일부 미확인</Badge>
                     ) : (
                       <span className="text-xs text-muted-foreground">
                         단 {Math.round(t.nutrition.proteinG)}g

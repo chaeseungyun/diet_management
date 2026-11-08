@@ -141,8 +141,8 @@ export default async function ProductPage({
                 {NUTRITION_SOURCE_LABELS[p.nutrition.source]}
               </p>
               <p className="mt-1">
-                {p.nutrition.kcal ?? '미상'} kcal · 탄 {p.nutrition.carbG ?? '미상'}g · 단{' '}
-                {p.nutrition.proteinG ?? '미상'}g · 지 {p.nutrition.fatG ?? '미상'}g
+                {p.nutrition.kcal ?? '미확인'} kcal · 탄 {p.nutrition.carbG ?? '미확인'}g · 단{' '}
+                {p.nutrition.proteinG ?? '미확인'}g · 지 {p.nutrition.fatG ?? '미확인'}g
               </p>
             </CardContent>
           </Card>

@@ -6,7 +6,7 @@ type Day = Schemas['StatsDayDto'];
 /**
  * 일별 열량 막대 + 당시 목표선 (S-60, FR-06, D-20). 라이브러리 없이 SVG.
  * - 완료한 날만 막대를 그린다. 미완료일은 0 이 아니라 빈 칸이다(미기록 ≠ 0).
- * - 영양 불완전(완료했지만 kcal 미상 포함)은 같은 색의 빗금 + 외곽선으로 '기록된 합계' 임을 보인다.
+ * - 영양 일부 미확인(완료했지만 kcal 미확인 포함)은 같은 색의 빗금 + 외곽선으로 '기록된 합계' 임을 보인다.
  *   색 하나만으로 구분하지 않는다(NFR-01). 정확한 값은 아래 날짜별 표가 대신한다.
  * - 열량은 차트 색이 아니라 primary, 목표선은 chart-5 (design-tokens §3).
  */
@@ -97,7 +97,7 @@ export function KcalChart({ days }: { days: Day[] }) {
             ? `${d.date} 추적 대상 아님`
             : !d.completed
               ? `${d.date} 미완료 (평균 제외)`
-              : `${d.date} ${Math.round(d.kcal)} kcal${incomplete ? ' · 영양 불완전(기록된 합계)' : ''}${
+              : `${d.date} ${Math.round(d.kcal)} kcal${incomplete ? ' · 영양 일부 미확인(기록된 합계)' : ''}${
                   d.goalKcal !== null ? ` · 목표 ${d.goalKcal}` : ''
                 }`;
           return (
@@ -171,7 +171,7 @@ export function KcalChart({ days }: { days: Day[] }) {
               strokeWidth="1.5"
             />
           </svg>
-          영양 불완전(기록된 합계)
+          영양 일부 미확인(기록된 합계)
         </span>
         <span className="flex items-center gap-1.5">
           <svg viewBox="0 0 16 4" className="h-1 w-4" aria-hidden>

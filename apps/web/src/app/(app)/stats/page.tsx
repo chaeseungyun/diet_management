@@ -130,7 +130,7 @@ export default async function StatsPage({
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               하루 완료이면서 그 항목의 영양이 모두 확인된 날만 평균에 넣습니다. 안 먹음은 0,
-              미기록은 미상이라 0 으로 넣지 않습니다.
+              미기록은 모르는 값(미확인)이라 0 으로 넣지 않습니다.
             </p>
           </CardContent>
         </Card>
@@ -217,7 +217,7 @@ export default async function StatsPage({
       </div>
 
       {incomplete.length > 0 ? (
-        <Section title="영양 불완전한 날">
+        <Section title="영양 일부 미확인인 날">
           <Card>
             <CardContent className="flex flex-col gap-1 pt-3 text-sm">
               {incomplete.map((d) => (
@@ -269,7 +269,7 @@ export default async function StatsPage({
                       ) : d.complete.kcal ? (
                         '완료'
                       ) : (
-                        <span className="text-warning-foreground">완료 · 영양 불완전</span>
+                        <span className="text-warning-foreground">완료 · 영양 일부 미확인</span>
                       )}
                     </td>
                     <td className="py-1 text-right">{d.completed ? Math.round(d.kcal) : '–'}</td>
@@ -285,7 +285,7 @@ export default async function StatsPage({
             </tbody>
           </table>
           <p className="mt-1 text-xs text-muted-foreground">
-            미완료일은 값을 보이지 않습니다. 단백질 뒤 + 는 미상이 섞인 기록된 합계입니다.
+            미완료일은 값을 보이지 않습니다. 단백질 뒤 + 는 미확인 값이 빠진 기록된 합계입니다.
           </p>
         </div>
       </details>
@@ -455,6 +455,6 @@ function kg(v: number | null): string {
 function exclusion(notCompleted: number, unknown: number): string {
   const parts: string[] = [];
   if (notCompleted > 0) parts.push(`미완료 ${notCompleted}일`);
-  if (unknown > 0) parts.push(`영양 미상 ${unknown}일`);
+  if (unknown > 0) parts.push(`영양 미확인 ${unknown}일`);
   return parts.length === 0 ? '없음' : parts.join(' · ');
 }

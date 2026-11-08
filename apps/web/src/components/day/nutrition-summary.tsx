@@ -6,7 +6,7 @@ import { formatQuantity } from '@diet/shared';
 
 /**
  * S-10 ② 영양 요약: 기록된 합계(primary) / 계획 포함 예상(planned) / 목표 대비(남음·초과, D-20).
- * 열량 진행률은 primary + planned 2단 채움 (design-tokens.md §4). 미상이 섞이면 '기록된 합계' 로 표시.
+ * 열량 진행률은 primary + planned 2단 채움 (design-tokens.md §4). 미확인이 섞이면 '기록된 합계' 로 표시.
  */
 export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutritionDto'] }) {
   const { recorded, expected, goal } = nutrition;
@@ -21,7 +21,7 @@ export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutriti
         <div className="flex items-end justify-between">
           <div>
             <p className="text-xs text-muted-foreground">
-              {recorded.complete ? '기록된 열량' : '기록된 합계 (영양 미상 포함)'}
+              {recorded.complete ? '기록된 열량' : '기록된 합계 (영양 일부 미확인)'}
             </p>
             <p className="text-2xl font-semibold">
               {Math.round(recorded.kcal)}{' '}
@@ -79,11 +79,11 @@ export function NutritionSummary({ nutrition }: { nutrition: Schemas['DayNutriti
         </div>
         <div className="flex flex-wrap gap-1">
           {recorded.missing > 0 ? (
-            <Badge variant="warning">영양 미상 {recorded.missing}건</Badge>
+            <Badge variant="warning">영양 미확인 {recorded.missing}건</Badge>
           ) : null}
           {!expected.complete && expected.missing > recorded.missing ? (
             <Badge variant="outline">
-              예상 합계에 미상 {expected.missing - recorded.missing}건
+              예상 합계에 미확인 {expected.missing - recorded.missing}건
             </Badge>
           ) : null}
           {over ? <Badge variant="warning">목표 초과 +{diff} kcal</Badge> : null}

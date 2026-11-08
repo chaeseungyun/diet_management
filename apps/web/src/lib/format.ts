@@ -24,11 +24,11 @@ export function monthLabel(year: number, month: number): string {
 }
 
 export function kcal(n: number | null | undefined): string {
-  return n === null || n === undefined ? '미상' : `${Math.round(n)} kcal`;
+  return n === null || n === undefined ? '미확인' : `${Math.round(n)} kcal`;
 }
 
 export function grams(n: number | null | undefined): string {
-  return n === null || n === undefined ? '미상' : `${formatQuantity(n, 1)}g`;
+  return n === null || n === undefined ? '미확인' : `${formatQuantity(n, 1)}g`;
 }
 
 /** '0.5팩 (50g)' 처럼 수량 단위 + g 병기 (D-02) */

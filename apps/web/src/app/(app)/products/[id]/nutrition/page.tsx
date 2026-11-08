@@ -25,7 +25,7 @@ export default async function NutritionPage({ params }: { params: Promise<{ id: 
             {versions.map((v) => (
               <li key={v.id} className="rounded-lg border border-border px-3 py-2">
                 {v.supersededAt ? '이전' : '현재'} · 기준 {formatQuantity(v.basisAmount)}
-                {v.basisUnit === 'ea' ? unit : v.basisUnit} · {v.kcal ?? '미상'} kcal · 탄{' '}
+                {v.basisUnit === 'ea' ? unit : v.basisUnit} · {v.kcal ?? '미확인'} kcal · 탄{' '}
                 {v.carbG ?? '–'} 단 {v.proteinG ?? '–'} 지 {v.fatG ?? '–'} ·{' '}
                 {NUTRITION_SOURCE_LABELS[v.source]} · {v.createdAt.slice(0, 10)}
               </li>

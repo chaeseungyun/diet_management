@@ -116,9 +116,9 @@ export function SlotCard({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {record.status === 'unrecorded' && record.planType === 'template' ? '예상 ' : ''}
               {record.nutrition.missing > 0 && record.nutrition.kcal === 0
-                ? '열량 미상'
+                ? '열량 미확인'
                 : `${Math.round(record.nutrition.kcal)} kcal`}
-              {record.nutrition.missing > 0 && record.nutrition.kcal > 0 ? ' (일부 미상)' : ''}
+              {record.nutrition.missing > 0 && record.nutrition.kcal > 0 ? ' (일부 미확인)' : ''}
               {record.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
             </p>
           ) : null}

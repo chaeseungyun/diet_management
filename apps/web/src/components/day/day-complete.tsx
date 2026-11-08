@@ -41,7 +41,7 @@ export function DayComplete({
     try {
       await run(
         () => api('PUT', `/days/${date}/completion`, { skipUnrecordedFree }),
-        check.nutritionComplete ? '하루 완료' : '하루 완료 (영양 불완전)',
+        check.nutritionComplete ? '하루 완료' : '하루 완료 (영양 일부 미확인)',
       );
       setOpen(false);
       router.refresh();
@@ -72,9 +72,9 @@ export function DayComplete({
             <CheckCircle2 className="size-3.5" /> 기록 완료
           </Badge>
           {completion.nutritionComplete ? (
-            <Badge variant="outline">영양 완전</Badge>
+            <Badge variant="outline">영양 모두 확인됨</Badge>
           ) : (
-            <Badge variant="warning">영양 불완전</Badge>
+            <Badge variant="warning">영양 일부 미확인</Badge>
           )}
           <span className="text-xs text-muted-foreground" suppressHydrationWarning>
             {timeLabel(completion.completedAt)}
@@ -91,7 +91,7 @@ export function DayComplete({
         <p className="text-xs text-muted-foreground">
           {completion.nutritionComplete
             ? '이 날은 통계의 유효일에 들어갑니다.'
-            : '영양 미상이 섞여 있어 주간·월간 평균에서는 빠지고 기록 완료율에만 들어갑니다. 영양을 보완하고 다시 완료하면 바뀝니다.'}{' '}
+            : '영양 미확인 항목이 있어 주간·월간 평균에서는 빠지고 기록 완료율에만 들어갑니다. 영양을 보완하고 다시 완료하면 바뀝니다.'}{' '}
           기록을 수정하면 완료가 자동으로 해제됩니다.
         </p>
         <StatusBanner status={status} />
@@ -191,8 +191,8 @@ export function DayComplete({
 
         {!check.nutritionComplete ? (
           <p className="rounded-lg bg-warning px-3 py-2 text-xs text-warning-foreground">
-            영양 미상 {check.missing}건이 있어 &apos;기록 완료 · 영양 불완전&apos; 으로 저장됩니다.
-            기록 완료율에는 들어가지만 주간·월간 영양 평균에서는 빠집니다.
+            영양 미확인 {check.missing}건이 있어 &apos;기록 완료 · 영양 일부 미확인&apos; 으로
+            저장됩니다. 기록 완료율에는 들어가지만 주간·월간 영양 평균에서는 빠집니다.
           </p>
         ) : null}
         <p className="text-xs text-muted-foreground">
