@@ -523,6 +523,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/days/{date}/completion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 완료 가능 여부·끼니 처리 현황·미기록 목록·영양 완전 예측 (S-14). 미기록 자유 끼니는 막지 않음 (D-18) */
+        get: operations["MealsController_completion"];
+        /** 하루 완료. 식단 끼니 미기록·미래·가입 전 날짜는 422. skipUnrecordedFree 면 미기록 자유 끼니를 안 먹음으로 함께 저장 */
+        put: operations["MealsController_complete"];
+        post?: never;
+        /** 완료 해제 */
+        delete: operations["MealsController_uncomplete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meal-records/{date}/{slot}": {
         parameters: {
             query?: never;
@@ -1231,6 +1250,38 @@ export interface components {
             completedAt: string;
             nutritionComplete: boolean;
         };
+        CompletionSlotDto: {
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            /** @enum {string} */
+            planType: "template" | "none";
+            /** @enum {string} */
+            status: "unrecorded" | "eaten" | "skipped";
+            /** @description 완료 판정·집계에 들어가는가: 식단 끼니 전부 + 기록한 자유 끼니 (D-18) */
+            counted: boolean;
+        };
+        DayCompletionCheckDto: {
+            /** @example 2026-11-08 */
+            date: string;
+            /** @description 추적 대상 날짜이고 식단 끼니에 미기록이 없음 */
+            canComplete: boolean;
+            /**
+             * @description future = 미래, before_signup = 가입 전(추적 제외), unrecorded = 식단 끼니 미기록. null 이면 완료 가능
+             * @enum {string|null}
+             */
+            blocker: "future" | "before_signup" | "unrecorded" | null;
+            /** @description 보이는 끼니(쓰는 끼니 + 기록이 있는 숨긴 끼니)의 처리 현황 */
+            slots: components["schemas"]["CompletionSlotDto"][];
+            /** @description 완료를 막는 미기록 식단 끼니 */
+            unrecorded: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
+            /** @description 완료를 막지 않는 미기록 자유 끼니. S-14 에서 한 번 확인 (D-19) */
+            unrecordedFree: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
+            /** @description 지금 완료하면 저장될 값: 기록된 합계에 영양 미상이 없음 */
+            nutritionComplete: boolean;
+            /** @description 영양 미상 항목 수 */
+            missing: number;
+            completion: components["schemas"]["DayCompletionDto"] | null;
+        };
         DayDto: {
             /** @example 2026-11-06 */
             date: string;
@@ -1246,7 +1297,17 @@ export interface components {
             nextSlot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | null;
             weight: components["schemas"]["WeightDto"] | null;
             completion: components["schemas"]["DayCompletionDto"] | null;
+            /** @description S-10 ⑧ 하루 완료 버튼 상태. GET /days/{date}/completion 과 같은 계산 */
+            completionCheck: components["schemas"]["DayCompletionCheckDto"];
             hasOverride: boolean;
+        };
+        CompleteDayDto: {
+            /**
+             * @description 미기록 자유 끼니를 같은 트랜잭션에서 '안 먹음' 으로 저장한다
+             *     (S-14 "뭔가 드셨나요?" 의 '아니오', D-19). 기본 false = 미기록 그대로 두고 완료.
+             * @default false
+             */
+            skipUnrecordedFree: boolean;
         };
         MealItemInputDto: {
             /** Format: uuid */
@@ -2206,6 +2267,71 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DayDto"];
                 };
+            };
+        };
+    };
+    MealsController_completion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayCompletionCheckDto"];
+                };
+            };
+        };
+    };
+    MealsController_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteDayDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayCompletionDto"];
+                };
+            };
+        };
+    };
+    MealsController_uncomplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -176,6 +176,12 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 단계 2 로 넘긴 것: 하루 완료 API·S-14, 재고 현황·원장 화면·예측·보정(S-40~S-42), `POST /plans/overrides/batch/preview`, 통계·알림·PWA, 통계 탭, 알림 설정·계정 삭제 화면.
 - 사용자 확인 필요: 실제 브라우저에서 각 화면의 조작(먹었음 1탭, 품목 수정, 영양 보완 다이얼로그, 받았음 처리, 캘린더 예외) — SSR 렌더만 자동 확인했고 클라이언트 조작은 e2e 범위 밖이다.
 
+## 10-1. 단계 2 상태 (2026-11-08)
+
+- 착수 전 질문 2개 닫힘(D-21 음수 재고, D-22 알림 한 체계).
+- 완료: 하루 완료 API `GET/PUT/DELETE /days/{date}/completion` + `GET /days/{date}` 의 `completionCheck`(DEC-065), e2e 5건(`test/completion.e2e-spec.ts`). e2e 파일은 한 DB 를 공유하므로 `jest.config.ts` 의 `maxWorkers: 1` 로 직렬 실행한다.
+- 다음: S-14 완료 다이얼로그·S-10 ⑧ 버튼(웹) → 통계 → 알림 → 재고 화면·예측·보정 → PWA (D-20 순서).
+
 ## 11. 단계 0 상태 (2026-11-05)
 
 - 완료: 모노레포, 카카오 로그인(API 콜백·JWT 쿠키), 사용자 격리·CSRF·소프트 삭제, `/me`, `/health`, Swagger·OpenAPI 타입 생성, 마이그레이션, e2e 11건·단위 13건 통과, 로컬 API·웹 기동 확인, 실제 카카오 앱으로 로그인 확인(2026-11-05), Dockerfile·Compose·Caddyfile·CI·백업 스크립트 작성.

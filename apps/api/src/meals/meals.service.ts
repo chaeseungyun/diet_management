@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   Prisma,
+  type DayCompletion,
   type MealItemSnapshot,
   type MealRecord,
   type Product,
@@ -35,18 +36,40 @@ import { GoalDto } from '../goals/goals.dto';
 import { WeightsService } from '../weights/weights.service';
 import { WeightDto } from '../weights/weights.dto';
 import {
+  CompleteDayDto,
+  DayCompletionCheckDto,
   DayCompletionDto,
   DayDto,
   DaySummaryDto,
   MealItemDto,
   MealRecordDto,
   PutMealRecordDto,
+  type CompletionBlocker,
   type RecordContext,
 } from './meals.dto';
 
 type Db = Prisma.TransactionClient | PrismaService;
 type SnapshotWithProduct = MealItemSnapshot & { product: Product | null };
 type RecordWithItems = MealRecord & { items: SnapshotWithProduct[] };
+
+/** 보이는 끼니 하나의 계산 결과 (계획·기록·DTO) */
+interface EvaluatedSlot {
+  slot: MealSlot;
+  plan: ResolvedPlan;
+  record: RecordWithItems | null;
+  dto: MealRecordDto;
+}
+
+/** 하루 계산 결과. 오늘 화면·완료 판정·(단계 2) 통계가 같은 값을 쓴다 (D-01) */
+interface DayEvaluation {
+  slots: EvaluatedSlot[];
+  extras: MealRecordDto[];
+  recorded: NutritionTotals;
+  expected: NutritionTotals;
+  nextSlot: MealSlot | null;
+  hasOverride: boolean;
+  completion: DayCompletion | null;
+}
 
 const include = {
   items: { include: { product: true }, orderBy: { sortOrder: 'asc' as const } },
@@ -95,18 +118,41 @@ export class MealsService {
   }
 
   async getDay(user: User, date: string): Promise<DayDto> {
+    const [ev, goal, weight] = await Promise.all([
+      this.evaluateDay(this.prisma, user, date),
+      this.goals.effectiveGoal(this.prisma, user.id, date),
+      this.weights.forDate(user.id, date),
+    ]);
+    return {
+      date,
+      isToday: date === todayIn(user.timezone),
+      slots: ev.slots.map((s) => s.dto),
+      extras: ev.extras,
+      nutrition: {
+        recorded: this.totalsDto(ev.recorded),
+        expected: this.totalsDto(ev.expected),
+        goal: goal ? GoalDto.from(goal, true) : null,
+      },
+      nextSlot: ev.nextSlot,
+      weight: weight ? WeightDto.from(weight) : null,
+      completion: ev.completion ? DayCompletionDto.from(ev.completion) : null,
+      completionCheck: this.checkFrom(user, date, ev),
+      hasOverride: ev.hasOverride,
+    };
+  }
+
+  /** 하루의 보이는 끼니·추가 간식·합계를 한 번 계산한다 */
+  private async evaluateDay(db: Db, user: User, date: string): Promise<DayEvaluation> {
     const today = todayIn(user.timezone);
     const mealDate = toDbDate(date);
-    const [resolver, records, goal, weight, completion] = await Promise.all([
-      this.plans.loadResolver(this.prisma, user.id, date, date),
-      this.prisma.mealRecord.findMany({
+    const [resolver, records, completion] = await Promise.all([
+      this.plans.loadResolver(db, user.id, date, date),
+      db.mealRecord.findMany({
         where: { userId: user.id, mealDate },
         include,
         orderBy: [{ slot: 'asc' }, { seq: 'asc' }],
       }),
-      this.goals.effectiveGoal(this.prisma, user.id, date),
-      this.weights.forDate(user.id, date),
-      this.prisma.dayCompletion.findUnique({
+      db.dayCompletion.findUnique({
         where: { userId_onDate: { userId: user.id, onDate: mealDate } },
       }),
     ]);
@@ -114,18 +160,18 @@ export class MealsService {
       MEAL_SLOTS.map((s) => [s, resolver.resolve(date, s)]),
     );
     const views = await this.templates.loadViews(
-      this.prisma,
+      db,
       user.id,
       [...plans.values()].map((p) => p.templateId).filter((x): x is string => Boolean(x)),
     );
     const versions = await this.products.currentNutritionMap(
-      this.prisma,
+      db,
       records
         .flatMap((r) => r.items.map((i) => i.productId))
         .filter((x): x is string => Boolean(x)),
     );
 
-    const slots: MealRecordDto[] = [];
+    const slots: EvaluatedSlot[] = [];
     let recorded = ZERO;
     let expected = ZERO;
     let nextSlot: MealSlot | null = null;
@@ -142,7 +188,7 @@ export class MealsService {
         view,
         versions,
       );
-      slots.push(dto);
+      slots.push({ slot, plan, record, dto });
       const totals = this.totalsOf(record, plan, view, versions);
       if (dto.status === 'unrecorded') {
         expected = addTotals(expected, totals);
@@ -166,19 +212,102 @@ export class MealsService {
     expected = addTotals(expected, recorded);
 
     return {
-      date,
-      isToday: date === today,
       slots,
       extras,
-      nutrition: {
-        recorded: this.totalsDto(recorded),
-        expected: this.totalsDto(expected),
-        goal: goal ? GoalDto.from(goal, true) : null,
-      },
+      recorded,
+      expected,
       nextSlot,
-      weight: weight ? WeightDto.from(weight) : null,
-      completion: completion ? DayCompletionDto.from(completion) : null,
       hasOverride: [...plans.values()].some((p) => p.source === 'override'),
+      completion,
+    };
+  }
+
+  // ---------- 하루 완료 (FR-06, D-04, D-18, D-19, 상태 전이 §4) ----------
+
+  async getCompletion(user: User, date: string): Promise<DayCompletionCheckDto> {
+    const ev = await this.evaluateDay(this.prisma, user, date);
+    return this.checkFrom(user, date, ev);
+  }
+
+  /**
+   * 하루 완료. 미래·가입 전 날짜와 식단 끼니 미기록은 422.
+   * 미기록 자유 끼니는 완료를 막지 않고(D-18), skipUnrecordedFree 면 같은 트랜잭션에서
+   * '안 먹음' 으로 저장한다(S-14 확인 질문의 '아니오', D-19).
+   * 이미 완료된 날은 nutritionComplete 만 다시 계산한다(멱등). 완료는 목표 달성과 무관하다(D-20).
+   */
+  async complete(user: User, date: string, dto: CompleteDayDto): Promise<DayCompletionDto> {
+    return this.prisma.$transaction(async (tx) => {
+      let ev = await this.evaluateDay(tx, user, date);
+      const check = this.checkFrom(user, date, ev);
+      if (check.blocker === 'unrecorded') {
+        throw new UnprocessableEntityException(
+          `cannot complete ${date}: unrecorded slots ${check.unrecorded.join(', ')}`,
+        );
+      }
+      if (check.blocker) {
+        throw new UnprocessableEntityException(`cannot complete ${date}: ${check.blocker}`);
+      }
+      if (dto.skipUnrecordedFree && check.unrecordedFree.length > 0) {
+        for (const slot of check.unrecordedFree) {
+          const s = ev.slots.find((x) => x.slot === slot);
+          if (!s) continue;
+          const body = new PutMealRecordDto();
+          body.status = 'skipped';
+          body.version = s.record?.version ?? null;
+          await this.write(tx, user, { date, slot, seq: 0, plan: s.plan }, s.record, body);
+        }
+        ev = await this.evaluateDay(tx, user, date);
+      }
+      const onDate = toDbDate(date);
+      const row = await tx.dayCompletion.upsert({
+        where: { userId_onDate: { userId: user.id, onDate } },
+        create: { userId: user.id, onDate, nutritionComplete: ev.recorded.complete },
+        update: { nutritionComplete: ev.recorded.complete },
+      });
+      return DayCompletionDto.from(row);
+    });
+  }
+
+  /** 완료 해제. 없는 날도 조용히 204 */
+  async uncomplete(user: User, date: string): Promise<void> {
+    await this.prisma.dayCompletion.deleteMany({
+      where: { userId: user.id, onDate: toDbDate(date) },
+    });
+  }
+
+  /**
+   * 완료 판정. 미래·가입 전 날짜는 추적 제외(상태 전이 §4).
+   * 막는 것은 식단 끼니 미기록만이고, 자유 끼니 미기록은 따로 알려 준다(D-18·D-19).
+   * nutritionComplete 는 기록된 합계(먹었음 + 안 먹음 0 + 추가 간식)에 미상이 없는지다.
+   */
+  private checkFrom(user: User, date: string, ev: DayEvaluation): DayCompletionCheckDto {
+    const today = todayIn(user.timezone);
+    const signup = todayIn(user.timezone, user.createdAt);
+    const unrecorded = ev.slots
+      .filter((s) => s.dto.status === 'unrecorded' && s.plan.planType === 'template')
+      .map((s) => s.slot);
+    const unrecordedFree = ev.slots
+      .filter((s) => s.dto.status === 'unrecorded' && s.plan.planType === 'none')
+      .map((s) => s.slot);
+    let blocker: CompletionBlocker | null = null;
+    if (date > today) blocker = 'future';
+    else if (date < signup) blocker = 'before_signup';
+    else if (unrecorded.length > 0) blocker = 'unrecorded';
+    return {
+      date,
+      canComplete: blocker === null,
+      blocker,
+      slots: ev.slots.map((s) => ({
+        slot: s.slot,
+        planType: s.plan.planType,
+        status: s.dto.status,
+        counted: s.plan.planType === 'template' || s.dto.status !== 'unrecorded',
+      })),
+      unrecorded,
+      unrecordedFree,
+      nutritionComplete: ev.recorded.complete,
+      missing: ev.recorded.missing,
+      completion: ev.completion ? DayCompletionDto.from(ev.completion) : null,
     };
   }
 

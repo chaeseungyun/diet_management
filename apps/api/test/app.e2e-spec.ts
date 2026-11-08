@@ -63,7 +63,10 @@ describe('phase 0: auth, isolation, account', () => {
     configureApp(app, env);
     await app.init();
     prisma = app.get(PrismaService);
-    await prisma.user.deleteMany();
+    // 다른 e2e 파일이 남긴 자식 행(기록·원장)까지 지운다. 파일은 직렬로 돈다(jest.config maxWorkers)
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE users, idempotency_keys RESTART IDENTITY CASCADE',
+    );
     server = app.getHttpServer();
   });
 

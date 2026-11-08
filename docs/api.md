@@ -109,9 +109,9 @@
 | `PUT /meal-records/{date}/{slot}` | **상태 설정** `{status, kind(home|outside), items[{productId, quantity, unit}], outsideMenu, outsideKcal…, version}`. 서버가 이전 스냅샷과의 차이로 `consume_reverse(+)` 후 `consume(-)` 생성. 완료된 날이면 `DayCompletion` 해제. 해당 슬롯 pending 알림 `skipped`. 응답에 새 `version`과 `stock_check_needed` 항목 포함 | **확정(D-04, DEC-025)**. 1 트랜잭션, Idempotency-Key, 버전 불일치 `409`. 재고 부족이어도 저장을 막지 않음. `kind=home` 의 `eaten` 은 `items` 1개 이상(빈 식사는 `422`, 안 먹음으로 기록), 조회는 `skipped` 에도 계획 품목을 '예정' 으로 포함(DEC-057) |
 | `POST /meal-records/{date}/extra` | 추가 간식 생성 | 같은 날 다건, `id`로 식별(**D-10**) |
 | `PUT /meal-records/{date}/extra/{id}` · `DELETE .../extra/{id}` | 추가 간식 수정·삭제. 삭제 시 차감 전량 복구 | |
-| `GET /days/{date}/completion` | 완료 가능 여부, 활성 슬롯 처리 현황, 미기록 목록, 영양 완전 여부 예측 | 미기록 자유 끼니 제외(D-18) |
-| `PUT /days/{date}/completion` | 하루 완료. 활성 슬롯 미처리면 `422`. `nutrition_complete` 계산 저장 | 미래·가입 전 날짜 거부 |
-| `DELETE /days/{date}/completion` | 완료 해제 | |
+| `GET /days/{date}/completion` | 완료 가능 여부(`canComplete`·`blocker`: future / before_signup / unrecorded), 보이는 끼니 처리 현황(`slots[].counted`), 막는 미기록 식단 끼니 `unrecorded[]`, 막지 않는 미기록 자유 끼니 `unrecordedFree[]`, `nutritionComplete`·`missing` 예측, 현재 완료 | **구현(2026-11-08, DEC-065)**. `GET /days/{date}` 의 `completionCheck` 와 같은 계산. 미기록 자유 끼니는 막지 않음(D-18) |
+| `PUT /days/{date}/completion` | 하루 완료 `{skipUnrecordedFree?}`. 식단 끼니 미기록·미래·가입 전 날짜는 `422`. `skipUnrecordedFree=true` 면 미기록 자유 끼니를 같은 트랜잭션에서 `skipped` 로 저장(S-14 '아니오', D-19). `nutritionComplete` = 기록된 합계에 미상 없음. 이미 완료된 날은 `nutritionComplete` 만 재계산(멱등, `completedAt` 유지) | **구현**. 목표 달성과 무관(D-20) |
+| `DELETE /days/{date}/completion` | 완료 해제. 없는 날도 `204` | **구현** |
 
 `PUT /meal-records` 처리 순서(ERD §4-1·4-2): `IdempotencyKey` 삽입 → `version` 비교 → `MealRecord` 상태·종류 갱신 → 기존 `MealItemSnapshot`의 `deducts_stock` 항목마다 `consume_reverse(+)` → 새 스냅샷 생성(현재 `ProductNutritionVersion` 복사) → `deducts_stock` 항목마다 `consume(-)` → `DayCompletion` 해제 → 알림 `skipped` → 응답 저장. 외부 식사 항목은 이동 0, `is_stock_tracked=false` 제품은 차감 제외.
 

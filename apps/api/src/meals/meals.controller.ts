@@ -12,7 +12,15 @@ import type { User } from '@prisma/client';
 import type { MealSlot } from '@diet/shared';
 import { CurrentUser } from '../auth/auth.guard';
 import { DateParamPipe, IdempotencyKey, SlotParamPipe, UuidParamPipe } from '../common/validators';
-import { DayDto, DaySummaryDto, MealRecordDto, PutMealRecordDto } from './meals.dto';
+import {
+  CompleteDayDto,
+  DayCompletionCheckDto,
+  DayCompletionDto,
+  DayDto,
+  DaySummaryDto,
+  MealRecordDto,
+  PutMealRecordDto,
+} from './meals.dto';
 import { MealsService } from './meals.service';
 
 const idemHeader = {
@@ -47,6 +55,41 @@ export class MealsController {
   @ApiOkResponse({ type: DayDto })
   day(@CurrentUser() user: User, @Param('date', DateParamPipe) date: string): Promise<DayDto> {
     return this.meals.getDay(user, date);
+  }
+
+  @Get('days/:date/completion')
+  @ApiOperation({
+    summary:
+      '완료 가능 여부·끼니 처리 현황·미기록 목록·영양 완전 예측 (S-14). 미기록 자유 끼니는 막지 않음 (D-18)',
+  })
+  @ApiOkResponse({ type: DayCompletionCheckDto })
+  completion(
+    @CurrentUser() user: User,
+    @Param('date', DateParamPipe) date: string,
+  ): Promise<DayCompletionCheckDto> {
+    return this.meals.getCompletion(user, date);
+  }
+
+  @Put('days/:date/completion')
+  @ApiOperation({
+    summary:
+      '하루 완료. 식단 끼니 미기록·미래·가입 전 날짜는 422. skipUnrecordedFree 면 미기록 자유 끼니를 안 먹음으로 함께 저장',
+  })
+  @ApiOkResponse({ type: DayCompletionDto })
+  complete(
+    @CurrentUser() user: User,
+    @Param('date', DateParamPipe) date: string,
+    @Body() body: CompleteDayDto,
+  ): Promise<DayCompletionDto> {
+    return this.meals.complete(user, date, body);
+  }
+
+  @Delete('days/:date/completion')
+  @HttpCode(204)
+  @ApiOperation({ summary: '완료 해제' })
+  @ApiNoContentResponse()
+  uncomplete(@CurrentUser() user: User, @Param('date', DateParamPipe) date: string): Promise<void> {
+    return this.meals.uncomplete(user, date);
   }
 
   @Get('meal-records/:date/:slot')

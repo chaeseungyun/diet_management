@@ -7,6 +7,8 @@ const common: Pick<Config, 'transform' | 'moduleFileExtensions' | 'testEnvironme
 };
 
 const config: Config = {
+  // e2e 파일들이 한 PostgreSQL 을 공유하고 TRUNCATE 를 쓰므로 파일을 직렬로 돈다
+  maxWorkers: 1,
   projects: [
     {
       displayName: 'unit',

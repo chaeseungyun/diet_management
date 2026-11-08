@@ -1357,6 +1357,98 @@
         ]
       }
     },
+    "/api/v1/days/{date}/completion": {
+      "get": {
+        "operationId": "MealsController_completion",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayCompletionCheckDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "완료 가능 여부·끼니 처리 현황·미기록 목록·영양 완전 예측 (S-14). 미기록 자유 끼니는 막지 않음 (D-18)",
+        "tags": [
+          "meals"
+        ]
+      },
+      "put": {
+        "operationId": "MealsController_complete",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteDayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayCompletionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "하루 완료. 식단 끼니 미기록·미래·가입 전 날짜는 422. skipUnrecordedFree 면 미기록 자유 끼니를 안 먹음으로 함께 저장",
+        "tags": [
+          "meals"
+        ]
+      },
+      "delete": {
+        "operationId": "MealsController_uncomplete",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "완료 해제",
+        "tags": [
+          "meals"
+        ]
+      }
+    },
     "/api/v1/meal-records/{date}/{slot}": {
       "get": {
         "operationId": "MealsController_record",
@@ -3670,6 +3762,132 @@
           "nutritionComplete"
         ]
       },
+      "CompletionSlotDto": {
+        "type": "object",
+        "properties": {
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack"
+            ],
+            "type": "string"
+          },
+          "planType": {
+            "enum": [
+              "template",
+              "none"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unrecorded",
+              "eaten",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "counted": {
+            "type": "boolean",
+            "description": "완료 판정·집계에 들어가는가: 식단 끼니 전부 + 기록한 자유 끼니 (D-18)"
+          }
+        },
+        "required": [
+          "slot",
+          "planType",
+          "status",
+          "counted"
+        ]
+      },
+      "DayCompletionCheckDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-08"
+          },
+          "canComplete": {
+            "type": "boolean",
+            "description": "추적 대상 날짜이고 식단 끼니에 미기록이 없음"
+          },
+          "blocker": {
+            "nullable": true,
+            "description": "future = 미래, before_signup = 가입 전(추적 제외), unrecorded = 식단 끼니 미기록. null 이면 완료 가능",
+            "enum": [
+              "future",
+              "before_signup",
+              "unrecorded"
+            ],
+            "type": "string"
+          },
+          "slots": {
+            "description": "보이는 끼니(쓰는 끼니 + 기록이 있는 숨긴 끼니)의 처리 현황",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompletionSlotDto"
+            }
+          },
+          "unrecorded": {
+            "type": "array",
+            "description": "완료를 막는 미기록 식단 끼니",
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ]
+            }
+          },
+          "unrecordedFree": {
+            "type": "array",
+            "description": "완료를 막지 않는 미기록 자유 끼니. S-14 에서 한 번 확인 (D-19)",
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "afternoon_snack",
+                "dinner",
+                "evening_snack"
+              ]
+            }
+          },
+          "nutritionComplete": {
+            "type": "boolean",
+            "description": "지금 완료하면 저장될 값: 기록된 합계에 영양 미상이 없음"
+          },
+          "missing": {
+            "type": "number",
+            "description": "영양 미상 항목 수"
+          },
+          "completion": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DayCompletionDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "canComplete",
+          "blocker",
+          "slots",
+          "unrecorded",
+          "unrecordedFree",
+          "nutritionComplete",
+          "missing",
+          "completion"
+        ]
+      },
       "DayDto": {
         "type": "object",
         "properties": {
@@ -3726,6 +3944,14 @@
               }
             ]
           },
+          "completionCheck": {
+            "description": "S-10 ⑧ 하루 완료 버튼 상태. GET /days/{date}/completion 과 같은 계산",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DayCompletionCheckDto"
+              }
+            ]
+          },
           "hasOverride": {
             "type": "boolean"
           }
@@ -3739,8 +3965,19 @@
           "nextSlot",
           "weight",
           "completion",
+          "completionCheck",
           "hasOverride"
         ]
+      },
+      "CompleteDayDto": {
+        "type": "object",
+        "properties": {
+          "skipUnrecordedFree": {
+            "type": "boolean",
+            "description": "미기록 자유 끼니를 같은 트랜잭션에서 '안 먹음' 으로 저장한다\n(S-14 \"뭔가 드셨나요?\" 의 '아니오', D-19). 기본 false = 미기록 그대로 두고 완료.",
+            "default": false
+          }
+        }
       },
       "MealItemInputDto": {
         "type": "object",

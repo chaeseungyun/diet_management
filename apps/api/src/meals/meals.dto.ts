@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -356,6 +357,75 @@ export class DayCompletionDto {
   }
 }
 
+// ---------- 하루 완료 (FR-06, D-04, D-18, D-19, S-14) ----------
+
+/** 하루 완료 요청 */
+export class CompleteDayDto {
+  /**
+   * 미기록 자유 끼니를 같은 트랜잭션에서 '안 먹음' 으로 저장한다
+   * (S-14 "뭔가 드셨나요?" 의 '아니오', D-19). 기본 false = 미기록 그대로 두고 완료.
+   */
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  skipUnrecordedFree?: boolean;
+}
+
+export const COMPLETION_BLOCKERS = ['future', 'before_signup', 'unrecorded'] as const;
+export type CompletionBlocker = (typeof COMPLETION_BLOCKERS)[number];
+
+export class CompletionSlotDto {
+  @ApiProperty({ enum: MEAL_SLOTS })
+  slot!: MealSlot;
+
+  @ApiProperty({ enum: PLAN_TYPES })
+  planType!: PlanType;
+
+  @ApiProperty({ enum: MEAL_STATUSES })
+  status!: MealStatus;
+
+  /** 완료 판정·집계에 들어가는가: 식단 끼니 전부 + 기록한 자유 끼니 (D-18) */
+  @ApiProperty()
+  counted!: boolean;
+}
+
+/** 완료 가능 여부와 근거. 오늘 화면(S-10 ⑧)과 완료 다이얼로그(S-14)가 같은 값을 쓴다 */
+export class DayCompletionCheckDto {
+  @ApiProperty({ example: '2026-11-08' })
+  date!: string;
+
+  /** 추적 대상 날짜이고 식단 끼니에 미기록이 없음 */
+  @ApiProperty()
+  canComplete!: boolean;
+
+  /** future = 미래, before_signup = 가입 전(추적 제외), unrecorded = 식단 끼니 미기록. null 이면 완료 가능 */
+  @ApiProperty({ enum: COMPLETION_BLOCKERS, nullable: true })
+  blocker!: CompletionBlocker | null;
+
+  /** 보이는 끼니(쓰는 끼니 + 기록이 있는 숨긴 끼니)의 처리 현황 */
+  @ApiProperty({ type: CompletionSlotDto, isArray: true })
+  slots!: CompletionSlotDto[];
+
+  /** 완료를 막는 미기록 식단 끼니 */
+  @ApiProperty({ enum: MEAL_SLOTS, isArray: true })
+  unrecorded!: MealSlot[];
+
+  /** 완료를 막지 않는 미기록 자유 끼니. S-14 에서 한 번 확인 (D-19) */
+  @ApiProperty({ enum: MEAL_SLOTS, isArray: true })
+  unrecordedFree!: MealSlot[];
+
+  /** 지금 완료하면 저장될 값: 기록된 합계에 영양 미상이 없음 */
+  @ApiProperty()
+  nutritionComplete!: boolean;
+
+  /** 영양 미상 항목 수 */
+  @ApiProperty()
+  missing!: number;
+
+  @ApiProperty({ type: DayCompletionDto, nullable: true })
+  completion!: DayCompletionDto | null;
+}
+
 export class DayNutritionDto {
   /** 먹었음·안 먹음·추가 간식의 실제 합계 ('기록된 합계') */
   @ApiProperty({ type: NutritionTotalsDto })
@@ -395,6 +465,10 @@ export class DayDto {
 
   @ApiProperty({ type: DayCompletionDto, nullable: true })
   completion!: DayCompletionDto | null;
+
+  /** S-10 ⑧ 하루 완료 버튼 상태. GET /days/{date}/completion 과 같은 계산 */
+  @ApiProperty({ type: () => DayCompletionCheckDto })
+  completionCheck!: DayCompletionCheckDto;
 
   @ApiProperty()
   hasOverride!: boolean;

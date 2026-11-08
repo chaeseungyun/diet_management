@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있다(2026-11-06; 단계 0 은 2026-11-05). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. 도메인·VM은 2026-11-06 구매 예정이라 배포·HTTPS·백업 복원 확인은 아직이다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 를 시작했다(2026-11-08, 하루 완료 API, DEC-065). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
 
 명령(저장소 루트에서):
 
@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
 - 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.
-- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra)·`weights`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,ui,shell}`. DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
+- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`. e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,ui,shell}`. DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
 
 코드 규칙:
 
