@@ -11,8 +11,9 @@ import { SlotCard } from './slot-card';
 import { ExtrasPanel } from './extras-panel';
 import { AddMealMenu } from './add-meal-menu';
 import { WeightQuick } from './weight-quick';
+import { DayComplete } from './day-complete';
 
-/** 오늘 홈 (S-10 ①~⑥). ⑦ 소진 임박·⑧ 하루 완료는 단계 2 */
+/** 오늘 홈 (S-10 ①~⑥, ⑧ 하루 완료). ⑦ 소진 임박은 재고 화면과 함께 (D-20 순서) */
 export async function DayScreen({
   date,
   today,
@@ -105,11 +106,13 @@ export async function DayScreen({
         <WeightQuick date={date} weight={day.weight} />
       </Section>
 
-      <p className="text-xs text-muted-foreground">
-        하루 완료·떨어질 식품 알림은 단계 2에서 추가된다. 완료 상태:{' '}
-        {day.completion ? '완료' : '진행 중'}
-        {day.hasOverride ? ' · 이 날은 날짜 예외가 적용됨' : ''}
-      </p>
+      <Section title="하루 완료">
+        <DayComplete date={date} check={day.completionCheck} completion={day.completion} />
+      </Section>
+
+      {day.hasOverride ? (
+        <p className="text-xs text-muted-foreground">이 날은 날짜 예외가 적용됨</p>
+      ) : null}
     </Page>
   );
 }

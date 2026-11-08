@@ -635,7 +635,7 @@
 
 ### DEC-065 하루 완료 API 세부 (단계 2 첫 작업)
 
-- 날짜 2026-11-08 / 상태 확정 / 범위: `GET/PUT/DELETE /days/{date}/completion`, `DayDto.completionCheck`, `MealsService.evaluateDay`, `test/completion.e2e-spec.ts`, `jest.config.ts`(`maxWorkers: 1`), `test/app.e2e-spec.ts`(TRUNCATE CASCADE). 커밋: 이 항목과 같은 커밋
+- 날짜 2026-11-08 / 상태 확정 / 범위: `GET/PUT/DELETE /days/{date}/completion`, `DayDto.completionCheck`, `MealsService.evaluateDay`, `test/completion.e2e-spec.ts`, `jest.config.ts`(`maxWorkers: 1`), `test/app.e2e-spec.ts`(TRUNCATE CASCADE). 웹 S-10 ⑧·S-14 는 후속 커밋(`components/day/day-complete.tsx`). 커밋: 이 항목과 같은 커밋
 - **맥락**: D-20 순서의 첫 항목. 스키마 `DayCompletion` 과 수정 시 완료 해제(D-04)는 단계 1 에 있었고, 완료 판정·저장 API 와 S-14 가 없었다.
 - **결정**:
   - 판정은 `evaluateDay` 하나로 계산한다. 오늘 화면(`GET /days/{date}`)이 같은 함수를 쓰고 응답에 `completionCheck` 를 넣어 S-10 ⑧ 버튼이 추가 요청 없이 상태를 안다(D-01 "같은 계산 함수").
@@ -643,6 +643,7 @@
   - `PUT` 본문 `skipUnrecordedFree=true` 면 미기록 자유 끼니를 **같은 트랜잭션**에서 `skipped` 로 저장한 뒤 완료한다. S-14 "뭔가 드셨나요? 아니오" 한 탭이 서버 왕복 한 번이고, 중간에 실패하면 아무것도 저장되지 않는다. 기록 쓰기는 기존 `write()` 를 그대로 거치므로 version 잠금·완료 해제 규칙이 같다.
   - `nutritionComplete` = 기록된 합계(먹었음 + 안 먹음 0 + 추가 간식)의 `complete`. 미기록 자유 끼니는 합계에 없으므로 영향 없다. 재완료는 upsert 로 `nutritionComplete` 만 갱신하고 `completedAt` 은 유지한다(D-03 보완 뒤 다시 누르면 '영양 완전' 으로 바뀔 수 있다).
   - `DELETE` 는 없는 날도 204(멱등). 완료는 목표 달성과 무관하다(D-20).
+  - S-14 는 미기록 자유 끼니가 있을 때 **아니오 / 기록하기** 두 버튼을 주 선택지로 두고(D-19 문구 그대로), '미기록으로 두고 완료' 는 작은 텍스트 버튼으로 둔다. D-18 이 허용하는 경로지만 기본 흐름은 "확인하고 넘어가기" 다. 미래·가입 전 날짜는 버튼 없이 문구만 보인다.
   - 테스트: e2e 파일 셋이 한 PostgreSQL 을 공유하고 `TRUNCATE` 를 쓰므로 jest 를 `maxWorkers: 1` 로 직렬화했다. 기존 단계 0 스위트의 `user.deleteMany()` 는 자식 행이 있으면 FK 로 실패해 TRUNCATE CASCADE 로 바꿨다(그동안은 실행 순서 덕에 통과하던 것).
 - **버린 대안**: (a) 자유 끼니 '안 먹음' 저장을 웹이 `PUT /meal-records` 여러 번 + `PUT completion` 으로 — 중간 실패 시 반쯤 저장되고 업무 규칙이 Next 쪽으로 샌다(NFR-07). (b) `GET /days/{date}/completion` 만 두고 `DayDto` 에는 넣지 않기 — S-10 이 매번 두 번 요청한다. (c) 가입 전 날짜 허용 — 통계 분모(상태 전이 §4 '추적제외')가 흔들린다.
 - **근거**: 완료는 통계의 유효일 기준이라 판정 함수가 하나여야 하고, 자유 끼니 확인 질문은 D-19 가 정한 대로 "막지 않되 한 번 묻는" 모양을 API 가 그대로 지원해야 한다.

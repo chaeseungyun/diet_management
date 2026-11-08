@@ -179,8 +179,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 ## 10-1. 단계 2 상태 (2026-11-08)
 
 - 착수 전 질문 2개 닫힘(D-21 음수 재고, D-22 알림 한 체계).
-- 완료: 하루 완료 API `GET/PUT/DELETE /days/{date}/completion` + `GET /days/{date}` 의 `completionCheck`(DEC-065), e2e 5건(`test/completion.e2e-spec.ts`). e2e 파일은 한 DB 를 공유하므로 `jest.config.ts` 의 `maxWorkers: 1` 로 직렬 실행한다.
-- 다음: S-14 완료 다이얼로그·S-10 ⑧ 버튼(웹) → 통계 → 알림 → 재고 화면·예측·보정 → PWA (D-20 순서).
+- 완료: 하루 완료 API `GET/PUT/DELETE /days/{date}/completion` + `GET /days/{date}` 의 `completionCheck`(DEC-065), e2e 5건(`test/completion.e2e-spec.ts`). 웹 S-10 ⑧·S-14(`components/day/day-complete.tsx`), `next build` 통과. 브라우저에서의 다이얼로그 조작(아니오 → 안 먹음 저장, 완료 해제)은 사용자 확인 필요. e2e 파일은 한 DB 를 공유하므로 `jest.config.ts` 의 `maxWorkers: 1` 로 직렬 실행한다.
+- 다음: 통계(`GET /stats/summary`·`/stats/daily`, S-60, 통계 탭) → 알림 → 재고 화면·예측·보정 → PWA (D-20 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

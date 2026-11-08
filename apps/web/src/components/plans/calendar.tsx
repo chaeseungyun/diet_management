@@ -166,7 +166,7 @@ export function Calendar({
           </tbody>
         </table>
         <p className="text-[11px] text-muted-foreground">
-          ● 완료(초록) · 예외(주황) · 식단 외 식사 기록(파랑). 완료 표시는 단계 2 에서 켜집니다.
+          ● 완료(초록) · 예외(주황) · 식단 외 식사 기록(파랑)
         </p>
       </div>
 
