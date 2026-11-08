@@ -164,6 +164,7 @@
 7. ~~**D-03 보완 흐름**~~ → **2단계(응답 `unknownSnapshotCount` + `backfill`)로 확정(D-16, DEC-054, 2026-11-06)**. §3 표 그대로 구현됨.
 8. ~~**OpenAPI 문서**~~ → **NestJS Swagger로 생성하고 프런트 타입을 그 산출물에서 생성(D-05, 2026-11-05)**.
 9. `POST /push/test`, `GET /notifications` 포함 여부 (screens §9-5와 연동).
+10. 끼니 공유(친구) API `/friends`·`/friend-invites`·`/me/sharing`·댓글·좋아요는 [`sharing-plan.md`](sharing-plan.md) §6 (방향 확정, DEC-066). 타인 데이터 읽기는 접근 판정 함수 하나를 거치고 실패는 404(D-06) 로 §0 규칙을 유지한다. 예외: 차단당한 쪽의 친구 요청은 차단 사실을 숨기기 위해 정상 요청과 같은 202 를 돌려준다.
 
 ## 13. 단계별 묶음
 

@@ -125,7 +125,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 ```
 
 - `BACKUP_PASSPHRASE`는 VM 밖(비밀번호 관리자)에도 보관한다. 이것이 없으면 백업은 복원할 수 없다.
-- 백업에는 사진 등 파일이 없다(확장 단계 정책). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
+- 백업에는 사진 등 파일이 없다(DEC-014·DEC-069). 식사 사진은 EXT-02 부터 VM 볼륨 `data/photos/` 에 리사이즈본만 7~30일 보관되고 백업 밖이다. 디스크를 잃으면 사진은 복구되지 않는다(사용자 안내 문구에 포함). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
 - 백업 만료: 7일 후 로컬·원격 모두 삭제. 계정 삭제 요청 시 "최대 7일 안에 백업에서도 사라진다"로 안내한다(NFR-04).
 
 ## 6. 계정·개인 데이터 삭제 절차 (NFR-04)
@@ -142,7 +142,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 
 - 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
 - API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
-- 확인 항목(주 1회): `df -h`(디스크), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔).
+- 확인 항목(주 1회): `df -h`(디스크, 80 % 초과면 정리), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔). EXT-02 뒤에는 `du -sh data/photos`(사진 예산 20 GB, DEC-069)와 사진 정리 작업 로그(계산된 보관 일수가 30 미만이면 알림)를 추가한다.
 - 메모리 실측(단계 0 완료 조건, 요구사항 §7-5). 2026-11-07 첫 배포 직후, 사용자 0명 유휴 상태의 `docker stats --no-stream`:
 
   | 컨테이너 | 메모리 | 비고 |
