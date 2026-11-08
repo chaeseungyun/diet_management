@@ -20,7 +20,8 @@ export function Page({
   return (
     <main
       className={cn(
-        'mx-auto flex w-full flex-col gap-4 px-4 pb-24 pt-4 md:pb-8',
+        // 하단 탭 높이 + 홈 바 영역(safe area, DEC-073)
+        'mx-auto flex w-full flex-col gap-4 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 md:pb-8',
         wide ? 'max-w-4xl' : 'max-w-md md:max-w-2xl',
       )}
     >

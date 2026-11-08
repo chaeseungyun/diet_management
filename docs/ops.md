@@ -183,7 +183,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 완료: 하루 완료 API `GET/PUT/DELETE /days/{date}/completion` + `GET /days/{date}` 의 `completionCheck`(DEC-065), e2e 5건(`test/completion.e2e-spec.ts`). 웹 S-10 ⑧·S-14(`components/day/day-complete.tsx`), `next build` 통과. 브라우저에서의 다이얼로그 조작(아니오 → 안 먹음 저장, 완료 해제)은 사용자 확인 필요. e2e 파일은 한 DB 를 공유하므로 `jest.config.ts` 의 `maxWorkers: 1` 로 직렬 실행한다.
 - 완료: 통계 `GET /stats/summary`·`/stats/daily`(DEC-068), 단위 5건·e2e 5건(`test/stats.e2e-spec.ts`). 웹 S-60(`/stats`)·하단 '통계' 탭, `next build` 통과. 로컬 `dev:tester` 계정에 2주치 예시 기록을 넣어 계산값을 손으로 센 값과 대조했고, 모든 기간 변형이 200 으로 렌더됨을 확인했다. Chrome 확장 미연결로 실제 브라우저 화면(차트 겹침·모바일 폭)은 사용자 확인 필요.
 - 로컬 `dev:tester` 는 가입일을 14일 전으로 바꾸고 식품 3개·식단 2개·식단표·목표·기록을 넣은 상태다(통계 확인용). 깨끗한 계정이 필요하면 `/api/v1/auth/dev?as=<새 이름>` 으로 새로 만든다.
-- 다음: 알림(푸시 구독·예약 작업·S-71) → 재고 화면·예측·보정 → PWA (D-20 순서).
+- 완료: PWA-1(DEC-073) — `app/manifest.ts`, 아이콘(`public/icons/`, 다시 만들 때 `pnpm --filter @diet/web icons`), 푸시 전용 서비스 워커 `public/sw.js`(fetch 캐시 없음, `Cache-Control: no-cache`), iOS 메타·safe area, S-72 `/settings/install`, 오늘 화면 설치 배너. 운영 빌드에서 매니페스트·아이콘·`sw.js` 헤더, PC 크롬에서 워커 활성화·설치 버튼 확인. 실기기 확인 전: 배포 뒤 아이폰에서 홈 화면 추가 → 앱에서 카카오 로그인 → 로그인 유지 여부를 먼저 본다(`screens.md` §9-11).
+- 다음: 알림(푸시 구독·예약 작업·S-71, `web-push@3.6.7` DEC-072) → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
 
 명령(저장소 루트에서):
 
@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
 - 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.
-- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,ui,shell}`. DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
+- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,pwa,ui,shell}`. PWA 는 `app/manifest.ts`·`public/sw.js`(푸시 전용, fetch 캐시 없음)·`public/icons/`(`pnpm --filter @diet/web icons` 로 생성). DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
 
 코드 규칙:
 
@@ -75,7 +75,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 구현 순서
 
-단계 0(로그인·배포·사용자 격리) → 1(제품·식단·기록·체중 + 구매·입고·섭취 차감·복구 원장 API, D-15) → 2(순서는 D-20: 하루 완료 → 통계 → 알림 → 재고 화면·예측·보정 → PWA) → 3 EXT-02a 식사 사진 업로드·보관(AI 없음, 리사이즈본 7~30일 보관·20 GB 예산, DEC-069) → 4 끼니 공유 공유-1·2·3(`docs/sharing-plan.md`, DEC-066) → 5 OCR → 6 EXT-02b 사진 AI 분석 → 7 크롤링·추천(DEC-071). 화면 묶음은 `screens.md` §8, 완료 조건은 `requirements-phase1.md` §4. 정합성·격리·스냅샷·백업 복구를 UI 장식보다 먼저 검증한다. D-03 보완 흐름은 2단계로 확정됐다(D-16). '계획 없음' 슬롯은 자유 끼니로 확정됐다(D-18: 미기록만 집계 제외, 쓰는 끼니는 `User.activeSlots`). 음수 재고는 '재고 확인 필요' 배지만 두고 예측·소진 알림에서 제외한다(D-21). 소진 알림과 식사 알림은 한 체계다(D-22). 단계 2 착수 전 질문은 모두 닫혔다. 핵심 테스트 대상: 사용자 격리, 단위 변환, 재고 트랜잭션·중복 요청·복구, 날짜 예외, 과거 기록 보존, 미기록 통계 제외.
+단계 0(로그인·배포·사용자 격리) → 1(제품·식단·기록·체중 + 구매·입고·섭취 차감·복구 원장 API, D-15) → 2(순서는 D-20 + DEC-073: 하루 완료 → 통계 → PWA-1 → 알림 → 재고 화면·예측·보정 → PWA 마무리) → 3 EXT-02a 식사 사진 업로드·보관(AI 없음, 리사이즈본 7~30일 보관·20 GB 예산, DEC-069) → 4 끼니 공유 공유-1·2·3(`docs/sharing-plan.md`, DEC-066) → 5 OCR → 6 EXT-02b 사진 AI 분석 → 7 크롤링·추천(DEC-071). 화면 묶음은 `screens.md` §8, 완료 조건은 `requirements-phase1.md` §4. 정합성·격리·스냅샷·백업 복구를 UI 장식보다 먼저 검증한다. D-03 보완 흐름은 2단계로 확정됐다(D-16). '계획 없음' 슬롯은 자유 끼니로 확정됐다(D-18: 미기록만 집계 제외, 쓰는 끼니는 `User.activeSlots`). 음수 재고는 '재고 확인 필요' 배지만 두고 예측·소진 알림에서 제외한다(D-21). 소진 알림과 식사 알림은 한 체계다(D-22). 단계 2 착수 전 질문은 모두 닫혔다. 핵심 테스트 대상: 사용자 격리, 단위 변환, 재고 트랜잭션·중복 요청·복구, 날짜 예외, 과거 기록 보존, 미기록 통계 제외.
 
 ## 저장소 관례
 

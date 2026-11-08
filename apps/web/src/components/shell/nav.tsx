@@ -46,7 +46,7 @@ export function BottomTabs() {
   return (
     <nav
       aria-label="주 메뉴"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-5">
         {items.map((it) => {
@@ -119,6 +119,7 @@ export function Sidebar() {
                   links={[
                     ['/weight', '체중'],
                     ['/settings/goals', '목표'],
+                    ['/settings/install', '앱 설치'],
                   ]}
                   pathname={pathname}
                 />

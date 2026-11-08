@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo \"(web) ESLint은 단계 1에서 도입\"",
     "test": "echo \"(web) 단계 0 테스트 없음\"",
-    "api-types": "openapi-typescript ../api/openapi.json -o src/lib/api-types.d.ts"
+    "api-types": "openapi-typescript ../api/openapi.json -o src/lib/api-types.d.ts",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@diet/shared": "workspace:*",
