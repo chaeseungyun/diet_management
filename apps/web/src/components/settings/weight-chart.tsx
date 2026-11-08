@@ -6,7 +6,8 @@ export function WeightChart({
   items,
   target,
 }: {
-  items: Schemas['WeightDto'][];
+  /** S-50 의 WeightDto 와 S-60 의 일별 체중을 같이 받는다 */
+  items: Pick<Schemas['WeightDto'], 'date' | 'weightKg'>[];
   target: number | null;
 }) {
   if (items.length === 0) return <EmptyState>측정 데이터 없음</EmptyState>;

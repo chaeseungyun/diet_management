@@ -127,8 +127,8 @@
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /stats/summary?from=&to=` | 기록 완료율(완료일/추적일), 연속 기록 일수, 영양 평균(유효일/전체일, 제외 이유: 미기록·영양 미상), 체중 요약, 계획 실천율(사전 변경 슬롯 분모 제외, 변경 시점) | 유효일 0이면 `null` + ‘데이터 없음’. 미래·가입 전 날짜 제외 |
-| `GET /stats/daily?from=&to=` | PC 차트용 일별 영양·체중·완료 상태·당시 목표 시계열, 영양 불완전 날 목록 | 불완전 날의 합계는 ‘기록된 합계’로 표기 |
+| `GET /stats/summary?from=&to=` | 기록 완료율(`completedDays/trackedDays`), 오늘 기준 연속 기록 `currentStreak`(오늘 미완료면 어제부터), 지표별 영양 평균 `averages.{kcal,carbG,proteinG,fatG}`(`average`·`validDays`·`unknownDays`, 제외 이유 = `notCompletedDays` 미완료 + `unknownDays` 영양 미상), 목표 달성일 `goal`(완료 + kcal 완전 + 목표 있던 날 중 kcal ≤ 그 날 목표, D-20), 체중 `weight`(기간 첫·끝 측정, 2회 미만이면 변화 null), 계획 실천율 `adherence`(정확 일치, 자유 끼니로 바꾼 날짜 예외는 분모 제외) | **구현(2026-11-08, DEC-068)**. 유효일 0이면 `null`('데이터 없음'). 미래·가입 전 날짜 제외. 최대 366일, 조회 시 계산 |
+| `GET /stats/daily?from=&to=` | 일별 `tracked`·`completed`, 먹었음 기록의 확인된 값 합계(kcal·탄·단·지)와 지표별 `complete`, 당시 목표 `goalKcal`, `weightKg`. 영양 불완전 날 목록은 `completed && !complete.kcal` | **구현**. 불완전 날의 값은 ‘기록된 합계’. 최대 366일 |
 
 ## 11. 알림·푸시 (단계 2) — FR-08, FR-09, NFR-05, S-71
 

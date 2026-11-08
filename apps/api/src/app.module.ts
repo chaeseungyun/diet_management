@@ -13,6 +13,7 @@ import { TemplatesModule } from './templates/templates.module';
 import { PlansModule } from './plans/plans.module';
 import { MealsModule } from './meals/meals.module';
 import { WeightsModule } from './weights/weights.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({})
 export class AppModule {
@@ -33,6 +34,8 @@ export class AppModule {
         PlansModule,
         MealsModule,
         WeightsModule,
+        // 단계 2
+        StatsModule,
       ],
       controllers: [HealthController],
     };

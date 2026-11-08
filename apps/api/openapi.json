@@ -1797,6 +1797,84 @@
           "weights"
         ]
       }
+    },
+    "/api/v1/stats/summary": {
+      "get": {
+        "operationId": "StatsController_summary",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsSummaryDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "기록 완료율·연속 기록·영양 평균(완료 + 지표 완전인 날만)·목표 달성일·체중 변화·계획 실천율",
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/api/v1/stats/daily": {
+      "get": {
+        "operationId": "StatsController_daily",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsDailyDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "일별 영양(기록된 합계 + 지표별 완전 여부)·완료·당시 목표·체중",
+        "tags": [
+          "stats"
+        ]
+      }
     }
   },
   "info": {
@@ -4165,6 +4243,324 @@
         },
         "required": [
           "weightKg"
+        ]
+      },
+      "MetricAverageDto": {
+        "type": "object",
+        "properties": {
+          "average": {
+            "type": "number",
+            "nullable": true,
+            "description": "유효일 평균. 유효일 0 이면 null ('데이터 없음')"
+          },
+          "validDays": {
+            "type": "number"
+          },
+          "unknownDays": {
+            "type": "number",
+            "description": "완료했지만 이 지표가 미상인 날 (제외 이유: 영양 미상)"
+          }
+        },
+        "required": [
+          "average",
+          "validDays",
+          "unknownDays"
+        ]
+      },
+      "NutritionAveragesDto": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "$ref": "#/components/schemas/MetricAverageDto"
+          },
+          "carbG": {
+            "$ref": "#/components/schemas/MetricAverageDto"
+          },
+          "proteinG": {
+            "$ref": "#/components/schemas/MetricAverageDto"
+          },
+          "fatG": {
+            "$ref": "#/components/schemas/MetricAverageDto"
+          }
+        },
+        "required": [
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG"
+        ]
+      },
+      "GoalAchievementDto": {
+        "type": "object",
+        "properties": {
+          "achievedDays": {
+            "type": "number",
+            "description": "완료 + kcal 완전 + 목표가 있던 날 중 kcal ≤ 그 날 목표"
+          },
+          "eligibleDays": {
+            "type": "number",
+            "description": "판정 대상: 완료 + kcal 완전 + 목표가 있던 날"
+          }
+        },
+        "required": [
+          "achievedDays",
+          "eligibleDays"
+        ]
+      },
+      "WeightPointDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-08"
+          },
+          "weightKg": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "weightKg"
+        ]
+      },
+      "WeightSummaryInRangeDto": {
+        "type": "object",
+        "properties": {
+          "first": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightPointDto"
+              }
+            ]
+          },
+          "last": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WeightPointDto"
+              }
+            ]
+          },
+          "change": {
+            "type": "number",
+            "nullable": true,
+            "description": "last - first. 측정 2회 미만이면 null"
+          },
+          "measuredDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "first",
+          "last",
+          "change",
+          "measuredDays"
+        ]
+      },
+      "AdherenceDto": {
+        "type": "object",
+        "properties": {
+          "plannedSlots": {
+            "type": "number",
+            "description": "분모: 식단 끼니로 기록된(먹었음·안 먹음) 정규 끼니"
+          },
+          "asPlannedSlots": {
+            "type": "number",
+            "description": "식단 품목·수량 그대로 먹음"
+          },
+          "modifiedSlots": {
+            "type": "number",
+            "description": "먹었지만 품목·수량이 다름 또는 식단 외 식사"
+          },
+          "skippedSlots": {
+            "type": "number"
+          },
+          "rate": {
+            "type": "number",
+            "nullable": true,
+            "description": "asPlannedSlots / plannedSlots. 분모 0 이면 null"
+          },
+          "overriddenSlots": {
+            "type": "number",
+            "description": "분모에 든 끼니 중 날짜 예외로 다른 식단이 적용된 끼니"
+          },
+          "excludedByOverride": {
+            "type": "number",
+            "description": "날짜 예외로 자유 끼니로 바꿔 분모에서 뺀 끼니 (출장 등 사전 변경)"
+          }
+        },
+        "required": [
+          "plannedSlots",
+          "asPlannedSlots",
+          "modifiedSlots",
+          "skippedSlots",
+          "rate",
+          "overriddenSlots",
+          "excludedByOverride"
+        ]
+      },
+      "StatsSummaryDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-11-02"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-08"
+          },
+          "trackedDays": {
+            "type": "number",
+            "description": "기간 중 가입일 이후·오늘 이전(포함) 날짜 수"
+          },
+          "completedDays": {
+            "type": "number"
+          },
+          "completionRate": {
+            "type": "number",
+            "nullable": true,
+            "description": "기록 완료율 = completedDays / trackedDays. 추적일 0 이면 null"
+          },
+          "notCompletedDays": {
+            "type": "number",
+            "description": "추적일 중 완료하지 않은 날 (평균 제외 이유: 미기록·미완료)"
+          },
+          "currentStreak": {
+            "type": "number",
+            "description": "오늘 기준 연속 기록 일수 (기간과 무관). 오늘을 아직 완료하지 않았으면 어제부터 센다"
+          },
+          "averages": {
+            "$ref": "#/components/schemas/NutritionAveragesDto"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/GoalAchievementDto"
+          },
+          "weight": {
+            "$ref": "#/components/schemas/WeightSummaryInRangeDto"
+          },
+          "adherence": {
+            "$ref": "#/components/schemas/AdherenceDto"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "trackedDays",
+          "completedDays",
+          "completionRate",
+          "notCompletedDays",
+          "currentStreak",
+          "averages",
+          "goal",
+          "weight",
+          "adherence"
+        ]
+      },
+      "MetricFlagsDto": {
+        "type": "object",
+        "properties": {
+          "kcal": {
+            "type": "boolean"
+          },
+          "carbG": {
+            "type": "boolean"
+          },
+          "proteinG": {
+            "type": "boolean"
+          },
+          "fatG": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG"
+        ]
+      },
+      "StatsDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-08"
+          },
+          "tracked": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "kcal": {
+            "type": "number",
+            "description": "먹었음 기록(정규 끼니 + 추가 간식)의 확인된 값 합계"
+          },
+          "carbG": {
+            "type": "number"
+          },
+          "proteinG": {
+            "type": "number"
+          },
+          "fatG": {
+            "type": "number"
+          },
+          "complete": {
+            "description": "지표별 완전 여부. false 면 위 값은 미상이 빠진 '기록된 합계'",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MetricFlagsDto"
+              }
+            ]
+          },
+          "goalKcal": {
+            "type": "number",
+            "nullable": true
+          },
+          "weightKg": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "date",
+          "tracked",
+          "completed",
+          "kcal",
+          "carbG",
+          "proteinG",
+          "fatG",
+          "complete",
+          "goalKcal",
+          "weightKg"
+        ]
+      },
+      "StatsDailyDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-11-02"
+          },
+          "to": {
+            "type": "string",
+            "example": "2026-11-08"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatsDayDto"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "days"
         ]
       }
     }

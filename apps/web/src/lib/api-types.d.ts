@@ -630,6 +630,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stats/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 기록 완료율·연속 기록·영양 평균(완료 + 지표 완전인 날만)·목표 달성일·체중 변화·계획 실천율 */
+        get: operations["StatsController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stats/daily": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 일별 영양(기록된 합계 + 지표별 완전 여부)·완료·당시 목표·체중 */
+        get: operations["StatsController_daily"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1364,6 +1398,99 @@ export interface components {
             weightKg: number;
             /** @description 같은 날 기록이 있을 때 덮어쓰기 확인. 없이 보내면 409 */
             overwrite?: boolean;
+        };
+        MetricAverageDto: {
+            /** @description 유효일 평균. 유효일 0 이면 null ('데이터 없음') */
+            average: number | null;
+            validDays: number;
+            /** @description 완료했지만 이 지표가 미상인 날 (제외 이유: 영양 미상) */
+            unknownDays: number;
+        };
+        NutritionAveragesDto: {
+            kcal: components["schemas"]["MetricAverageDto"];
+            carbG: components["schemas"]["MetricAverageDto"];
+            proteinG: components["schemas"]["MetricAverageDto"];
+            fatG: components["schemas"]["MetricAverageDto"];
+        };
+        GoalAchievementDto: {
+            /** @description 완료 + kcal 완전 + 목표가 있던 날 중 kcal ≤ 그 날 목표 */
+            achievedDays: number;
+            /** @description 판정 대상: 완료 + kcal 완전 + 목표가 있던 날 */
+            eligibleDays: number;
+        };
+        WeightPointDto: {
+            /** @example 2026-11-08 */
+            date: string;
+            weightKg: number;
+        };
+        WeightSummaryInRangeDto: {
+            first: components["schemas"]["WeightPointDto"] | null;
+            last: components["schemas"]["WeightPointDto"] | null;
+            /** @description last - first. 측정 2회 미만이면 null */
+            change: number | null;
+            measuredDays: number;
+        };
+        AdherenceDto: {
+            /** @description 분모: 식단 끼니로 기록된(먹었음·안 먹음) 정규 끼니 */
+            plannedSlots: number;
+            /** @description 식단 품목·수량 그대로 먹음 */
+            asPlannedSlots: number;
+            /** @description 먹었지만 품목·수량이 다름 또는 식단 외 식사 */
+            modifiedSlots: number;
+            skippedSlots: number;
+            /** @description asPlannedSlots / plannedSlots. 분모 0 이면 null */
+            rate: number | null;
+            /** @description 분모에 든 끼니 중 날짜 예외로 다른 식단이 적용된 끼니 */
+            overriddenSlots: number;
+            /** @description 날짜 예외로 자유 끼니로 바꿔 분모에서 뺀 끼니 (출장 등 사전 변경) */
+            excludedByOverride: number;
+        };
+        StatsSummaryDto: {
+            /** @example 2026-11-02 */
+            from: string;
+            /** @example 2026-11-08 */
+            to: string;
+            /** @description 기간 중 가입일 이후·오늘 이전(포함) 날짜 수 */
+            trackedDays: number;
+            completedDays: number;
+            /** @description 기록 완료율 = completedDays / trackedDays. 추적일 0 이면 null */
+            completionRate: number | null;
+            /** @description 추적일 중 완료하지 않은 날 (평균 제외 이유: 미기록·미완료) */
+            notCompletedDays: number;
+            /** @description 오늘 기준 연속 기록 일수 (기간과 무관). 오늘을 아직 완료하지 않았으면 어제부터 센다 */
+            currentStreak: number;
+            averages: components["schemas"]["NutritionAveragesDto"];
+            goal: components["schemas"]["GoalAchievementDto"];
+            weight: components["schemas"]["WeightSummaryInRangeDto"];
+            adherence: components["schemas"]["AdherenceDto"];
+        };
+        MetricFlagsDto: {
+            kcal: boolean;
+            carbG: boolean;
+            proteinG: boolean;
+            fatG: boolean;
+        };
+        StatsDayDto: {
+            /** @example 2026-11-08 */
+            date: string;
+            tracked: boolean;
+            completed: boolean;
+            /** @description 먹었음 기록(정규 끼니 + 추가 간식)의 확인된 값 합계 */
+            kcal: number;
+            carbG: number;
+            proteinG: number;
+            fatG: number;
+            /** @description 지표별 완전 여부. false 면 위 값은 미상이 빠진 '기록된 합계' */
+            complete: components["schemas"]["MetricFlagsDto"];
+            goalKcal: number | null;
+            weightKg: number | null;
+        };
+        StatsDailyDto: {
+            /** @example 2026-11-02 */
+            from: string;
+            /** @example 2026-11-08 */
+            to: string;
+            days: components["schemas"]["StatsDayDto"][];
         };
     };
     responses: never;
@@ -2526,6 +2653,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    StatsController_summary: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsSummaryDto"];
+                };
+            };
+        };
+    };
+    StatsController_daily: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsDailyDto"];
+                };
             };
         };
     };

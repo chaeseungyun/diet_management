@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, MoreHorizontal, Package, UtensilsCrossed } from 'lucide-react';
+import { CalendarDays, ChartColumn, MoreHorizontal, Package, UtensilsCrossed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LogoutButton } from '@/components/logout-button';
 
-/** screens.md §0: 모바일 하단 탭, PC 사이드바. 통계 탭은 단계 2 에서 추가한다 */
+/** screens.md §0: 모바일 하단 탭 5개(오늘·식단·식품·통계·더보기), PC 사이드바 */
 const items = [
   {
     href: '/',
@@ -28,6 +28,12 @@ const items = [
       p.startsWith('/products') || p.startsWith('/purchases') || p.startsWith('/stock'),
   },
   {
+    href: '/stats',
+    label: '통계',
+    icon: ChartColumn,
+    match: (p: string) => p.startsWith('/stats'),
+  },
+  {
     href: '/settings',
     label: '더보기',
     icon: MoreHorizontal,
@@ -42,7 +48,7 @@ export function BottomTabs() {
       aria-label="주 메뉴"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur md:hidden"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {items.map((it) => {
           const active = it.match(pathname);
           return (
