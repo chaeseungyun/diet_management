@@ -348,7 +348,7 @@ erDiagram
 | A1 | 요구사항 D-02 | **확정(D-02·D-11)** 재고 원장은 제품별 기준 단위 하나(g/ml/ea)로 기록하고 소수 수량을 허용한다. ea↔g 변환은 `pack_weight_g`가 있을 때만. 변환 불가 시 재고를 차감하지 않고 확인 필요로 표시 | `Product.stock_unit`, `Product.pack_weight_g`, `MealItemSnapshot.stock_check_needed` |
 | A2 | 요구사항 §7-1 | **확정(D-09)** 소스는 별도 유형이 아니라 플래그. 기본 추정 섭취량의 영양 출처는 `manual_estimate` | `Product.is_stock_tracked`, `Product.default_serving_amount` |
 | A3 | 요구사항 §7-2 → D-18 확정 | ‘계획 없음’(자유 끼니) 슬롯은 미기록이면 활성 슬롯에 포함하지 않고, 먹었음·안 먹음이면 포함한다 | `DayCompletion` 판정 로직 |
-| A4 | 요구사항 §7-4 | 소진 알림과 식사 알림은 같은 발송·중복 방지 체계를 쓴다 | `NotificationDelivery.type`, `NotificationSetting.kind` |
+| A4 | 요구사항 §7-4 → **확정 D-22** | 소진 알림과 식사 알림은 같은 발송·중복 방지 체계를 쓴다 | `NotificationDelivery.type`, `NotificationSetting.kind` |
 | A5 | NFR-02 | 멱등성 키를 별도 테이블로 둔다(권고 목록 외 추가) | `IdempotencyKey` |
 | A6 | FR-04 | 식단 품목 테이블을 추가하고, 템플릿은 슬롯과 분리한다(권고 목록 외 추가) | `MealTemplateItem` |
 | A7 | FR-06 | **확정(D-10)** 추가 간식은 `slot=extra`로 같은 날 여러 건 허용, `id`로 식별 | `MealRecord.slot` |
@@ -363,5 +363,5 @@ erDiagram
 ### 남은 미정 (ERD로 결정하지 않음)
 
 - ~~하루 완료 후 과거 기록 수정 시 유지/해제~~ → D-04로 확정(해제). `nutrition_complete`는 조회 시 재계산(제안).
-- 요구사항 §7-3: 원장 합계가 음수인 제품을 소진 예측에서 ‘이미 소진’으로 표시할지. 현재 구조는 음수를 보존하므로 표시 규칙만 정하면 된다.
+- ~~요구사항 §7-3: 원장 합계가 음수인 제품의 소진 예측 표시~~ → D-21 확정(`stock_check_needed`, 예정일 null, 소진 알림 없음). 구조 변화 없음.
 - 계획 실천율의 수량 허용 오차(1차 제안: 정확 일치). `planned_quantity`와 `actual_quantity`를 모두 보존하므로 이후 변경 가능하다.
