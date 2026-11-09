@@ -139,8 +139,8 @@
 | `GET /push/public-key` | VAPID 공개키 | |
 | `POST /push/subscriptions` | 구독 등록. `endpoint` 유니크, 재등록은 upsert | |
 | `POST /push/subscriptions/unsubscribe` | `{endpoint}` 로 구독 해제(`revoked_at`). 로그아웃 시 호출 | 브라우저는 구독 ID 를 모르므로 endpoint 로(DEC-074) |
-| `POST /push/test` | 현재 기기 테스트 발송 | 포함 확정(DEC-074) |
-| `GET /notifications?from=&to=` | 발송 이력·상태 조회 | S-71 ‘최근 알림’. 디버그·대체 안내용 |
+| `POST /push/test` | `{endpoint}` 이 기기에만 테스트 발송, `{ ok, status, reason }` 반환. 발송 기록에 남기지 않음 | **구현(DEC-075)**. 키 없음 503, 내 활성 구독 아님 404, 410 이면 구독 해제 |
+| `GET /notifications?from=&to=` | 발송 이력·상태 조회(기본 최근 7일, 최대 31일, 최신순 200건) | **구현(DEC-075)**. S-71 ‘최근 알림’ |
 
 ### HTTP가 아닌 내부 작업(스케줄러)
 
@@ -148,7 +148,9 @@
 - `PushSubscription` 전부에 발송. 한 기기라도 성공하면 `sent`. 404·410 → 구독 `revoked_at`. 429·5xx → 유예 안에서 최대 3회 재시도(`attempts`).
 - 유형 ③ 재알림: ① 발송 뒤 `remindAfterMinutes`(기본 60) 간격으로 `seq` 1~`remindMaxCount`(0~3, 기본 1), 여전히 미기록일 때만.
 - 유형 ④ 소진: 설정·유형 자리만 두고 판정은 재고 화면·소진 예측 단계에서 추가.
-- 예약 시각 15분 초과(재시작 등)는 보내지 않고 `skipped`(`expired`). `IdempotencyKey` 만료분 정리.
+- 예약 시각 15분 초과(재시작 등)는 보내지 않고, 선점했던 `pending` 만 `skipped`(`expired`)로 바꾼다(DEC-075).
+- **구현(2026-11-09, DEC-075)**: `@nestjs/schedule` `@Cron(매분)` → `NotificationScheduler.tick` = 만료 → 재시도(임대 50초, 최대 3회, 저장된 `payload`) → 판정(`src/domain/notifications.ts`)·선점·발송. `web-push` `TTL=900`·`urgency=high`. 전달은 최소 한 번(같은 `tag` 로 폰에서 덮어씀).
+- 매일 04:00 Asia/Seoul 정리 작업: 만료된 `IdempotencyKey`, 90일 지난 발송 기록 삭제(`src/maintenance/`).
 
 ## 12. 미정·결정 필요
 

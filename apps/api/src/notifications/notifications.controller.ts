@@ -10,23 +10,29 @@ import {
   PipeTransform,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import {
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { NotificationKind, type User } from '@prisma/client';
 import { CurrentUser } from '../auth/auth.guard';
+import { OptionalDateParamPipe } from '../common/validators';
 import {
   CreatePushSubscriptionDto,
   NOTIFICATION_KINDS,
+  NotificationDeliveryDto,
   NotificationSettingDto,
   PushPublicKeyDto,
   PushSubscriptionDto,
   PutNotificationSettingDto,
+  TestPushDto,
+  TestPushResultDto,
   UnsubscribeDto,
 } from './notifications.dto';
 import { NotificationsService } from './notifications.service';
@@ -101,5 +107,32 @@ export class PushController {
   @ApiNoContentResponse()
   unsubscribe(@CurrentUser() user: User, @Body() body: UnsubscribeDto): Promise<void> {
     return this.notifications.unsubscribe(user, body.endpoint);
+  }
+
+  @Post('test')
+  @HttpCode(200)
+  @ApiOperation({ summary: '이 기기에 테스트 알림. 결과(성공·응답 코드·사유)를 그대로 돌려준다' })
+  @ApiOkResponse({ type: TestPushResultDto })
+  @ApiServiceUnavailableResponse({ description: '서버에 VAPID 키가 없음' })
+  test(@CurrentUser() user: User, @Body() body: TestPushDto): Promise<TestPushResultDto> {
+    return this.notifications.testPush(user, body.endpoint);
+  }
+}
+
+/** 발송 기록 (api.md §11, S-71 '최근 알림') */
+@ApiTags('notifications')
+@Controller('notifications')
+export class NotificationHistoryController {
+  constructor(private readonly notifications: NotificationsService) {}
+
+  @Get()
+  @ApiOperation({ summary: '발송 기록. 기본 최근 7일, 최대 31일, 최신순 200건' })
+  @ApiOkResponse({ type: NotificationDeliveryDto, isArray: true })
+  list(
+    @CurrentUser() user: User,
+    @Query('from', OptionalDateParamPipe) from?: string,
+    @Query('to', OptionalDateParamPipe) to?: string,
+  ): Promise<NotificationDeliveryDto[]> {
+    return this.notifications.deliveries(user, from, to);
   }
 }

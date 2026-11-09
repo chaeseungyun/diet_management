@@ -531,6 +531,10 @@ model NotificationDelivery {
   status        DeliveryStatus   @default(pending)
   /// 일시 실패(429·5xx) 재시도 횟수. 유예 15분 안에서 최대 3
   attempts      Int              @default(0)
+  /// 마지막 발송 시도 시각. 다른 실행이 막 보내는 중인 행을 다시 집지 않도록 임대(lease)로 쓴다
+  lastAttemptAt DateTime?        @map("last_attempt_at") @db.Timestamptz(6)
+  /// 푸시 본문 { title, body, url, tag }. 재시도는 판정을 다시 하지 않고 이것을 보낸다
+  payload       Json?
   failureReason String?          @map("failure_reason")
   createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 

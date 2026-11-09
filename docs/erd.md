@@ -246,7 +246,9 @@ erDiagram
         timestamptz scheduled_at
         timestamptz sent_at "nullable"
         enum status "pending(선점·발송 중)|sent|failed|skipped(만료)"
-        int attempts "일시 실패 재시도 횟수, 최대 3"
+        int attempts "발송 시도 횟수(첫 시도 포함), 최대 3"
+        timestamptz last_attempt_at "재시도 임대 50초 (DEC-075)"
+        json payload "푸시 본문. 재시도는 이것을 그대로 보낸다"
         string failure_reason "nullable"
     }
     IdempotencyKey {

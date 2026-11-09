@@ -110,6 +110,17 @@ rm ~/.ssh/deploy_key           # 개인키는 GitHub 에만 둔다
 - 카카오 콘솔에 운영 Redirect URI `https://kkinilog.com/api/v1/auth/kakao/callback` 과 플랫폼 Web 사이트 도메인 `https://kkinilog.com` 을 추가한다. 출시 대상 계정 정책은 미정(DEC-038).
 - 단계 0 완료 조건의 배포·HTTPS·백업 복원 확인은 첫 배포 때 수행하고 결과를 §11 에 적는다.
 
+### 4-3. 웹 푸시(VAPID) 켜기 (단계 2, DEC-072·074·075)
+
+키가 없어도 API 는 푸시가 꺼진 채로 정상 기동한다. 그래서 순서는 코드 배포 → 키 설정 → 웹 S-71 에서 구독이다.
+
+1. 키 만들기(한 번만). VAPID 는 "이 푸시는 우리 서버가 보냈다" 를 증명하는 키 쌍이라 한 번 만들어 계속 쓴다. PC 에서 `npx web-push@3.6.7 generate-vapid-keys`, 또는 VM 에서 `docker run --rm node:22-alpine npx -y web-push@3.6.7 generate-vapid-keys`.
+2. VM 의 `deploy/.env` 에 넣는다: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT=mailto:<연락받을 주소>`(푸시 서비스가 문제 시 연락하는 곳), `NOTIFICATIONS_ENABLED=true`. 셋 중 하나만 있거나 형식이 틀리면 API 가 부팅을 거부한다(잘못된 키로 조용히 실패하지 않게).
+3. `docker compose up -d api` — 환경 변수는 컨테이너를 다시 만들어야 반영된다(`restart` 로는 안 바뀜).
+4. 확인: `curl -s https://<도메인>/api/v1/push/public-key` 는 로그인 쿠키가 필요하므로 웹 S-71 의 '테스트 발송' 으로 본다. 로그에는 알림이 나갈 때 `tick claimed=… sent=…` 가 남는다.
+5. **개인키 보관**: `VAPID_PRIVATE_KEY` 는 `BACKUP_PASSPHRASE` 처럼 VM 밖(비밀번호 관리자)에도 둔다. 잃거나 바꾸면 모든 기기 구독이 무효가 되어 사용자가 알림을 다시 켜야 한다.
+6. 발송만 멈추기: `NOTIFICATIONS_ENABLED=false` 후 3번. 구독·설정은 그대로 남는다.
+
 ## 5. 백업·복원 (DEC-014: 매일 1회, 7일 보관, RPO/RTO 24h)
 
 ```bash
@@ -142,6 +153,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 
 - 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
 - API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
+- 스케줄러 로그: 알림을 보낸 실행만 `tick claimed=… sent=… retried=… expired=…` 한 줄, 매일 04:00 `daily cleanup idempotencyKeys=… deliveries=…`. 사용자 식사 내용·endpoint·키는 남기지 않는다.
 - 확인 항목(주 1회): `df -h`(디스크, 80 % 초과면 정리), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔). EXT-02 뒤에는 `du -sh data/photos`(사진 예산 20 GB, DEC-069)와 사진 정리 작업 로그(계산된 보관 일수가 30 미만이면 알림)를 추가한다.
 - 메모리 실측(단계 0 완료 조건, 요구사항 §7-5). 2026-11-07 첫 배포 직후, 사용자 0명 유휴 상태의 `docker stats --no-stream`:
 
@@ -163,7 +175,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 | `/health` 503 | DB 컨테이너 상태, 디스크 | DB 재기동. 디스크 가득이면 로그·백업 정리 |
 | 로그인 실패(`/login?error=1`) | API 로그의 사유 코드 | `state_mismatch`: 쿠키 차단·오리진 불일치. `kakao_token_exchange_failed`: 카카오 콘솔의 Redirect URI·키 확인 |
 | 배포 후 오류 | 이미지 태그, 마이그레이션 로그 | 이전 태그로 롤백(§4). 마이그레이션 실패면 복원 시험 DB에서 재현 |
-| 서버 재시작 후 알림 폭주(단계 2) | `notification_delivery` pending | 설계상 오래된 pending은 skipped 처리. 발생하면 버그로 기록 |
+| 서버 재시작 후 알림 폭주(단계 2) | `notification_deliveries` 의 `status`·`failure_reason` | 설계상 예약 15분이 지난 알림은 보내지 않고 선점된 pending 은 `expired` 로 바뀐다(DEC-074·075). 발생하면 버그로 기록 |
+| 알림이 안 옴 | S-71 테스트 발송 결과, `notification_deliveries.failure_reason`, API 로그 | `gone 410`: 구독 만료 → 기기에서 알림 다시 켜기. `permanent 403`: VAPID 키 불일치(키를 바꿨는지 확인). `no_subscription`: 활성 구독 없음. 기록 자체가 없으면 설정(시각·쓰는 끼니·식단 끼니 여부)과 `NOTIFICATIONS_ENABLED` 확인 |
 
 ## 9. 비용·도메인 (NFR-06)
 
@@ -185,7 +198,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 로컬 `dev:tester` 는 가입일을 14일 전으로 바꾸고 식품 3개·식단 2개·식단표·목표·기록을 넣은 상태다(통계 확인용). 깨끗한 계정이 필요하면 `/api/v1/auth/dev?as=<새 이름>` 으로 새로 만든다.
 - 완료: PWA-1(DEC-073) — `app/manifest.ts`, 아이콘(`public/icons/`, 다시 만들 때 `pnpm --filter @diet/web icons`), 푸시 전용 서비스 워커 `public/sw.js`(fetch 캐시 없음, `Cache-Control: no-cache`), iOS 메타·safe area, S-72 `/settings/install`, 오늘 화면 설치 배너. 운영 빌드에서 매니페스트·아이콘·`sw.js` 헤더, PC 크롬에서 워커 활성화·설치 버튼 확인. 갤럭시 크롬 실기기 확인 완료(삼성 인터넷 '앱스' 설치는 Play 프로텍트 차단 → 크롬 권장 안내로 대응). 남은 실기기 확인: 아이폰에서 홈 화면 추가 → 앱에서 카카오 로그인 → 로그인 유지 여부를 먼저 본다(`screens.md` §9-11).
 - 진행: 알림 1/3(DEC-074) — 스키마(`notification_settings`·`push_subscriptions`·`notification_deliveries`), 환경 변수 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`·`NOTIFICATIONS_ENABLED`(비우면 푸시 꺼진 채로 부팅, 스케줄러를 켜려면 3개 필요), API `GET/PUT /notification-settings`·`GET /push/public-key`·`POST /push/subscriptions`(알려진 푸시 서비스 호스트만, SSRF 방지)·`POST /push/subscriptions/unsubscribe`. 단위 45건·e2e 50건 통과. 운영 `deploy/.env` 에 VAPID 4줄을 추가할 것(비워 둬도 부팅됨).
-- 다음: 알림 2/3(판정 함수·`@nestjs/schedule@6.1.3` 스케줄러·`web-push@3.6.7` 발송·테스트 발송) → 3/3(웹 S-71) → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
+- 진행: 알림 2/3(DEC-075) — 판정 함수 `src/domain/notifications.ts`, `NotificationScheduler`(`@nestjs/schedule@6.1.3` 매분), `WebPushSender`(`web-push@3.6.7`), `POST /push/test`, `GET /notifications`, 매일 04:00 정리 작업(`src/maintenance/`). 단위 67건·e2e 62건(발송 12 추가: 같은 시각 두 실행 → 1건, 재시도 임대, 410 해제, 만료, 정리). 실제 푸시 서비스로의 발송은 S-71 뒤 실기기에서 확인한다. e2e 가 "pre-existing shared memory block is still in use" 로 실패하면 이전 실행의 테스트 Postgres 작업자 프로세스가 남은 것이므로 부모 없는 `postgres.exe --forkchild` 를 종료한다(개발 DB `-p 54320` 은 건드리지 않음).
+- 다음: 알림 3/3(웹 S-71·앱 열 때 구독 재등록·로그아웃 시 해제) → 배포 → §4-3 VAPID 켜기 → 갤럭시 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

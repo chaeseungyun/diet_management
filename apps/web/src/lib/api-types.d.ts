@@ -749,6 +749,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/push/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 이 기기에 테스트 알림. 결과(성공·응답 코드·사유)를 그대로 돌려준다 */
+        post: operations["PushController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 발송 기록. 기본 최근 7일, 최대 31일, 최신순 200건 */
+        get: operations["NotificationHistoryController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1636,6 +1670,39 @@ export interface components {
         };
         UnsubscribeDto: {
             endpoint: string;
+        };
+        TestPushDto: {
+            /** @description 이 기기(현재 브라우저)의 구독 endpoint */
+            endpoint: string;
+        };
+        TestPushResultDto: {
+            ok: boolean;
+            /** @description 푸시 서비스 응답 코드. 네트워크 오류면 null */
+            status: number | null;
+            /** @description 실패 사유(화면 표시용). 성공이면 null */
+            reason: string | null;
+        };
+        /** @enum {string} */
+        NotificationType: "meal_check" | "unrecorded_remind" | "stock_depletion";
+        /** @enum {string} */
+        MealSlot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
+        /** @enum {string} */
+        DeliveryStatus: "pending" | "sent" | "failed" | "skipped";
+        NotificationDeliveryDto: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["NotificationType"];
+            /** @example 2026-11-10 */
+            targetDate: string;
+            slot: components["schemas"]["MealSlot"] | null;
+            /** @description 0 = 첫 알림, 1~3 = 재알림 회차 */
+            seq: number;
+            status: components["schemas"]["DeliveryStatus"];
+            /** Format: date-time */
+            scheduledAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+            failureReason: string | null;
         };
     };
     responses: never;
@@ -2951,6 +3018,58 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    PushController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestPushDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPushResultDto"];
+                };
+            };
+            /** @description 서버에 VAPID 키가 없음 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    NotificationHistoryController_list: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDeliveryDto"][];
+                };
             };
         };
     };

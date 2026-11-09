@@ -14,11 +14,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
 - 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.
-- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2)·`notifications`(설정·푸시 구독, DEC-074). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,pwa,ui,shell}`. PWA 는 `app/manifest.ts`·`public/sw.js`(푸시 전용, fetch 캐시 없음)·`public/icons/`(`pnpm --filter @diet/web icons` 로 생성). DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
+- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2)·`notifications`(설정·구독·매분 판정 스케줄러·web-push 발송, DEC-074·075)·`maintenance`(매일 04:00 정리). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,pwa,ui,shell}`. PWA 는 `app/manifest.ts`·`public/sw.js`(푸시 전용, fetch 캐시 없음)·`public/icons/`(`pnpm --filter @diet/web icons` 로 생성). DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
 
 코드 규칙:
 
-- `apps/api`는 CommonJS + Jest다. ESM 전용 패키지(NestJS 12, jose, cookie v2 등)를 넣지 않는다(DEC-047·049). 런타임 의존성을 늘리기 전에 node 내장으로 되는지 본다.
+- `apps/api`는 CommonJS + Jest다. ESM 전용 패키지(NestJS 12, jose, cookie v2, web-push 4, @nestjs/schedule 12 등)를 넣지 않는다(DEC-047·049·072). 런타임 의존성을 늘리기 전에 node 내장으로 되는지 본다.
+- 예약 작업은 `@nestjs/schedule`(6.x)의 `@Cron`. 놓친 실행을 다음 실행이 메우게("지금 기준 지난 것 전부"), 두 번 돌아도 같은 결과가 되게(DB 유니크 선점), 매일 작업은 `timeZone: 'Asia/Seoul'` 을 명시한다(서버 시계는 UTC, DEC-074).
 - 스키마 변경: `apps/api/prisma/schema.prisma` 수정 → 로컬 DB 띄운 뒤 `pnpm --filter @diet/api prisma:migrate --name <이름>` → 생성 SQL 검토(NULLS NOT DISTINCT 같은 수동 SQL은 파일에 직접) → 커밋. 테이블은 snake_case 복수형, 모델·필드는 camelCase(DEC-052).
 - 새 리소스는 `findFirst({ where: { id, userId } })` 결과가 없으면 404 다(`ProductsService.loadOwned` 패턴). 본문의 FK(제품·템플릿 ID)도 소유 검사로 404. 재고에 영향을 주는 쓰기는 `IdempotencyService.run` 안에서 하고, 식사 기록 쓰기는 version 조건부 갱신으로 행을 잠근 뒤 원장을 만든다(DEC-055). `OriginGuard`(CSRF)·`AuthGuard`가 전역이며 공개 엔드포인트만 `@Public()`.
 - 환경 변수는 `src/config/env.ts`의 zod 스키마에 추가하고 `.env.example`과 `deploy/docker-compose.yml`을 함께 갱신한다. 비밀 값은 로그·응답에 싣지 않는다.

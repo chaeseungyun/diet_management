@@ -12,7 +12,15 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { NotificationKind, type NotificationSetting } from '@prisma/client';
+import {
+  DeliveryStatus,
+  MealSlot,
+  NotificationKind,
+  NotificationType,
+  type NotificationDelivery,
+  type NotificationSetting,
+} from '@prisma/client';
+import { fromDbDate } from '../domain/dates';
 
 /** 화면 순서 = 5끼니 → 미기록 재알림 → 소진 알림 (S-71) */
 export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
@@ -171,4 +179,71 @@ export class PushPublicKeyDto {
   /** VAPID 공개키(base64url). 서버에 키가 없으면 null — 이때 푸시는 쓸 수 없다 */
   @ApiProperty({ type: String, nullable: true })
   publicKey!: string | null;
+}
+
+// ---------- 테스트 발송·발송 기록 ----------
+
+export class TestPushDto {
+  /** 이 기기(현재 브라우저)의 구독 endpoint */
+  @ApiProperty()
+  @IsString()
+  @MaxLength(2048)
+  endpoint!: string;
+}
+
+export class TestPushResultDto {
+  @ApiProperty()
+  ok!: boolean;
+
+  /** 푸시 서비스 응답 코드. 네트워크 오류면 null */
+  @ApiProperty({ type: Number, nullable: true })
+  status!: number | null;
+
+  /** 실패 사유(화면 표시용). 성공이면 null */
+  @ApiProperty({ type: String, nullable: true })
+  reason!: string | null;
+}
+
+export class NotificationDeliveryDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ enum: NotificationType, enumName: 'NotificationType' })
+  type!: NotificationType;
+
+  @ApiProperty({ example: '2026-11-10' })
+  targetDate!: string;
+
+  @ApiProperty({ enum: MealSlot, enumName: 'MealSlot', nullable: true })
+  slot!: MealSlot | null;
+
+  /** 0 = 첫 알림, 1~3 = 재알림 회차 */
+  @ApiProperty()
+  seq!: number;
+
+  @ApiProperty({ enum: DeliveryStatus, enumName: 'DeliveryStatus' })
+  status!: DeliveryStatus;
+
+  @ApiProperty({ format: 'date-time' })
+  scheduledAt!: string;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  sentAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  failureReason!: string | null;
+
+  static from(d: NotificationDelivery): NotificationDeliveryDto {
+    const dto = new NotificationDeliveryDto();
+    dto.id = d.id;
+    dto.type = d.type;
+    dto.targetDate = fromDbDate(d.targetDate);
+    dto.slot = d.slot;
+    dto.seq = d.seq;
+    dto.status = d.status;
+    dto.scheduledAt = d.scheduledAt.toISOString();
+    dto.sentAt = d.sentAt ? d.sentAt.toISOString() : null;
+    dto.failureReason = d.failureReason;
+    return dto;
+  }
 }

@@ -2,19 +2,26 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { todayIn } from '@diet/shared';
 import type { NotificationKind, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENV, type Env } from '../config/env';
+import { addDays, toDbDate } from '../domain/dates';
+import { assertRange } from '../common/validators';
+import { NotificationScheduler } from './notification-scheduler';
 import {
   CreatePushSubscriptionDto,
   NOTIFICATION_KINDS,
+  NotificationDeliveryDto,
   NotificationSettingDto,
   PushPublicKeyDto,
   PushSubscriptionDto,
   PutNotificationSettingDto,
   SLOT_KINDS,
+  TestPushResultDto,
 } from './notifications.dto';
 import { isAllowedPushEndpoint } from './push-endpoint';
 
@@ -27,6 +34,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(ENV) private readonly env: Env,
+    private readonly scheduler: NotificationScheduler,
   ) {}
 
   async settings(user: User): Promise<NotificationSettingDto[]> {
@@ -111,5 +119,49 @@ export class NotificationsService {
       });
       if (!owned) throw new NotFoundException();
     }
+  }
+
+  /**
+   * 이 기기에만 테스트 알림을 보낸다(DEC-074). 발송 기록에는 남기지 않는다.
+   * 서버에 VAPID 키가 없으면 503, 내 활성 구독이 아니면 404.
+   */
+  async testPush(user: User, endpoint: string): Promise<TestPushResultDto> {
+    if (!this.env.pushEnabled) throw new ServiceUnavailableException('push is not configured');
+    const sub = await this.prisma.pushSubscription.findFirst({
+      where: { endpoint, userId: user.id, revokedAt: null },
+    });
+    if (!sub) throw new NotFoundException();
+    const r = await this.scheduler.sendOne(
+      sub,
+      {
+        title: '테스트 알림',
+        body: '이 기기에서 알림을 받을 수 있습니다.',
+        url: '/settings/notifications',
+        tag: 'test',
+      },
+      new Date(),
+    );
+    if (r.kind === 'ok') return { ok: true, status: r.status, reason: null };
+    if (r.kind === 'gone') {
+      return {
+        ok: false,
+        status: r.status,
+        reason: '구독이 만료되었습니다. 알림을 다시 켜 주세요.',
+      };
+    }
+    return { ok: false, status: r.status, reason: r.reason || r.kind };
+  }
+
+  /** 발송 기록. 기본 최근 7일, 최대 31일 */
+  async deliveries(user: User, from?: string, to?: string): Promise<NotificationDeliveryDto[]> {
+    const end = to ?? todayIn(user.timezone);
+    const start = from ?? addDays(end, -6);
+    assertRange(start, end, 31);
+    const rows = await this.prisma.notificationDelivery.findMany({
+      where: { userId: user.id, targetDate: { gte: toDbDate(start), lte: toDbDate(end) } },
+      orderBy: { scheduledAt: 'desc' },
+      take: 200,
+    });
+    return rows.map((r) => NotificationDeliveryDto.from(r));
   }
 }

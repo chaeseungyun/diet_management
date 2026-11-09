@@ -7,10 +7,11 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { loadEnv } from '../src/config/env';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { PUSH_SENDER, type PushSender } from '../src/notifications/push-sender';
 
 export const WEB = 'http://localhost:3000';
 
-export const testEnv = loadEnv({
+const testEnvSource: NodeJS.ProcessEnv = {
   NODE_ENV: 'test',
   DATABASE_URL: process.env.DATABASE_URL,
   JWT_SECRET: 'e2e-secret-e2e-secret-e2e-secret-0000',
@@ -18,7 +19,9 @@ export const testEnv = loadEnv({
   KAKAO_CLIENT_ID: 'kakao-client-id',
   KAKAO_REDIRECT_URI: `${WEB}/api/v1/auth/kakao/callback`,
   WEB_ORIGIN: WEB,
-});
+};
+
+export const testEnv = loadEnv(testEnvSource);
 
 type KakaoStub = { ok: boolean; id?: string | number; nickname?: string | null };
 
@@ -45,12 +48,19 @@ export function setCookies(res: request.Response): Record<string, string> {
   return out;
 }
 
-export async function createApp(): Promise<{ app: INestApplication; prisma: PrismaService }> {
-  const moduleRef = await Test.createTestingModule({
-    imports: [AppModule.forRoot(testEnv)],
-  }).compile();
+/**
+ * e2e 앱. env 로 환경 변수를 덧붙이고(예: VAPID 키), pushSender 로 실제 푸시 발송을 가짜로 바꾼다.
+ * 스케줄러(@Cron)는 NOTIFICATIONS_ENABLED 가 꺼져 있어 스스로 돌지 않으며, 테스트가 tick 을 직접 부른다.
+ */
+export async function createApp(
+  opts: { env?: NodeJS.ProcessEnv; pushSender?: PushSender } = {},
+): Promise<{ app: INestApplication; prisma: PrismaService }> {
+  const env = opts.env ? loadEnv({ ...testEnvSource, ...opts.env }) : testEnv;
+  let builder = Test.createTestingModule({ imports: [AppModule.forRoot(env)] });
+  if (opts.pushSender) builder = builder.overrideProvider(PUSH_SENDER).useValue(opts.pushSender);
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication({ logger: false });
-  configureApp(app, testEnv);
+  configureApp(app, env);
   await app.init();
   return { app, prisma: app.get(PrismaService) };
 }

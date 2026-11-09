@@ -1,4 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import type { Env } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,6 +16,7 @@ import { MealsModule } from './meals/meals.module';
 import { WeightsModule } from './weights/weights.module';
 import { StatsModule } from './stats/stats.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 
 @Module({})
 export class AppModule {
@@ -23,6 +25,8 @@ export class AppModule {
       module: AppModule,
       imports: [
         ConfigModule.forRoot(env),
+        // 매분 알림 판정·매일 정리 작업 (DEC-074·075)
+        ScheduleModule.forRoot(),
         PrismaModule,
         CommonModule,
         AuthModule,
@@ -38,6 +42,7 @@ export class AppModule {
         // 단계 2
         StatsModule,
         NotificationsModule,
+        MaintenanceModule,
       ],
       controllers: [HealthController],
     };

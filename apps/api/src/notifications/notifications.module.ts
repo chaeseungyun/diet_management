@@ -1,11 +1,23 @@
 import { Module } from '@nestjs/common';
-import { NotificationSettingsController, PushController } from './notifications.controller';
+import { PlansModule } from '../plans/plans.module';
+import {
+  NotificationHistoryController,
+  NotificationSettingsController,
+  PushController,
+} from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { NotificationScheduler } from './notification-scheduler';
+import { PUSH_SENDER, WebPushSender } from './push-sender';
 
-/** 알림 (단계 2, FR-09, D-22, DEC-074). 발송 스케줄러는 다음 커밋에서 추가한다 */
+/** 알림 (단계 2, FR-09, D-22, DEC-074·075). 발송은 매분 스케줄러가 판정해 보낸다 */
 @Module({
-  controllers: [NotificationSettingsController, PushController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  imports: [PlansModule],
+  controllers: [NotificationSettingsController, PushController, NotificationHistoryController],
+  providers: [
+    NotificationsService,
+    NotificationScheduler,
+    { provide: PUSH_SENDER, useClass: WebPushSender },
+  ],
+  exports: [NotificationsService, NotificationScheduler],
 })
 export class NotificationsModule {}
