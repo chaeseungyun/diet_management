@@ -56,6 +56,12 @@ export function kakaoOpenExternalUrl(href: string): string {
   return `kakaotalk://web/openExternal?url=${encodeURIComponent(href)}`;
 }
 
+/** 안드로이드에서 현재 주소를 크롬으로 연다(크롬이 없으면 아무 일도 일어나지 않을 수 있다) */
+export function chromeIntentUrl(href: string): string {
+  const u = new URL(href);
+  return `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=${u.protocol.replace(':', '')};package=com.android.chrome;end`;
+}
+
 // --- 설치 대화상자(beforeinstallprompt) 보관소 ---
 // 이 이벤트는 페이지 로드 직후 한 번 오므로 루트 레이아웃의 PwaClient 가 받아 둔다.
 

@@ -4,7 +4,13 @@ import { useState } from 'react';
 import { CheckCircle2, CircleAlert, Share, SquarePlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { kakaoOpenExternalUrl, promptInstall, usePwaEnv, type PwaEnv } from '@/lib/pwa';
+import {
+  chromeIntentUrl,
+  kakaoOpenExternalUrl,
+  promptInstall,
+  usePwaEnv,
+  type PwaEnv,
+} from '@/lib/pwa';
 
 /** S-72 설치 안내 본문. 환경을 판별해 그 기기에 맞는 방법 하나만 보인다 */
 export function InstallGuide() {
@@ -73,6 +79,8 @@ function Steps({ env }: { env: PwaEnv }) {
   }
   if (env.inApp === 'kakaotalk') return <KakaoInApp />;
   if (env.inApp === 'other') return <OtherInApp os={env.os} />;
+  // 삼성 인터넷의 '앱스에 추가'(설치 대화상자 포함)는 Play 프로텍트가 막을 수 있어 먼저 분기한다
+  if (env.os === 'android' && env.browser === 'samsung') return <SamsungInternet />;
   if (env.canPrompt) return <PromptInstall />;
   if (env.os === 'ios') {
     if (env.browser === 'safari') {
@@ -118,8 +126,7 @@ function Steps({ env }: { env: PwaEnv }) {
       <Guide title="안드로이드에서 추가하기">
         <li>브라우저 메뉴(⋮ 또는 ≡)를 엽니다.</li>
         <li>
-          <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>(삼성 인터넷은 ‘현재 페이지 추가 → 홈 화면’)를
-          누릅니다.
+          <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누릅니다.
         </li>
         <li>메뉴에 없으면 크롬이나 삼성 인터넷으로 열어 주세요.</li>
       </Guide>
@@ -167,6 +174,25 @@ function PromptInstall() {
         설치하기
       </Button>
       {result ? <p className="text-sm">{result}</p> : null}
+    </Card>
+  );
+}
+
+function SamsungInternet() {
+  return (
+    <Card className="flex flex-col gap-3 p-4">
+      <h2 className="text-base font-semibold">삼성 인터넷에서 열려 있습니다</h2>
+      <p className="text-sm text-muted-foreground">
+        삼성 인터넷의 ‘앱스에 추가’는 Play 프로텍트가 설치를 막을 수 있습니다. 크롬에서 열어
+        설치하는 것을 권합니다.
+      </p>
+      <a href={chromeIntentUrl(location.href)} className={buttonClasses('default')}>
+        크롬으로 열기
+      </a>
+      <p className="text-sm text-muted-foreground">
+        삼성 인터넷을 계속 쓰려면 메뉴(≡) → <b>현재 페이지 추가</b> → <b>홈 화면</b>을 고릅니다
+        (‘앱스’ 말고).
+      </p>
     </Card>
   );
 }
