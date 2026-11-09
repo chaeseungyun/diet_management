@@ -332,6 +332,7 @@
 
 - `NotificationDelivery`의 유니크 (user, type, target_date, slot, product_id)는 NULL을 같은 값으로 취급한다(PostgreSQL `UNIQUE NULLS NOT DISTINCT`, 원시 SQL 마이그레이션). 식사 알림은 `product_id`가, 소진 알림은 `slot`이 NULL이므로 기본 유니크로는 중복을 막지 못한다.
 - 식사가 `eaten|skipped`가 되면 같은 식사의 pending 행을 `skipped`로 바꾼다. 취소로 `unrecorded`가 되면 **새 행을 만들지 않고** 그 `skipped` 행을 `pending`으로 되돌리고 `scheduled_at`을 재계산한다. 이미 `sent`인 행은 다시 보내지 않는다.
+- **[2026-11-09 사용자 확정 보완]** 행을 미리 만들지 않고 **발송 시점에 판정**한다. 스케줄러가 시각·계획(D-01)·쓰는 끼니·미기록 여부를 그때 계산해 보낼 때만 행을 만든다(유니크 선점). 그래서 먹었음 → skipped, 취소 → pending 되돌림이 필요 없고, 취소하면 다음 판정에서 다시 미기록이 되어 재알림이 재개된다. 같은 알림 1회·`sent` 재발송 없음은 그대로. 유니크는 (user, type, target_date, `target_key`, `seq`)(D-22 보완), 재시작 유예 15분, 재알림 0~3회(기본 1회·60분). 기록: [`decisions.md`](decisions.md) DEC-074.
 
 ### D-13. 원장 이동이 있는 제품의 `stock_unit` 변경 금지 [2026-11-05]
 
@@ -404,6 +405,7 @@
 - 식사 알림(FR-09)과 소진 알림(FR-08)은 같은 `NotificationSetting`·`NotificationDelivery`·예약 작업·푸시 발송 코드를 쓰고 `type`/`kind` 값으로만 구분한다. 설정 화면은 S-71 하나(식사 알림 묶음 + 소진 알림 묶음).
 - 식사 행은 (날짜, 슬롯), 소진 행은 (날짜, 제품)으로 식별한다. 중복 방지 유니크는 하나다(D-12). 재시작 뒤 몰아 보내지 않음·실패 기록·구독 관리는 한 번만 구현한다.
 - D-12의 `NULLS NOT DISTINCT`는 DEC-055(원시 SQL 금지)와 충돌하므로 단계 2 알림 구현 시 `slot`·`product_id`에 센티널 값을 두는 방식으로 대신한다. 데이터 모델은 ERD 전제 A4 그대로다.
+  - 2026-11-09 보완(DEC-074): 센티널을 FK 컬럼에 넣지 않고 유니크 전용 `target_key`(끼니 이름 또는 제품 ID) 컬럼을 둔다. 소진 알림은 설정·유형 자리만 만들고 판정은 재고 화면·소진 예측 단계에서 같은 스케줄러에 추가한다.
 - 2026-11-08 사용자 확정. 기록: [`decisions.md`](decisions.md) DEC-064.
 
 ## 7. 검토 메모 [Claude Code 검토 의견 — 사용자 미확정]

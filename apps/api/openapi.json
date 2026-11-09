@@ -1875,6 +1875,160 @@
           "stats"
         ]
       }
+    },
+    "/api/v1/notification-settings": {
+      "get": {
+        "operationId": "NotificationSettingsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationSettingDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "알림 설정 7종(5끼니·미기록 재알림·소진). 행이 없으면 기본값(꺼짐)",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notification-settings/{kind}": {
+      "put": {
+        "operationId": "NotificationSettingsController_put",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/NotificationKind"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutNotificationSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "종류별 설정 저장. 끼니 알림을 켜려면 notifyMinute 필요. 재예약 없음(DEC-074)",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/push/public-key": {
+      "get": {
+        "operationId": "PushController_publicKey",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushPublicKeyDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "VAPID 공개키. 서버에 키가 없으면 null",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/push/subscriptions": {
+      "post": {
+        "operationId": "PushController_subscribe",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePushSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "현재 기기 구독 등록(endpoint 기준 upsert). 알려진 푸시 서비스 주소만 받는다",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/push/subscriptions/unsubscribe": {
+      "post": {
+        "operationId": "PushController_unsubscribe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "endpoint 로 구독 해제(로그아웃 시). 내 구독이 아니면 404",
+        "tags": [
+          "notifications"
+        ]
+      }
     }
   },
   "info": {
@@ -4561,6 +4715,181 @@
           "from",
           "to",
           "days"
+        ]
+      },
+      "NotificationKind": {
+        "type": "string",
+        "enum": [
+          "breakfast",
+          "lunch",
+          "afternoon_snack",
+          "dinner",
+          "evening_snack",
+          "unrecorded_remind",
+          "stock_depletion"
+        ]
+      },
+      "NotificationSettingDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationKind"
+              }
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "notifyMinute": {
+            "type": "number",
+            "nullable": true,
+            "description": "끼니 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류에만 의미가 있다",
+            "example": 720
+          },
+          "remindAfterMinutes": {
+            "type": "number",
+            "description": "unrecorded_remind: 첫 알림 뒤 간격(분)",
+            "example": 60
+          },
+          "remindMaxCount": {
+            "type": "number",
+            "description": "unrecorded_remind: 재알림 횟수 0~3",
+            "example": 1
+          },
+          "daysBefore": {
+            "type": "number",
+            "description": "stock_depletion: 예측 소진일 N일 전",
+            "example": 3
+          },
+          "available": {
+            "type": "boolean",
+            "description": "false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다"
+          }
+        },
+        "required": [
+          "kind",
+          "enabled",
+          "notifyMinute",
+          "remindAfterMinutes",
+          "remindMaxCount",
+          "daysBefore",
+          "available"
+        ]
+      },
+      "PutNotificationSettingDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "notifyMinute": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 1439
+          },
+          "remindAfterMinutes": {
+            "type": "number",
+            "minimum": 15,
+            "maximum": 180
+          },
+          "remindMaxCount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "daysBefore": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 14
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "PushPublicKeyDto": {
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "type": "string",
+            "nullable": true,
+            "description": "VAPID 공개키(base64url). 서버에 키가 없으면 null — 이때 푸시는 쓸 수 없다"
+          }
+        },
+        "required": [
+          "publicKey"
+        ]
+      },
+      "PushKeysDto": {
+        "type": "object",
+        "properties": {
+          "p256dh": {
+            "type": "string",
+            "description": "브라우저 ECDH 공개키(base64url)",
+            "maxLength": 200
+          },
+          "auth": {
+            "type": "string",
+            "description": "브라우저 auth 비밀값(base64url)",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "p256dh",
+          "auth"
+        ]
+      },
+      "CreatePushSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048,
+            "example": "https://fcm.googleapis.com/fcm/send/…"
+          },
+          "expirationTime": {
+            "type": "number",
+            "nullable": true
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeysDto"
+          }
+        },
+        "required": [
+          "endpoint",
+          "keys"
+        ]
+      },
+      "PushSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt"
+        ]
+      },
+      "UnsubscribeDto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "endpoint"
         ]
       }
     }

@@ -134,22 +134,21 @@
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /notification-settings` | 슬롯 5종 + 소진 알림 설정. 기본 모두 off | |
-| `PUT /notification-settings/{kind}` | 종류별 on/off·시각·사전 분(0/10)·재알림 횟수·간격·소진 N일 | 변경 시 pending 재예약·취소 |
+| `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 소진 알림 설정. 행이 없으면 기본값(off) | DEC-074 |
+| `PUT /notification-settings/{kind}` | 종류별 on/off·시각(`notifyMinute`)·재알림 횟수(0~3)·간격·소진 N일 | 발송 시점 판정이라 재예약 없음(DEC-074) |
 | `GET /push/public-key` | VAPID 공개키 | |
 | `POST /push/subscriptions` | 구독 등록. `endpoint` 유니크, 재등록은 upsert | |
-| `DELETE /push/subscriptions/{id}` | 구독 해제(`revoked_at`) | |
-| `POST /push/test` | 현재 기기 테스트 발송 | screens §9-5 미정 |
-| `GET /notifications?from=&to=` | 발송 이력·상태 조회 | 제안. 디버그·대체 안내용 |
+| `POST /push/subscriptions/unsubscribe` | `{endpoint}` 로 구독 해제(`revoked_at`). 로그아웃 시 호출 | 브라우저는 구독 ID 를 모르므로 endpoint 로(DEC-074) |
+| `POST /push/test` | 현재 기기 테스트 발송 | 포함 확정(DEC-074) |
+| `GET /notifications?from=&to=` | 발송 이력·상태 조회 | S-71 ‘최근 알림’. 디버그·대체 안내용 |
 
 ### HTTP가 아닌 내부 작업(스케줄러)
 
-- 당일 계획(D-01 함수)과 `NotificationSetting`으로 `NotificationDelivery(pending)` 생성. (user, type, target_date, slot, product_id) 유니크로 중복 차단.
-- 예약 시각 도달 시 `PushSubscription`으로 발송. 실패는 `failed`, 재시도 중 중복 금지.
-- 유형 ①(식사 체크) 발송 후 60분(설정값) 지나도 미기록이면 재알림 1회(설정값).
-- 소진 임박 판정(예측 소진일 ≤ 오늘 + N일) 시 유형 ④ 예약.
-- 유니크 (user, type, target_date, slot, product_id)는 `NULLS NOT DISTINCT`(D-12). 식사가 취소되어 `unrecorded`가 되면 `skipped` 행을 `pending`으로 되돌리고 `scheduled_at`을 재계산한다. 새 행을 만들지 않는다.
-- 서버 재시작 후 오래 지난 pending은 `skipped`. `IdempotencyKey` 만료분 정리.
+- **발송 시점 판정(DEC-074)**: 1분마다 켜진 설정을 훑어 "사용자 시간대의 오늘 그 시각이 지났고 15분 안인가 · 계획(D-01 함수)이 식단 끼니인가 · 쓰는 끼니인가 · 미기록인가" 를 계산한다. 보낼 때만 `NotificationDelivery` 를 유니크 (user, type, target_date, target_key, seq) 로 선점(insert)하고 발송한다. 충돌하면 이미 처리된 것이므로 건너뛴다.
+- `PushSubscription` 전부에 발송. 한 기기라도 성공하면 `sent`. 404·410 → 구독 `revoked_at`. 429·5xx → 유예 안에서 최대 3회 재시도(`attempts`).
+- 유형 ③ 재알림: ① 발송 뒤 `remindAfterMinutes`(기본 60) 간격으로 `seq` 1~`remindMaxCount`(0~3, 기본 1), 여전히 미기록일 때만.
+- 유형 ④ 소진: 설정·유형 자리만 두고 판정은 재고 화면·소진 예측 단계에서 추가.
+- 예약 시각 15분 초과(재시작 등)는 보내지 않고 `skipped`(`expired`). `IdempotencyKey` 만료분 정리.
 
 ## 12. 미정·결정 필요
 

@@ -14,6 +14,7 @@ import { PlansModule } from './plans/plans.module';
 import { MealsModule } from './meals/meals.module';
 import { WeightsModule } from './weights/weights.module';
 import { StatsModule } from './stats/stats.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({})
 export class AppModule {
@@ -36,6 +37,7 @@ export class AppModule {
         WeightsModule,
         // 단계 2
         StatsModule,
+        NotificationsModule,
       ],
       controllers: [HealthController],
     };

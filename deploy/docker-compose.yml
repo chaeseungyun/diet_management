@@ -35,6 +35,11 @@ services:
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
       KAKAO_REDIRECT_URI: https://${DOMAIN}/api/v1/auth/kakao/callback
       WEB_ORIGIN: https://${DOMAIN}
+      # 웹 푸시 (DEC-072·074). 비우면 푸시가 꺼진 채로 뜬다. NOTIFICATIONS_ENABLED=true 는 VAPID 3개가 필요하다
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-false}
       # DEV_LOGIN_ENABLED 는 운영에 넣지 않는다(켜져 있으면 API 가 부팅을 거부한다, DEC-067)
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/api/v1/health']

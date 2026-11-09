@@ -664,6 +664,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 알림 설정 7종(5끼니·미기록 재알림·소진). 행이 없으면 기본값(꺼짐) */
+        get: operations["NotificationSettingsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notification-settings/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 종류별 설정 저장. 끼니 알림을 켜려면 notifyMinute 필요. 재예약 없음(DEC-074) */
+        put: operations["NotificationSettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/public-key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** VAPID 공개키. 서버에 키가 없으면 null */
+        get: operations["PushController_publicKey"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 현재 기기 구독 등록(endpoint 기준 upsert). 알려진 푸시 서비스 주소만 받는다 */
+        post: operations["PushController_subscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/push/subscriptions/unsubscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** endpoint 로 구독 해제(로그아웃 시). 내 구독이 아니면 404 */
+        post: operations["PushController_unsubscribe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1491,6 +1576,66 @@ export interface components {
             /** @example 2026-11-08 */
             to: string;
             days: components["schemas"]["StatsDayDto"][];
+        };
+        /** @enum {string} */
+        NotificationKind: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "unrecorded_remind" | "stock_depletion";
+        NotificationSettingDto: {
+            kind: components["schemas"]["NotificationKind"];
+            enabled: boolean;
+            /**
+             * @description 끼니 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류에만 의미가 있다
+             * @example 720
+             */
+            notifyMinute: number | null;
+            /**
+             * @description unrecorded_remind: 첫 알림 뒤 간격(분)
+             * @example 60
+             */
+            remindAfterMinutes: number;
+            /**
+             * @description unrecorded_remind: 재알림 횟수 0~3
+             * @example 1
+             */
+            remindMaxCount: number;
+            /**
+             * @description stock_depletion: 예측 소진일 N일 전
+             * @example 3
+             */
+            daysBefore: number;
+            /** @description false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다 */
+            available: boolean;
+        };
+        PutNotificationSettingDto: {
+            enabled: boolean;
+            notifyMinute?: number | null;
+            remindAfterMinutes?: number;
+            remindMaxCount?: number;
+            daysBefore?: number;
+        };
+        PushPublicKeyDto: {
+            /** @description VAPID 공개키(base64url). 서버에 키가 없으면 null — 이때 푸시는 쓸 수 없다 */
+            publicKey: string | null;
+        };
+        PushKeysDto: {
+            /** @description 브라우저 ECDH 공개키(base64url) */
+            p256dh: string;
+            /** @description 브라우저 auth 비밀값(base64url) */
+            auth: string;
+        };
+        CreatePushSubscriptionDto: {
+            /** @example https://fcm.googleapis.com/fcm/send/… */
+            endpoint: string;
+            expirationTime?: number | null;
+            keys: components["schemas"]["PushKeysDto"];
+        };
+        PushSubscriptionDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        UnsubscribeDto: {
+            endpoint: string;
         };
     };
     responses: never;
@@ -2697,6 +2842,115 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StatsDailyDto"];
                 };
+            };
+        };
+    };
+    NotificationSettingsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingDto"][];
+                };
+            };
+        };
+    };
+    NotificationSettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: components["schemas"]["NotificationKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutNotificationSettingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingDto"];
+                };
+            };
+        };
+    };
+    PushController_publicKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushPublicKeyDto"];
+                };
+            };
+        };
+    };
+    PushController_subscribe: {
+        parameters: {
+            query?: never;
+            header: {
+                "user-agent": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePushSubscriptionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushSubscriptionDto"];
+                };
+            };
+        };
+    };
+    PushController_unsubscribe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnsubscribeDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

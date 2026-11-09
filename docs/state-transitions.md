@@ -163,6 +163,7 @@ stateDiagram-v2
 
 - 식단 외 식사 입력은 1차에서 촬영·분석 화면으로 유도하지 않는다(사진 분석은 EXT-02).
 - 도착 시각 보장을 표현하지 않는다.
+- **구현 방식(DEC-074, 2026-11-09 확정)**: 위 그림의 ‘예약됨·취소됨·재알림예약’은 DB 행이 아니라 매분 계산되는 상태다. 스케줄러가 시각·계획·쓰는 끼니·미기록 여부를 계산해 보낼 때만 `NotificationDelivery` 를 선점(pending) → 발송(sent/failed)한다. 그래서 먹었음·알림 off·계획 없음 변경·시간대 변경은 별도 처리 없이 다음 판정에서 반영된다. ‘만료됨’ = 예약 시각 15분 초과(`skipped`, `expired`). 재알림은 `seq` 1~3(설정 0~3회, 기본 1회·60분).
 
 ## 6. 제품 영양 정보 (Product / ProductNutritionVersion) — FR-02
 
@@ -248,7 +249,7 @@ stateDiagram-v2
 | §1 식사 종류 | 내 식품 / 식단 외 식사 | `MealRecord.kind`: home / outside (D-17·D-19) |
 | §3-a Purchase | 배송중 / 입고완료 / 취소됨 | `status`: ordered / received / cancelled |
 | §3 StockMovement | 입고·초기 / 섭취 차감 / 섭취 복구 / 보정 / 폐기·타용도 | `reason`: receipt·initial / consume / consume_reverse / adjust / waste·other_use |
-| §5 NotificationDelivery | 예약됨 / 발송됨 / 발송실패 / 취소됨·만료됨 | `status`: pending / sent / failed / skipped |
+| §5 NotificationDelivery | 예약됨 / 발송됨 / 발송실패 / 취소됨·만료됨 | `status`: pending / sent / failed / skipped. DEC-074 이후 ‘예약됨’·‘취소됨’은 저장하지 않고 계산되는 상태이며, 행은 발송 선점 시(pending) 생기고 `skipped` 는 만료만 뜻한다 |
 | §5 알림 유형 ①·③·④ | 식사 체크 / 미기록 재알림 / 소진 (② 외부 사전은 D-19로 폐기) | `type`: meal_check / unrecorded_remind / stock_depletion |
 | §6 영양 출처 | 표시값 / 직접 입력 추정 / AI 추정 | `source`: label / manual_estimate / ai_estimate |
 | §8 AnalysisJob | 대기 / 진행 / 성공 / 실패 / 취소 | `status`: pending / running / succeeded / failed / cancelled |
