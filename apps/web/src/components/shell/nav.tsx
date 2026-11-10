@@ -119,6 +119,7 @@ export function Sidebar() {
                   links={[
                     ['/weight', '체중'],
                     ['/settings/goals', '목표'],
+                    ['/settings/notifications', '알림'],
                     ['/settings/install', '앱 설치'],
                   ]}
                   pathname={pathname}

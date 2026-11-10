@@ -53,7 +53,7 @@ export function ProfileForm({ me }: { me: MeDto }) {
       <Field
         label="시간대"
         htmlFor="tz"
-        hint="식사·체중 날짜의 경계 기준. 바꾸면 알림 예약도 재계산됩니다(단계 2)"
+        hint="식사·체중 날짜의 경계 기준. 알림 시각도 이 시간대로 판정합니다"
       >
         <Input
           id="tz"

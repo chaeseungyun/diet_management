@@ -116,6 +116,7 @@ rm ~/.ssh/deploy_key           # 개인키는 GitHub 에만 둔다
 
 1. 키 만들기(한 번만). VAPID 는 "이 푸시는 우리 서버가 보냈다" 를 증명하는 키 쌍이라 한 번 만들어 계속 쓴다. PC 에서 `npx web-push@3.6.7 generate-vapid-keys`, 또는 VM 에서 `docker run --rm node:22-alpine npx -y web-push@3.6.7 generate-vapid-keys`.
 2. VM 의 `deploy/.env` 에 넣는다: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT=mailto:<연락받을 주소>`(푸시 서비스가 문제 시 연락하는 곳), `NOTIFICATIONS_ENABLED=true`. 셋 중 하나만 있거나 형식이 틀리면 API 가 부팅을 거부한다(잘못된 키로 조용히 실패하지 않게).
+   - **GitHub 시크릿에는 넣지 않는다.** 시크릿은 배포용 SSH 정보(`DEPLOY_*`)만 두고, 앱 환경 변수는 VM 의 `deploy/.env` 에만 있다(Compose 가 `--env-file` 로 읽는다). 로컬 `apps/api/.env` 에는 따로 만든 로컬 전용 키를 쓴다 — 로컬 키가 새도 운영 사용자에게 알림을 보낼 수 없고, 로컬 API 를 실수로 운영 DB 에 붙여도 서명이 맞지 않아 발송되지 않는다.
 3. `docker compose up -d api` — 환경 변수는 컨테이너를 다시 만들어야 반영된다(`restart` 로는 안 바뀜).
 4. 확인: `curl -s https://<도메인>/api/v1/push/public-key` 는 로그인 쿠키가 필요하므로 웹 S-71 의 '테스트 발송' 으로 본다. 로그에는 알림이 나갈 때 `tick claimed=… sent=…` 가 남는다.
 5. **개인키 보관**: `VAPID_PRIVATE_KEY` 는 `BACKUP_PASSPHRASE` 처럼 VM 밖(비밀번호 관리자)에도 둔다. 잃거나 바꾸면 모든 기기 구독이 무효가 되어 사용자가 알림을 다시 켜야 한다.
@@ -199,7 +200,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 완료: PWA-1(DEC-073) — `app/manifest.ts`, 아이콘(`public/icons/`, 다시 만들 때 `pnpm --filter @diet/web icons`), 푸시 전용 서비스 워커 `public/sw.js`(fetch 캐시 없음, `Cache-Control: no-cache`), iOS 메타·safe area, S-72 `/settings/install`, 오늘 화면 설치 배너. 운영 빌드에서 매니페스트·아이콘·`sw.js` 헤더, PC 크롬에서 워커 활성화·설치 버튼 확인. 갤럭시 크롬 실기기 확인 완료(삼성 인터넷 '앱스' 설치는 Play 프로텍트 차단 → 크롬 권장 안내로 대응). 남은 실기기 확인: 아이폰에서 홈 화면 추가 → 앱에서 카카오 로그인 → 로그인 유지 여부를 먼저 본다(`screens.md` §9-11).
 - 진행: 알림 1/3(DEC-074) — 스키마(`notification_settings`·`push_subscriptions`·`notification_deliveries`), 환경 변수 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`·`NOTIFICATIONS_ENABLED`(비우면 푸시 꺼진 채로 부팅, 스케줄러를 켜려면 3개 필요), API `GET/PUT /notification-settings`·`GET /push/public-key`·`POST /push/subscriptions`(알려진 푸시 서비스 호스트만, SSRF 방지)·`POST /push/subscriptions/unsubscribe`. 단위 45건·e2e 50건 통과. 운영 `deploy/.env` 에 VAPID 4줄을 추가할 것(비워 둬도 부팅됨).
 - 진행: 알림 2/3(DEC-075) — 판정 함수 `src/domain/notifications.ts`, `NotificationScheduler`(`@nestjs/schedule@6.1.3` 매분), `WebPushSender`(`web-push@3.6.7`), `POST /push/test`, `GET /notifications`, 매일 04:00 정리 작업(`src/maintenance/`). 단위 67건·e2e 62건(발송 12 추가: 같은 시각 두 실행 → 1건, 재시도 임대, 410 해제, 만료, 정리). 실제 푸시 서비스로의 발송은 S-71 뒤 실기기에서 확인한다. e2e 가 "pre-existing shared memory block is still in use" 로 실패하면 이전 실행의 테스트 Postgres 작업자 프로세스가 남은 것이므로 부모 없는 `postgres.exe --forkchild` 를 종료한다(개발 DB `-p 54320` 은 건드리지 않음).
-- 다음: 알림 3/3(웹 S-71·앱 열 때 구독 재등록·로그아웃 시 해제) → 배포 → §4-3 VAPID 켜기 → 갤럭시 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
+- 진행: 알림 3/3(DEC-076) — 웹 S-71 `/settings/notifications`(이 기기 권한·구독 상태, 알림 켜기·끄기·테스트 발송, 끼니별 시각, 재알림, 소진 알림 비활성, 최근 7일 기록), `src/lib/push.ts`, 로그인 영역의 `PushSync`(앱 열 때 재등록), 로그아웃 시 서버 구독 해제, S-70·사이드바 '알림' 링크. `next build` 통과, 로컬 서버 렌더 200 확인. 권한 대화상자·실제 수신은 브라우저·실기기에서 사용자 확인 필요.
+- 다음: 배포 → §4-3 VAPID 켜기 → 갤럭시 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)
 
