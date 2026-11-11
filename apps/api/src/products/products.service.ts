@@ -124,7 +124,7 @@ export class ProductsService {
 
   async get(userId: string, id: string): Promise<ProductDetailDto> {
     const product = await this.loadOwned(this.prisma, userId, id);
-    const [[dto], purchases, templateItems, movement] = await Promise.all([
+    const [[dto], purchases, templateItems] = await Promise.all([
       this.toDtos(this.prisma, userId, [product]),
       this.prisma.purchase.findMany({
         where: { userId, productId: id },
@@ -135,14 +135,12 @@ export class ProductsService {
         where: { productId: id, template: { archivedAt: null } },
         include: { template: { select: { id: true, name: true } } },
       }),
-      this.prisma.stockMovement.findFirst({ where: { productId: id }, select: { id: true } }),
     ]);
     const templates = new Map(templateItems.map((t) => [t.template.id, t.template]));
     return {
       ...(dto as ProductDto),
       purchases: purchases.map(ProductPurchaseDto.from),
       templates: [...templates.values()],
-      stockUnitLocked: movement !== null,
     };
   }
 

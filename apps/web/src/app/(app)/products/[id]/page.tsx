@@ -94,12 +94,6 @@ export default async function ProductPage({
                     {unit}
                   </span>
                 ) : null}
-                <Link
-                  href={`/products/${p.id}?edit=1#stock`}
-                  className="ml-2 text-xs text-accent-foreground underline"
-                >
-                  맞추기
-                </Link>
               </>
             )}
           </dd>

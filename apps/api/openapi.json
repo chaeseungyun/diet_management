@@ -749,56 +749,6 @@
         ]
       }
     },
-    "/api/v1/stock/{productId}/adjustments": {
-      "post": {
-        "operationId": "StockController_adjust",
-        "parameters": [
-          {
-            "name": "productId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "description": "재전송 시 같은 응답을 돌려준다",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAdjustmentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdjustmentResultDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "남은 양 맞추기: 실측 잔량과 현재 합계의 차이만큼 adjust 이동 (차이 0 이면 이동 없음)",
-        "tags": [
-          "stock"
-        ]
-      }
-    },
     "/api/v1/meal-templates": {
       "get": {
         "operationId": "TemplatesController_list",
@@ -2791,10 +2741,6 @@
             "items": {
               "$ref": "#/components/schemas/ProductRefDto"
             }
-          },
-          "stockUnitLocked": {
-            "type": "boolean",
-            "description": "원장 이동이 있어 stock_unit 을 바꿀 수 없다 (D-13). 수정 화면이 단위 선택을 잠근다"
           }
         },
         "required": [
@@ -2815,8 +2761,7 @@
           "orderedQuantity",
           "allowedUnits",
           "purchases",
-          "templates",
-          "stockUnitLocked"
+          "templates"
         ]
       },
       "UpdateProductDto": {
@@ -3182,63 +3127,6 @@
         "required": [
           "productId",
           "quantity"
-        ]
-      },
-      "CreateAdjustmentDto": {
-        "type": "object",
-        "properties": {
-          "measuredQuantity": {
-            "type": "number",
-            "description": "지금 실제로 남은 양(unit 기준). 0 이상",
-            "minimum": 0,
-            "example": 0.6
-          },
-          "unit": {
-            "description": "입력 단위. 생략하면 제품의 stock_unit. ea 제품은 단위 중량이 있을 때만 g (D-02)",
-            "enum": [
-              "g",
-              "ml",
-              "ea"
-            ],
-            "type": "string"
-          },
-          "note": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 500
-          }
-        },
-        "required": [
-          "measuredQuantity"
-        ]
-      },
-      "AdjustmentResultDto": {
-        "type": "object",
-        "properties": {
-          "productId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "delta": {
-            "type": "number",
-            "description": "이번 보정으로 생긴 변화량(stock_unit). 0 이면 이동을 만들지 않았다"
-          },
-          "currentStock": {
-            "type": "number",
-            "description": "보정 뒤 남은 양(stock_unit)"
-          },
-          "movementId": {
-            "type": "string",
-            "nullable": true,
-            "description": "만든 원장 이동. 차이가 없으면 null",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "productId",
-          "delta",
-          "currentStock",
-          "movementId"
         ]
       },
       "NutritionValuesDto": {
