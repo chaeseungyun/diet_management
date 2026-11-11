@@ -41,11 +41,15 @@ function safePath(url) {
 
 self.addEventListener('push', (event) => {
   const data = readPayload(event);
+  const tag = typeof data.tag === 'string' && data.tag ? data.tag : undefined;
   const title = typeof data.title === 'string' && data.title ? data.title : '식단 관리';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: typeof data.body === 'string' ? data.body : undefined,
-      tag: typeof data.tag === 'string' ? data.tag : undefined,
+      tag,
+      // 같은 tag 로 덮어쓸 때(재알림)도 소리·진동을 다시 낸다. 기본값 false 면 조용히 교체만 된다.
+      // tag 가 없거나 빈 문자열인데 true 면 TypeError 라 tag 가 있을 때만.
+      renotify: tag !== undefined,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       lang: 'ko',

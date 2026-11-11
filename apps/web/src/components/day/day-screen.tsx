@@ -13,6 +13,7 @@ import { AddMealMenu } from './add-meal-menu';
 import { WeightQuick } from './weight-quick';
 import { DayComplete } from './day-complete';
 import { InstallBanner } from '@/components/pwa/install-banner';
+import { PushBanner } from '@/components/pwa/push-banner';
 
 /** 오늘 홈 (S-10 ①~⑥, ⑧ 하루 완료). ⑦ 소진 임박은 재고 화면과 함께 (D-20 순서) */
 export async function DayScreen({
@@ -76,7 +77,12 @@ export async function DayScreen({
         <p className="-mt-2 text-sm text-muted-foreground">{dateLabel(date)}</p>
       ) : null}
 
-      {day.isToday ? <InstallBanner /> : null}
+      {day.isToday ? (
+        <>
+          <InstallBanner />
+          <PushBanner />
+        </>
+      ) : null}
 
       <SetupGuide />
 

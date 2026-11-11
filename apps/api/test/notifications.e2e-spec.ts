@@ -146,6 +146,38 @@ describe('phase 2: notification settings & push subscriptions', () => {
     ).toBeNull();
   });
 
+  it('enable-meals turns on the slots in use once, keeping saved times (DEC-077)', async () => {
+    const c = api(server, await login(server, 'notif-c', 'C'));
+    await c
+      .patch('/me')
+      .send({ activeSlots: ['breakfast', 'lunch', 'dinner'] })
+      .expect(200);
+    // 저녁은 시각만 저장해 두고 꺼 둔 상태
+    await c
+      .put('/notification-settings/dinner')
+      .send({ enabled: false, notifyMinute: 1140 })
+      .expect(200);
+
+    const first = await c.post('/notification-settings/enable-meals').expect(200);
+    expect(first.body.applied).toBe(true);
+    expect(first.body.enabledKinds).toEqual(['breakfast', 'lunch', 'dinner']);
+    const byKind = Object.fromEntries(
+      first.body.settings.map((s: { kind: string }) => [s.kind, s]),
+    ) as Record<string, { enabled: boolean; notifyMinute: number | null }>;
+    expect(byKind.breakfast).toMatchObject({ enabled: true, notifyMinute: 480 });
+    expect(byKind.lunch).toMatchObject({ enabled: true, notifyMinute: 720 });
+    expect(byKind.dinner).toMatchObject({ enabled: true, notifyMinute: 1140 }); // 저장된 시각 유지
+    expect(byKind.afternoon_snack).toMatchObject({ enabled: false, notifyMinute: null }); // 쓰지 않는 끼니
+    expect(byKind.unrecorded_remind!.enabled).toBe(false); // 재알림은 건드리지 않음
+
+    // 하나라도 켜져 있으면 사용자가 고른 것이라 바꾸지 않는다
+    await c.put('/notification-settings/breakfast').send({ enabled: false }).expect(200);
+    const again = await c.post('/notification-settings/enable-meals').expect(200);
+    expect(again.body).toMatchObject({ applied: false, enabledKinds: [] });
+    const now = await c.get('/notification-settings').expect(200);
+    expect(now.body.find((s: { kind: string }) => s.kind === 'breakfast').enabled).toBe(false);
+  });
+
   it('requires login', async () => {
     await request(server).get('/api/v1/notification-settings').expect(401);
   });

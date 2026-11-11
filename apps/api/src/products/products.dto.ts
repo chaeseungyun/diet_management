@@ -324,4 +324,8 @@ export class ProductDetailDto extends ProductDto {
   /** 이 제품을 쓰는 보관되지 않은 템플릿 */
   @ApiProperty({ type: ProductRefDto, isArray: true })
   templates!: ProductRefDto[];
+
+  /** 원장 이동이 있어 stock_unit 을 바꿀 수 없다 (D-13). 수정 화면이 단위 선택을 잠근다 */
+  @ApiProperty()
+  stockUnitLocked!: boolean;
 }

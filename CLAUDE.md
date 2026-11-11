@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~076). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
 
 명령(저장소 루트에서):
 
@@ -66,7 +66,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **null은 미상, 0은 확인된 0.** 외부 식사 영양 미입력은 null. ‘안 먹음’은 섭취 0, ‘미기록’은 미상. 주간·월간 평균은 완료 + 영양 완전인 날만 포함하고 유효일 0일이면 ‘데이터 없음’. 메뉴명으로 영양을 자동 계산하는 척 하지 않는다.
 - **사용자 격리 (NFR-04).** 모든 사용자 데이터 테이블에 `user_id`. 모든 조회·수정은 토큰 사용자로 강제하고, 타인 소유 FK(예: `template_id`)는 저장 전 소유자 검사로 거부한다. 타인 리소스 ID 요청은 존재 여부와 무관하게 **404**이며 403은 쓰지 않는다 (D-06).
 - **인증은 stateless JWT (D-07).** 서버가 서명한 JWT를 HttpOnly·Secure·SameSite 쿠키에 담는다. DB 세션 테이블·Redis 등 서버 세션 저장소를 만들지 않는다. 로그아웃 = 쿠키 삭제. 카카오 콜백은 API(`/api/v1/auth/kakao/callback`)가 받아 쿠키 발급 후 웹 `/`로 302 하며 웹 처리 화면은 없다 (D-14). 웹·API는 같은 오리진이고 `/api/*`만 NestJS로 보낸다(운영 Caddy, 개발 Next rewrite). 개발 중 카카오 리다이렉트는 `localhost`.
-- **알림 중복 방지 (D-12).** `NotificationDelivery` 유니크는 `NULLS NOT DISTINCT`(PostgreSQL 15+, 원시 SQL 마이그레이션). 식사 취소로 미기록이 되면 새 행을 만들지 않고 `skipped` 행을 `pending`으로 되돌린다.
+- **알림은 발송 시점에 판정하고 유니크로 중복을 막는다 (D-12 보완, DEC-074·075).** 예약 행을 미리 만들지 않는다. 매분 스케줄러가 시각·계획(D-01)·쓰는 끼니·미기록 여부를 계산해 보낼 때만 `NotificationDelivery` 행을 유니크 (user, type, target_date, `target_key`, `seq`) insert 로 선점한다(`target_key` 는 끼니·제품을 담는 NOT NULL 문자열이라 `NULLS NOT DISTINCT`·원시 SQL 이 필요 없다). 취소로 미기록이 되면 다음 판정에서 다시 대상이 될 뿐 행을 되돌리지 않는다. 같은 알림은 한 번, `sent` 는 재발송하지 않는다(전달은 최소 한 번, 같은 tag 로 덮어씀).
 - **시각은 `timestamptz`(UTC), 식사·체중·완료 날짜는 사용자 시간대 기준 `date`로 별도 저장.** 기본 시간대 Asia/Seoul.
 - **업무 로직은 NestJS API에만 둔다 (NFR-07).** Next 서버에 재고·식단 규칙을 중복하지 않는다.
 - **소스(sauce)는 `Product.is_stock_tracked=false`** 플래그로 재고 차감 제외 (D-09). 선택적 `default_serving_amount`로 계산한 영양의 출처는 `manual_estimate`.

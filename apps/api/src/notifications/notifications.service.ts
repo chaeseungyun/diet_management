@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { todayIn } from '@diet/shared';
+import { SUGGESTED_NOTIFY_MINUTES, todayIn, type MealSlot } from '@diet/shared';
 import type { NotificationKind, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENV, type Env } from '../config/env';
@@ -14,6 +14,7 @@ import { assertRange } from '../common/validators';
 import { NotificationScheduler } from './notification-scheduler';
 import {
   CreatePushSubscriptionDto,
+  EnableMealsResultDto,
   NOTIFICATION_KINDS,
   NotificationDeliveryDto,
   NotificationSettingDto,
@@ -71,6 +72,28 @@ export class NotificationsService {
       update: data,
     });
     return NotificationSettingDto.from(kind, row);
+  }
+
+  /**
+   * '알림 켜기' 직후 (DEC-077). 켜진 끼니 알림이 하나도 없을 때만 쓰는 끼니(D-18)를 모두 켠다.
+   * 시각이 이미 있으면 그 시각, 없으면 제안 시각. 하나라도 켜져 있으면 사용자가 고른 것이라 건드리지 않는다.
+   * 재알림·소진 알림은 바꾸지 않는다. 두 번 불러도 결과가 같다.
+   */
+  async enableMeals(user: User): Promise<EnableMealsResultDto> {
+    const rows = await this.prisma.notificationSetting.findMany({ where: { userId: user.id } });
+    const anyOn = rows.some((r) => r.enabled && SLOT_KINDS.includes(r.kind));
+    const kinds = anyOn ? [] : SLOT_KINDS.filter((k) => (user.activeSlots as string[]).includes(k));
+    for (const kind of kinds) {
+      const notifyMinute =
+        rows.find((r) => r.kind === kind)?.notifyMinute ??
+        SUGGESTED_NOTIFY_MINUTES[kind as MealSlot];
+      await this.prisma.notificationSetting.upsert({
+        where: { userId_kind: { userId: user.id, kind } },
+        create: { userId: user.id, kind, enabled: true, notifyMinute },
+        update: { enabled: true, notifyMinute },
+      });
+    }
+    return { applied: kinds.length > 0, enabledKinds: kinds, settings: await this.settings(user) };
   }
 
   // ---------- 푸시 구독 ----------

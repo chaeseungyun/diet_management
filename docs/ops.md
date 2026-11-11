@@ -201,7 +201,10 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 진행: 알림 1/3(DEC-074) — 스키마(`notification_settings`·`push_subscriptions`·`notification_deliveries`), 환경 변수 `VAPID_PUBLIC_KEY`·`VAPID_PRIVATE_KEY`·`VAPID_SUBJECT`·`NOTIFICATIONS_ENABLED`(비우면 푸시 꺼진 채로 부팅, 스케줄러를 켜려면 3개 필요), API `GET/PUT /notification-settings`·`GET /push/public-key`·`POST /push/subscriptions`(알려진 푸시 서비스 호스트만, SSRF 방지)·`POST /push/subscriptions/unsubscribe`. 단위 45건·e2e 50건 통과. 운영 `deploy/.env` 에 VAPID 4줄을 추가할 것(비워 둬도 부팅됨).
 - 진행: 알림 2/3(DEC-075) — 판정 함수 `src/domain/notifications.ts`, `NotificationScheduler`(`@nestjs/schedule@6.1.3` 매분), `WebPushSender`(`web-push@3.6.7`), `POST /push/test`, `GET /notifications`, 매일 04:00 정리 작업(`src/maintenance/`). 단위 67건·e2e 62건(발송 12 추가: 같은 시각 두 실행 → 1건, 재시도 임대, 410 해제, 만료, 정리). 실제 푸시 서비스로의 발송은 S-71 뒤 실기기에서 확인한다. e2e 가 "pre-existing shared memory block is still in use" 로 실패하면 이전 실행의 테스트 Postgres 작업자 프로세스가 남은 것이므로 부모 없는 `postgres.exe --forkchild` 를 종료한다(개발 DB `-p 54320` 은 건드리지 않음).
 - 진행: 알림 3/3(DEC-076) — 웹 S-71 `/settings/notifications`(이 기기 권한·구독 상태, 알림 켜기·끄기·테스트 발송, 끼니별 시각, 재알림, 소진 알림 비활성, 최근 7일 기록), `src/lib/push.ts`, 로그인 영역의 `PushSync`(앱 열 때 재등록), 로그아웃 시 서버 구독 해제, S-70·사이드바 '알림' 링크. `next build` 통과, 로컬 서버 렌더 200 확인. 권한 대화상자·실제 수신은 브라우저·실기기에서 사용자 확인 필요.
-- 다음: 배포 → §4-3 VAPID 켜기 → 갤럭시 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
+- 확인(2026-11-11): 운영 VAPID 키 설정, 갤럭시 크롬·아이폰 홈 화면 앱에서 테스트 알림 수신.
+- 진행: 알림 접근성(DEC-077) — `POST /notification-settings/enable-meals`, '알림 켜기' 시 쓰는 끼니 일괄 켜기, 오늘 화면 알림 배너, S-72 알림 링크, 서비스 워커 `renotify`(재알림이 소리 없이 교체되던 버그). e2e 63건 통과.
+- 다음(나중): 매분 판정의 소요 시간 로그·대상 사용자 SQL 필터(사용자 수가 늘 때), S-71 팝업 설정 안내.
+- 다음: 갤럭시에서 오늘 화면 배너·일괄 켜기·재알림 소리 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

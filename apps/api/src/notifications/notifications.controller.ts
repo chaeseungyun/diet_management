@@ -25,6 +25,7 @@ import { CurrentUser } from '../auth/auth.guard';
 import { OptionalDateParamPipe } from '../common/validators';
 import {
   CreatePushSubscriptionDto,
+  EnableMealsResultDto,
   NOTIFICATION_KINDS,
   NotificationDeliveryDto,
   NotificationSettingDto,
@@ -57,6 +58,17 @@ export class NotificationSettingsController {
   @ApiOkResponse({ type: NotificationSettingDto, isArray: true })
   list(@CurrentUser() user: User): Promise<NotificationSettingDto[]> {
     return this.notifications.settings(user);
+  }
+
+  @Post('enable-meals')
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      '알림 켜기 직후: 켜진 끼니 알림이 없으면 쓰는 끼니를 모두 켠다(시각 없으면 제안 시각, DEC-077)',
+  })
+  @ApiOkResponse({ type: EnableMealsResultDto })
+  enableMeals(@CurrentUser() user: User): Promise<EnableMealsResultDto> {
+    return this.notifications.enableMeals(user);
   }
 
   @Put(':kind')

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { CheckCircle2, CircleAlert, Share, SquarePlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -73,6 +74,17 @@ function Steps({ env }: { env: PwaEnv }) {
         <li>홈 화면 아이콘으로 열면 주소창 없이 앱처럼 쓸 수 있습니다.</li>
         {env.os === 'ios' ? (
           <li>홈 화면 앱은 Safari 와 로그인이 따로라서, 처음 한 번은 앱에서 다시 로그인합니다.</li>
+        ) : null}
+        {env.pushSupported ? (
+          <li>
+            <Link
+              href="/settings/notifications"
+              className="text-primary underline underline-offset-2"
+            >
+              알림 설정
+            </Link>
+            에서 '알림 켜기' 를 누르면 쓰는 끼니 알림이 한 번에 켜집니다.
+          </li>
         ) : null}
       </Guide>
     );

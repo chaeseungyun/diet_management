@@ -136,6 +136,7 @@
 | --- | --- | --- |
 | `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 소진 알림 설정. 행이 없으면 기본값(off) | DEC-074 |
 | `PUT /notification-settings/{kind}` | 종류별 on/off·시각(`notifyMinute`)·재알림 횟수(0~3)·간격·소진 N일 | 발송 시점 판정이라 재예약 없음(DEC-074) |
+| `POST /notification-settings/enable-meals` | '알림 켜기' 직후. 켜진 끼니 알림이 없으면 쓰는 끼니를 모두 켬(저장된 시각, 없으면 제안 시각). `{ applied, enabledKinds, settings }` | **구현(DEC-077)**. 하나라도 켜져 있으면 변경 없음, 재알림·소진은 건드리지 않음 |
 | `GET /push/public-key` | VAPID 공개키 | |
 | `POST /push/subscriptions` | 구독 등록. `endpoint` 유니크, 재등록은 upsert | |
 | `POST /push/subscriptions/unsubscribe` | `{endpoint}` 로 구독 해제(`revoked_at`). 로그아웃 시 호출 | 브라우저는 구독 ID 를 모르므로 endpoint 로(DEC-074) |

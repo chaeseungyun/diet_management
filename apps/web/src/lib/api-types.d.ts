@@ -681,6 +681,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notification-settings/enable-meals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 알림 켜기 직후: 켜진 끼니 알림이 없으면 쓰는 끼니를 모두 켠다(시각 없으면 제안 시각, DEC-077) */
+        post: operations["NotificationSettingsController_enableMeals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notification-settings/{kind}": {
         parameters: {
             query?: never;
@@ -1638,6 +1655,13 @@ export interface components {
             daysBefore: number;
             /** @description false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다 */
             available: boolean;
+        };
+        EnableMealsResultDto: {
+            /** @description false = 이미 켜진 끼니 알림이 있어 아무것도 바꾸지 않음 */
+            applied: boolean;
+            /** @description 이번에 켠 끼니 */
+            enabledKinds: components["schemas"]["NotificationKind"][];
+            settings: components["schemas"]["NotificationSettingDto"][];
         };
         PutNotificationSettingDto: {
             enabled: boolean;
@@ -2927,6 +2951,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationSettingDto"][];
+                };
+            };
+        };
+    };
+    NotificationSettingsController_enableMeals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnableMealsResultDto"];
                 };
             };
         };

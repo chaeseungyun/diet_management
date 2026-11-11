@@ -21,7 +21,12 @@ export default async function NotificationsPage() {
   return (
     <Page title="알림" back="/settings">
       <PushDeviceCard />
-      <NotificationSettingsForm settings={settings} activeSlots={me.activeSlots as MealSlot[]} />
+      <NotificationSettingsForm
+        // 알림 켜기가 끼니를 일괄로 켜면(DEC-077) 새로 고침된 서버 값으로 다시 그린다
+        key={settings.map((s) => `${s.kind}:${s.enabled}:${s.notifyMinute}`).join()}
+        settings={settings}
+        activeSlots={me.activeSlots as MealSlot[]}
+      />
       <Section title="최근 알림 (7일)">
         <DeliveryList deliveries={deliveries} timezone={me.timezone} />
       </Section>

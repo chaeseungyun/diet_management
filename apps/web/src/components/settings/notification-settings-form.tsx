@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { MEAL_SLOTS, SLOT_LABELS, type MealSlot } from '@diet/shared';
+import { MEAL_SLOTS, SLOT_LABELS, SUGGESTED_NOTIFY_MINUTES, type MealSlot } from '@diet/shared';
 import type { Schemas } from '@/lib/api';
 import { api } from '@/lib/client';
 import { pad2 } from '@/lib/format';
@@ -15,14 +15,6 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 type Setting = Schemas['NotificationSettingDto'];
 type Kind = Setting['kind'];
 
-/** 끼니 알림을 처음 켤 때 채워 두는 시각(화면 제안값, 사용자가 바꾼다) */
-const SUGGESTED_MINUTE: Record<MealSlot, number> = {
-  breakfast: 8 * 60,
-  lunch: 12 * 60,
-  afternoon_snack: 15 * 60 + 30,
-  dinner: 18 * 60 + 30,
-  evening_snack: 21 * 60,
-};
 const REMIND_INTERVALS = [15, 30, 45, 60, 90, 120, 180];
 const REMIND_COUNTS = [1, 2, 3];
 const DAYS_BEFORE = [1, 2, 3, 5, 7, 14];
@@ -128,7 +120,7 @@ export function NotificationSettingsForm({
                         enabled: e.target.checked,
                         notifyMinute:
                           e.target.checked && s.notifyMinute === null
-                            ? SUGGESTED_MINUTE[slot]
+                            ? SUGGESTED_NOTIFY_MINUTES[slot]
                             : s.notifyMinute,
                       })
                     }

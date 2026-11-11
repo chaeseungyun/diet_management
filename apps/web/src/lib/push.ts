@@ -13,6 +13,7 @@ import type { components } from './api-types';
 
 type PublicKeyDto = components['schemas']['PushPublicKeyDto'];
 export type TestPushResult = components['schemas']['TestPushResultDto'];
+type EnableMealsResult = components['schemas']['EnableMealsResultDto'];
 
 export function pushApiAvailable(): boolean {
   return (
@@ -89,6 +90,19 @@ export async function enablePush(): Promise<EnableResult> {
   const sub = await subscribeWith(await registration(), publicKey);
   await register(sub);
   return 'subscribed';
+}
+
+/**
+ * S-71·오늘 화면 배너의 '알림 켜기' (DEC-077). 구독에 성공하면 끼니 알림도 켠다
+ * — 켜진 끼니가 하나도 없을 때만 서버가 쓰는 끼니를 모두 켠다. 켠 끼니 수를 돌려준다.
+ */
+export async function turnOnNotifications(): Promise<
+  { result: 'subscribed'; enabledCount: number } | { result: Exclude<EnableResult, 'subscribed'> }
+> {
+  const result = await enablePush();
+  if (result !== 'subscribed') return { result };
+  const r = await api<EnableMealsResult>('POST', '/notification-settings/enable-meals');
+  return { result, enabledCount: r.enabledKinds.length };
 }
 
 /** '이 기기 알림 끄기': 서버 해제 + 브라우저 구독 삭제 */

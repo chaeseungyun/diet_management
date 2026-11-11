@@ -122,6 +122,20 @@ export class PutNotificationSettingDto {
   daysBefore?: number;
 }
 
+/** POST /notification-settings/enable-meals 결과 (DEC-077) */
+export class EnableMealsResultDto {
+  /** false = 이미 켜진 끼니 알림이 있어 아무것도 바꾸지 않음 */
+  @ApiProperty()
+  applied!: boolean;
+
+  /** 이번에 켠 끼니 */
+  @ApiProperty({ enum: NotificationKind, enumName: 'NotificationKind', isArray: true })
+  enabledKinds!: NotificationKind[];
+
+  @ApiProperty({ type: NotificationSettingDto, isArray: true })
+  settings!: NotificationSettingDto[];
+}
+
 // ---------- 푸시 구독 ----------
 
 const B64URL = /^[A-Za-z0-9_-]+={0,2}$/;

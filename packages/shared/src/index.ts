@@ -35,6 +35,17 @@ export const SLOT_LABELS: Record<AnySlot, string> = {
 };
 
 /** 재고·섭취·영양 기준 단위 (D-02, D-11) */
+/**
+ * 끼니 알림을 켤 때 시각이 비어 있으면 채우는 제안 시각(하루 중 분, 사용자 시간대). 사용자가 바꾼다 (DEC-077)
+ */
+export const SUGGESTED_NOTIFY_MINUTES: Record<MealSlot, number> = {
+  breakfast: 8 * 60,
+  lunch: 12 * 60,
+  afternoon_snack: 15 * 60 + 30,
+  dinner: 18 * 60 + 30,
+  evening_snack: 21 * 60,
+};
+
 export const STOCK_UNITS = ['g', 'ml', 'ea'] as const;
 export type StockUnit = (typeof STOCK_UNITS)[number];
 

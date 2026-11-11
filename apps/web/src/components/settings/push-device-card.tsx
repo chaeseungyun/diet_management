@@ -1,10 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { BellOff, BellRing, CircleAlert } from 'lucide-react';
 import { usePwaEnv, type PwaEnv } from '@/lib/pwa';
-import { currentSubscription, disablePush, enablePush, fetchPublicKey, testPush } from '@/lib/push';
+import {
+  currentSubscription,
+  disablePush,
+  fetchPublicKey,
+  testPush,
+  turnOnNotifications,
+} from '@/lib/push';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { StatusBanner, useStatus } from '@/components/ui/status';
@@ -21,6 +28,7 @@ interface DeviceState {
  */
 export function PushDeviceCard() {
   const env = usePwaEnv();
+  const router = useRouter();
   const [device, setDevice] = useState<DeviceState | null>(null);
   const [loadError, setLoadError] = useState(false);
   const { status, set, run } = useStatus();
@@ -87,9 +95,18 @@ export function PushDeviceCard() {
 
   async function turnOn() {
     try {
-      const r = await run(() => enablePush());
-      if (r === 'subscribed') set({ kind: 'saved', message: '이 기기에서 알림을 받습니다' });
-      else if (r === 'dismissed')
+      const out = await run(() => turnOnNotifications());
+      const r = out.result;
+      if (out.result === 'subscribed') {
+        set({
+          kind: 'saved',
+          message:
+            out.enabledCount > 0
+              ? `쓰는 끼니 ${out.enabledCount}개 알림을 켰어요. 시각은 아래에서 바꿀 수 있어요`
+              : '이 기기에서 알림을 받습니다',
+        });
+        router.refresh();
+      } else if (r === 'dismissed')
         set({ kind: 'error', message: '권한 요청을 닫았습니다. 다시 눌러 허용해 주세요.' });
       else if (r === 'unavailable') set({ kind: 'error', message: '알림을 켤 수 없습니다.' });
       else set({ kind: 'idle' });
