@@ -10,6 +10,7 @@ import { HealthController } from './health/health.controller';
 import { GoalsModule } from './goals/goals.module';
 import { ProductsModule } from './products/products.module';
 import { PurchasesModule } from './purchases/purchases.module';
+import { StockModule } from './stock/stock.module';
 import { TemplatesModule } from './templates/templates.module';
 import { PlansModule } from './plans/plans.module';
 import { MealsModule } from './meals/meals.module';
@@ -35,6 +36,7 @@ export class AppModule {
         GoalsModule,
         ProductsModule,
         PurchasesModule,
+        StockModule,
         TemplatesModule,
         PlansModule,
         MealsModule,

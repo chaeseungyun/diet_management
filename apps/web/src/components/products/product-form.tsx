@@ -2,24 +2,26 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { STOCK_UNITS, type StockUnit } from '@diet/shared';
+import { STOCK_UNITS, formatQuantity, type StockUnit } from '@diet/shared';
 import type { Schemas } from '@/lib/api';
-import { api } from '@/lib/client';
+import { api, newIdempotencyKey } from '@/lib/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox, Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 
 type Product = Schemas['ProductDto'];
+type ProductDetail = Schemas['ProductDetailDto'];
 
 /**
  * 식품 등록·수정 (S-31, S-32 수정). 단위 모델은 D-11:
  * 수량 단위(g/ml/개) + 개일 때 표시 단위명 + 포장 1개에 들어 있는 양 + 선택 단위 중량 + 재고 관리 여부.
+ * 수정 화면은 '지금 남은 양' 을 함께 받아 실측 잔량 보정을 보낸다(S-42 중 실측 잔량, DEC-078).
  */
 export function ProductForm({
   product,
   next,
 }: {
-  product?: Product;
+  product?: ProductDetail;
   next?: 'nutrition' | 'purchase';
 }) {
   const router = useRouter();
@@ -36,10 +38,31 @@ export function ProductForm({
     purchaseUrl: product?.purchaseUrl ?? '',
     initialStock: '',
     withInitial: false,
+    // 수정 화면의 '지금 남은 양'. 음수(확인 필요)는 빈칸으로 시작해 새 값을 적게 한다
+    stock:
+      product?.currentStock != null && product.currentStock >= 0
+        ? formatQuantity(product.currentStock)
+        : '',
+    stockInG: false,
+    stockTouched: false,
   });
   const [busy, setBusy] = useState(false);
   const isEa = f.stockUnit === 'ea';
   const unitName = isEa ? f.unitLabel || '개' : f.stockUnit;
+  const packWeight = isEa && f.packWeightG !== '' ? Number(f.packWeightG) : 0;
+  const canUseG = packWeight > 0;
+  const stockInG = f.stockInG && canUseG;
+  const locked = product?.stockUnitLocked ?? false;
+
+  /** 남은 양 입력 단위 전환. 적힌 값은 단위 중량으로 바꿔 보여 준다(저장 환산은 서버, D-02) */
+  function switchStockUnit(toG: boolean) {
+    const n = Number(f.stock);
+    const stock =
+      f.stock === '' || !Number.isFinite(n) || !canUseG
+        ? f.stock
+        : formatQuantity(toG ? n * packWeight : n / packWeight);
+    setF({ ...f, stockInG: toG, stock });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,7 +80,19 @@ export function ProductForm({
     };
     try {
       if (product) {
-        await run(() => api<Product>('PATCH', `/products/${product.id}`, body), '식품 수정');
+        const adjust = f.isStockTracked && f.stockTouched && f.stock !== '';
+        await run(async () => {
+          await api<Product>('PATCH', `/products/${product.id}`, body);
+          // 단위 중량을 같이 바꿨다면 PATCH 뒤라야 g 환산이 새 값을 쓴다
+          if (adjust) {
+            await api(
+              'POST',
+              `/stock/${product.id}/adjustments`,
+              { measuredQuantity: Number(f.stock), unit: stockInG ? 'g' : f.stockUnit },
+              { idempotencyKey: newIdempotencyKey() },
+            );
+          }
+        }, '식품 수정');
         router.push(`/products/${product.id}`);
       } else {
         const created = await run(
@@ -104,13 +139,14 @@ export function ProductForm({
           label="수량 단위"
           htmlFor="stockUnit"
           hint={
-            product
-              ? '원장 이동이 생긴 뒤에는 바꿀 수 없음 (D-13)'
+            locked
+              ? `기록이 있어 바꿀 수 없어요${isEa ? `. g 로 적으려면 아래 '1${unitName}의 무게'를 넣으세요` : ''}`
               : '닭가슴살·계란은 개, 프로틴·채소는 g'
           }
         >
           <Select
             id="stockUnit"
+            disabled={locked}
             value={f.stockUnit}
             onChange={(e) => setF({ ...f, stockUnit: e.target.value as StockUnit })}
           >
@@ -170,11 +206,42 @@ export function ProductForm({
         checked={f.isStockTracked}
         onChange={(e) => setF({ ...f, isStockTracked: e.target.checked })}
       />
+      {product && f.isStockTracked ? (
+        <Field label="지금 남은 양" htmlFor="stock" hint={stockHint(product, unitName, canUseG)}>
+          <div className="flex gap-2">
+            <Input
+              id="stock"
+              type="number"
+              inputMode="decimal"
+              step="any"
+              min="0"
+              value={f.stock}
+              placeholder={
+                product.currentStock != null && product.currentStock < 0 ? '실제 남은 양' : ''
+              }
+              onChange={(e) => setF({ ...f, stock: e.target.value, stockTouched: true })}
+            />
+            {canUseG ? (
+              <Select
+                aria-label="남은 양 단위"
+                className="w-24 shrink-0"
+                value={stockInG ? 'g' : 'stock'}
+                onChange={(e) => switchStockUnit(e.target.value === 'g')}
+              >
+                <option value="stock">{unitName}</option>
+                <option value="g">g</option>
+              </Select>
+            ) : (
+              <span className="self-center text-sm text-muted-foreground">{unitName}</span>
+            )}
+          </div>
+        </Field>
+      ) : null}
       {!f.isStockTracked ? (
         <Field
-          label={`기본 추정 섭취량 (${unitName}, 선택)`}
+          label={`1회 추정 섭취량 (${unitName}, 선택)`}
           htmlFor="dsa"
-          hint="매번 계량하지 않고 이 값으로 영양을 추정합니다 (출처: 직접 입력 추정)"
+          hint="남은 양을 세지 않는 식품(소스·양념)을 먹을 때 이 양으로 영양을 추정합니다 (출처: 직접 입력 추정)"
         >
           <Input
             id="dsa"
@@ -232,4 +299,15 @@ export function ProductForm({
       </Button>
     </form>
   );
+}
+
+function stockHint(product: ProductDetail, unitName: string, canUseG: boolean): string {
+  const now = product.currentStock;
+  const recorded =
+    now === null
+      ? '남은 양 기록이 아직 없습니다.'
+      : `기록상 ${formatQuantity(now)}${unitName}${now < 0 ? ' (확인 필요)' : ''}.`;
+  return `${recorded} 실제 남은 양을 적으면 차이만큼 맞춥니다.${
+    product.stockUnit === 'ea' && !canUseG ? ` g 로 적으려면 '1${unitName}의 무게'를 넣으세요.` : ''
+  }`;
 }

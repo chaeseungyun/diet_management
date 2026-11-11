@@ -300,6 +300,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stock/{productId}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 남은 양 맞추기: 실측 잔량과 현재 합계의 차이만큼 adjust 이동 (차이 0 이면 이동 없음) */
+        post: operations["StockController_adjust"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meal-templates": {
         parameters: {
             query?: never;
@@ -994,6 +1011,8 @@ export interface components {
             purchases: components["schemas"]["ProductPurchaseDto"][];
             /** @description 이 제품을 쓰는 보관되지 않은 템플릿 */
             templates: components["schemas"]["ProductRefDto"][];
+            /** @description 원장 이동이 있어 stock_unit 을 바꿀 수 없다 (D-13). 수정 화면이 단위 선택을 잠근다 */
+            stockUnitLocked: boolean;
         };
         UpdateProductDto: {
             /** @example 닭가슴살 100g */
@@ -1133,6 +1152,32 @@ export interface components {
              */
             quantity: number;
             note?: string | null;
+        };
+        CreateAdjustmentDto: {
+            /**
+             * @description 지금 실제로 남은 양(unit 기준). 0 이상
+             * @example 0.6
+             */
+            measuredQuantity: number;
+            /**
+             * @description 입력 단위. 생략하면 제품의 stock_unit. ea 제품은 단위 중량이 있을 때만 g (D-02)
+             * @enum {string}
+             */
+            unit?: "g" | "ml" | "ea";
+            note?: string | null;
+        };
+        AdjustmentResultDto: {
+            /** Format: uuid */
+            productId: string;
+            /** @description 이번 보정으로 생긴 변화량(stock_unit). 0 이면 이동을 만들지 않았다 */
+            delta: number;
+            /** @description 보정 뒤 남은 양(stock_unit) */
+            currentStock: number;
+            /**
+             * Format: uuid
+             * @description 만든 원장 이동. 차이가 없으면 null
+             */
+            movementId: string | null;
         };
         NutritionValuesDto: {
             kcal: number | null;
@@ -2254,6 +2299,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReceiptDto"];
+                };
+            };
+        };
+    };
+    StockController_adjust: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description 재전송 시 같은 응답을 돌려준다 */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdjustmentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdjustmentResultDto"];
                 };
             };
         };

@@ -70,7 +70,7 @@
 | `GET /stock` | 제품별 현재 재고(`SUM(delta)`), 배송 중 수량 별도, 소진 예정일, 수준 배지(정상/소진 임박/소진/재고 확인 필요/예측 불가), 미기록 과거 식사가 있으면 ‘추정 신뢰도 낮음’ 플래그 | 음수는 0으로 자르지 않고 그대로 노출 |
 | `GET /stock/{productId}` | 상세: 날짜별 예정 소비·입고 예정 등 예측 근거 | 오늘 이미 `eaten`인 슬롯은 예정량에서 제외 |
 | `GET /stock/{productId}/movements?cursor=` | 원장 목록. 사유·시각·연결 식사 | 수정·삭제 API 없음(append-only) |
-| `POST /stock/{productId}/adjustments` | 실측 잔량 보정·폐기·다른 용도 소비. `delta` 또는 `measuredQuantity`, `note` 필수 | reason `adjust | waste | other_use`. Idempotency-Key |
+| `POST /stock/{productId}/adjustments` | 실측 잔량 보정·폐기·다른 용도 소비. `delta` 또는 `measuredQuantity`, `note` 필수 | reason `adjust | waste | other_use`. Idempotency-Key. **2026-11-11 구현은 실측 잔량만**(DEC-078): `{measuredQuantity ≥ 0, unit?, note?}`, 사유 선택, `unit` 은 stock_unit 또는 단위 중량 있는 ea 의 g, 차이 0 이면 이동 없음. 응답 `{productId, delta, currentStock, movementId}`. 비관리 제품 422 |
 
 ## 6. 식단 템플릿 (단계 1) — FR-04, S-20, S-21
 

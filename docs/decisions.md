@@ -829,6 +829,55 @@
 - **남은 제약(웹 푸시 한계)**: 안드로이드의 헤드업(팝업) 표시는 알림 채널의 중요도가 정하고, 웹은 이를 지정할 수 없다(크롬·설치 앱이 채널을 만든다). 사용자가 기기 설정 → 앱 → 알림 → 카테고리에서 '팝업으로 표시' 를 켜야 한다. S-71 안내 문구는 아직 넣지 않았다.
 - **재검토 조건**: 제안 시각이 실제 사용과 자주 어긋나 바로 바꾸는 사례가 많으면, 켤 때 시각을 고르게 하거나 식단표의 끼니 시각을 따로 둔다.
 
+### DEC-078 남은 양 맞추기(실측 잔량 보정)를 재고 화면보다 먼저 — 식품 수정 화면에 '지금 남은 양'
+
+- 날짜 2026-11-11 / 상태 확정(구현) / 범위: S-32·S-42, FR-03, `api.md` §5 `POST /stock/{productId}/adjustments`. 단계 2 순서(D-20 + DEC-073)의 '재고 화면·예측·보정' 중 보정 하나를 앞당긴다. 커밋: 이 항목과 같은 커밋
+- **맥락**: 사용자 보고(2026-11-11). ① 남은 양을 잘못 등록했는데 고칠 곳이 없다 — 수정 화면에는 '남은 양을 센다' 체크와, 끄면 나오는 '기본 추정 섭취량'(소스용 1회량, 남은 양과 무관)만 있었다. ② 1000g 팩 2개 묶음 상품에서 1팩을 다 먹고 다른 팩에 600g 이 남았는데 팩 단위로만 적을 수 있다. 수량 단위를 g 로 바꾸려 하자 `stockUnit cannot change once stock movements exist (D-13)` 가 그대로 보였다.
+- **구현 중 정한 것**:
+  - `POST /stock/{productId}/adjustments` 는 지금 **실측 잔량만** 받는다: `{ measuredQuantity ≥ 0, unit?, note? }`. 서버가 (실측 잔량 − 현재 원장 합계) 만큼 `reason=adjust` 이동 하나를 더한다(append-only 유지). 차이가 0 이면 이동을 만들지 않고 `movementId=null`. 응답은 `{ productId, delta, currentStock, movementId }`. 폐기·다른 용도 소비(`waste`·`other_use`, `delta` 입력)는 S-40~S-42 화면과 함께 만든다.
+  - 결과가 '이만큼 남았다' 라는 설정이라 같은 값을 다시 보내도 두 번째는 차이 0 이다. 그래도 재고 쓰기 규칙대로 `IdempotencyService.run` 안에서 하고, 같은 제품의 동시 보정은 `products` 행 `FOR UPDATE` 로 줄 세운다. 식사 기록 쓰기와는 잠금을 공유하지 않는다(한 사용자 앱이라 같은 순간의 경합은 받아들임).
+  - 입력 단위는 `stock_unit`, 또는 단위 중량(`pack_weight_g`)이 있는 ea 제품의 g(D-02). 환산은 서버가 하고 소수 3자리로 저장한다(600g ÷ 1000g = 0.6팩). 단위 중량이 없는데 g 를 보내면 422.
+  - 재고 비관리 제품은 422, 타인 제품은 404(D-06). 음수 실측은 422. 음수 합계(확인 필요, D-21)도 실측으로 되돌릴 수 있다.
+  - **사유(note)는 선택**이다. `api.md`·`screens.md` S-42 의 '사유 필수'는 제안이었고, 실측 잔량 보정은 '실제로 세어 보니' 가 사유 자체라 입력을 강요하지 않는다. 폐기·다른 용도는 S-42 구현 때 다시 정한다.
+  - **화면**: 식품 수정(S-32 `?edit=1`)에 '지금 남은 양' 칸. 기록상 값으로 채워 두고(음수면 빈칸), 사용자가 고쳤을 때만 저장 시 `PATCH /products/{id}` 다음에 보정을 보낸다(같은 저장에서 단위 중량을 바꿨다면 새 값으로 환산되게 PATCH 가 먼저). 단위 중량이 있으면 `팩/g` 선택이 붙는다. 상세 화면의 남은 양 옆에 '맞추기' 링크.
+  - **수량 단위 잠금(D-13)은 그대로**다. 원장 합계가 한 단위의 합이라 단위를 바꾸면 과거 이동·스냅샷이 다른 단위로 읽힌다. 대신 상세 응답에 `stockUnitLocked`(원장 이동 존재)를 싣고, 수정 화면이 단위 선택을 잠근 채 "기록이 있어 바꿀 수 없어요. g 로 적으려면 '1팩의 무게'를 넣으세요" 라고 안내한다. 보고 사례는 단위 중량 1000g 을 넣고 600g 을 적으면 된다(표시: 0.6팩 (600g)). 식사 기록도 같은 조건에서 g 입력이 된다.
+  - 소스용 칸의 이름을 '기본 추정 섭취량' → '1회 추정 섭취량' 으로, 안내를 "남은 양을 세지 않는 식품을 먹을 때 이 양으로 영양을 추정" 으로 바꿨다(남은 양 칸으로 오해한 사례).
+- **버린 대안**: (a) `PATCH /products` 본문에 `currentStock` 을 받기 — 제품 정보 수정과 재고 쓰기(멱등·원장)가 한 엔드포인트에 섞인다. (b) 원장 이동이 있어도 단위 중량이 있으면 `stock_unit` 변경을 허용하고 과거 이동을 환산 — 원장을 고쳐 쓰는 것이라 append-only·과거 불변과 충돌(D-13 재검토가 필요, 사용자 확정 사항). (c) 웹에서 차이를 계산해 delta 로 보내기 — 계산 시점의 합계가 서버와 어긋날 수 있고 규칙이 웹에 생긴다(NFR-07).
+- **재검토 조건**: 단위 중량을 모르는 묶음 상품(무게 표시 없음)에서 부분 잔량을 적고 싶다는 요구가 반복되면, 소수 팩(0.6팩) 입력 안내를 더하거나 D-13 재검토를 사용자에게 올린다.
+
+### DEC-079 오류 문구 매핑 — 서버는 기계용 `code`, 문구는 웹 한 곳에서
+
+- 날짜 2026-11-11 / 상태 확정(계획, **미구현 — 사용자가 착수를 지시할 때까지 시작하지 않음**) / 범위: `api.md` §0 오류 형식, G-01 상태 배너, 웹 `src/lib/client.ts`·`src/lib/api.ts`
+- **맥락**: 사용자 보고(2026-11-11)에서 `stockUnit cannot change once stock movements exist (D-13)` 가 화면에 그대로 보였다. 원인은 웹 `ApiError` 의 `messageOf` 가 409·422·그 밖의 상태에서 서버 `message` 를 그대로 쓰기 때문이다. API 의 오류 문장은 개발자용 영어이고(직접 쓴 것 약 50곳, `NotFoundException()` 제외), class-validator 실패는 `["quantity must not be less than 0", …]` 배열이다. 서버 페이지의 `apiGet` 실패는 `app/error.tsx` 로 간다.
+- **계획**:
+  1. **오류 본문 형식**: `{ statusCode, code, message, fields? }`. `code` 는 기계용 식별자(예: `STOCK_UNIT_LOCKED`), `message` 는 지금처럼 개발자용 영어(로그·Swagger·디버깅). `fields` 는 검증 실패일 때만 `[{ field, rule }]`. OpenAPI 에 `ErrorDto` 로 싣는다.
+  2. **코드 목록은 `@diet/shared` 의 `ERROR_CODES` 상수 하나**. API 는 `new UnprocessableEntityException({ code, message })` 꼴의 작은 헬퍼(`appError(status, code, message)`)로 던지고, 전역 `ExceptionFilter` 가 형식을 맞춘다(`code` 없는 예외는 상태별 기본 코드: `NOT_FOUND`·`UNAUTHENTICATED`·`CSRF_REJECTED`·`CONFLICT`·`INTERNAL`). `ValidationPipe` 의 `exceptionFactory` 가 `VALIDATION_FAILED` + `fields` 를 만든다.
+  3. **문구는 웹 `src/lib/error-messages.ts`** 의 `Record<ErrorCode, string>`(`satisfies` 로 새 코드의 문구 누락을 타입 오류로 잡음). 문구 고르기는 표현이라 웹 몫이고, 판정은 서버에 그대로 둔다(NFR-07 과 맞음). `ApiError.message` 는 이 표에서 고르고, **서버 `message` 는 어떤 경우에도 화면에 내지 않는다**(개발 모드에서만 `console.warn`).
+  4. **대체 순서**: 화면이 넘긴 덮어쓰기(같은 코드라도 화면 맥락이 다를 때, `run(work, saved, { messages: { … } })`) → 코드 표 → 상태별 기본 문구 → 네트워크 실패. 상태별 기본 문구(제안): 400·422 "입력한 값을 확인해 주세요", 401 "다시 로그인해 주세요", 403 "요청이 막혔어요. 새로 고침 후 다시 해 주세요", 404 "찾을 수 없어요. 이미 지워졌을 수 있어요", 409 "다른 기기에서 먼저 바뀌었어요. 새로 고침 후 다시 해 주세요", 5xx "잠시 문제가 생겼어요. 잠시 뒤 다시 해 주세요", `fetch` 실패 "연결이 끊겼어요. 적은 내용은 그대로 있어요"(NFR-03, 실패를 저장으로 보이지 않음). 검증 실패는 화면이 넘긴 필드 라벨이 있으면 "'남은 양'을 확인해 주세요".
+  5. **첫 코드 표(예)** — 구현 때 50곳 전수를 표로 만든다:
+
+     | code | 지금 서버 문장 | 화면 문구(제안) |
+     | --- | --- | --- |
+     | `STOCK_UNIT_LOCKED` | stockUnit cannot change once stock movements exist (D-13) | 기록이 있는 식품은 수량 단위를 바꿀 수 없어요. g 로 적으려면 '1팩의 무게'를 넣어 주세요 |
+     | `UNIT_NOT_ALLOWED` | unit … is not allowed / basisUnit must equal … | 이 식품은 그 단위로 적을 수 없어요. 단위 중량을 먼저 넣어 주세요 |
+     | `UNIT_SETTINGS_IN_USE` | a meal template uses a unit … / the current nutrition basis unit … | 이 단위를 쓰는 식단·영양 정보가 있어 바꿀 수 없어요 |
+     | `PRODUCT_NOT_STOCK_TRACKED` | product is not stock tracked | 남은 양을 세지 않는 식품이에요 |
+     | `PRODUCT_ARCHIVED` / `TEMPLATE_ARCHIVED` | product/template is archived | 보관한 식품(식단)이에요. 보관을 풀고 다시 해 주세요 |
+     | `PRODUCT_IN_TEMPLATE` | product is used by an active meal template … | 이 식품을 쓰는 식단이 있어요. 식단에서 먼저 빼 주세요 |
+     | `TEMPLATE_IN_PLAN` | template is referenced by the weekly plan … | 식단표나 날짜 예외에서 쓰는 식단이에요. 먼저 바꿔 주세요 |
+     | `RECORD_CONFLICT` | record was modified/created concurrently … | 다른 기기에서 먼저 바뀌었어요. 새로 고침 후 다시 해 주세요 |
+     | `EMPTY_HOME_MEAL` | items must not be empty for an eaten home meal … | 먹은 품목을 하나 이상 넣거나 '안 먹음'으로 기록해 주세요 |
+     | `WEIGHT_EXISTS` | weight already recorded for this date … | 이 날 체중이 이미 있어요. 덮어쓸까요? (화면이 확인 후 overwrite) |
+     | `PURCHASE_NOT_ORDERED` | only ordered purchases can be edited/cancelled | 배송 중인 구매만 고치거나 취소할 수 있어요 |
+     | `FUTURE_DATE` | future date | 미래 날짜는 기록할 수 없어요 |
+     | `IDEMPOTENCY_KEY_REUSED` | Idempotency-Key was already used … | 잠시 문제가 생겼어요. 새로 고침 후 다시 해 주세요 (사용자 잘못이 아님) |
+     | `PUSH_NOT_CONFIGURED` | push is not configured | 지금은 알림을 보낼 수 없어요 |
+
+  6. **화면에서 먼저 막기**: 문구 매핑과 별개로, 화면이 미리 알 수 있는 거부는 버튼·입력을 잠그고 이유를 보여 준다(예: DEC-078 의 수량 단위 잠금). 오류 문구는 마지막 안전망이다.
+  7. **작업 순서**: ① shared `ERROR_CODES` + API 헬퍼·필터·`exceptionFactory`, 기존 throw 에 code 추가(문장은 유지) + e2e 에서 대표 코드 검사 ② 웹 `error-messages.ts`·`ApiError` 교체·네트워크 실패 처리·`error.tsx` 문구 ③ `api.md` §0 에 오류 형식, `screens.md` G-01 에 문구 규칙. ①②는 한 커밋씩, 타입 재생성 포함.
+- **버린 대안**: (a) 서버가 한국어 `message` 를 바로 보냄 — 가장 단순하지만 화면 맥락별 문구(같은 409 라도 화면마다 다른 안내)를 못 하고, 표현이 API 에 섞인다. (b) 웹이 영어 문장을 문자열로 대조 — 서버 문장을 고치면 조용히 깨진다. (c) HTTP 상태만으로 문구 — 422 하나에 사유가 열 가지 넘게 섞여 있어 안내가 안 된다.
+- **사용자 확정**(2026-11-11): ① 코드 이름은 대문자 스네이크(`STOCK_UNIT_LOCKED`). ② 화면 문구는 해요체. ③ 서버 원문은 개발 모드에서도 배너에 붙이지 않고 콘솔에만 남긴다. ④ 착수 시점은 사용자가 정한다 — 그 전까지 위 계획은 구현하지 않는다. 재고 화면(S-40~S-42)이 먼저 들어가면 그 화면의 새 오류도 착수 때 같이 옮긴다.
+
 ---
 
 ## F. 열린 결정 (아직 내리지 않음)
@@ -851,6 +900,8 @@
 2026-11-07에 닫힌 항목: '계획 없음' 슬롯의 완료 조건(DEC-059, D-18), 앱 이름·도메인·등록기관과 VM 공급자·사양·견적(DEC-062, `kkinilog.com` · Lightsail 2GB). 단계 2 착수 전 남은 질문: 음수 재고의 소진 예측 표시, 알림 체계 공유. D-12 의 `NULLS NOT DISTINCT` 는 DEC-055 때문에 센티널 방식으로 다시 검토한다.
 
 2026-11-08에 닫힌 항목: 음수 재고의 소진 예측 표시(DEC-063, D-21), 알림 체계 공유(DEC-064, D-22), 통계 정의와 계획 실천율 허용 오차(DEC-028 확정, DEC-068: 정확 일치), 끼니 공유 방향 7건(DEC-066: 기본 비공개, 영양 합계까지 공유·체중 비공유, 가입 이후 전부, 차단 202, 반응+댓글+좋아요, 사진 업로드 뒤 배치), 식사 사진 보관 정책(DEC-069: 리사이즈본 7~30일, 20 GB 예산, 기간 자동 산정), EXT-02 분할과 확장 순서(DEC-071: 단계 3 사진 업로드·보관 → 4 끼니 공유 → 5 OCR → 6 사진 AI 분석 → 7 크롤링·추천). 단계 2 착수 전 질문은 모두 닫혔다.
+
+2026-11-11에 닫힌 항목: 오류 문구 매핑의 코드 명명·어조·원문 표시(DEC-079, 착수는 사용자 지시 시).
 
 ---
 
