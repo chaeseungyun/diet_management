@@ -1,9 +1,5 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { conflict, unprocessable } from '../common/errors';
 import {
   Prisma,
   type DayCompletion,
@@ -240,12 +236,16 @@ export class MealsService {
       let ev = await this.evaluateDay(tx, user, date);
       const check = this.checkFrom(user, date, ev);
       if (check.blocker === 'unrecorded') {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'DAY_HAS_UNRECORDED',
           `cannot complete ${date}: unrecorded slots ${check.unrecorded.join(', ')}`,
         );
       }
       if (check.blocker) {
-        throw new UnprocessableEntityException(`cannot complete ${date}: ${check.blocker}`);
+        throw unprocessable(
+          check.blocker === 'future' ? 'FUTURE_DATE' : 'BEFORE_SIGNUP',
+          `cannot complete ${date}: ${check.blocker}`,
+        );
       }
       if (dto.skipUnrecordedFree && check.unrecordedFree.length > 0) {
         for (const slot of check.unrecordedFree) {
@@ -473,23 +473,25 @@ export class MealsService {
     const { date, slot, seq, plan } = target;
     const version = dto.version ?? null;
     if (existing && version !== existing.version) {
-      throw new ConflictException(
+      throw conflict(
+        'RECORD_CONFLICT',
         `version mismatch: expected ${existing.version}, got ${version ?? 'null'}`,
       );
     }
     if (!existing && version !== null) {
-      throw new ConflictException('record does not exist; send version=null');
+      throw conflict('RECORD_CONFLICT', 'record does not exist; send version=null');
     }
 
     const kind = dto.kind ?? 'home';
     const eaten = dto.status === 'eaten';
     const items = eaten ? (dto.items ?? []) : [];
     if (eaten && kind === 'outside' && !dto.outsideMenu?.trim()) {
-      throw new UnprocessableEntityException('outsideMenu is required for an outside meal');
+      throw unprocessable('OUTSIDE_MENU_REQUIRED', 'outsideMenu is required for an outside meal');
     }
     // 품목 없는 '먹었음' 은 의미가 없다(안 먹음으로 기록해야 한다). 외부 식사는 메뉴명만으로 가능 (DEC-057)
     if (eaten && kind === 'home' && items.length === 0) {
-      throw new UnprocessableEntityException(
+      throw unprocessable(
+        'EMPTY_HOME_MEAL',
         'items must not be empty for an eaten home meal; use status=skipped instead',
       );
     }
@@ -504,7 +506,8 @@ export class MealsService {
       const p = products.get(i.productId);
       if (!p) throw new NotFoundException();
       if (!isAllowedUnit(p, i.unit)) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'UNIT_NOT_ALLOWED',
           `unit ${i.unit} is not allowed for ${p.name} (D-02)`,
         );
       }
@@ -512,7 +515,7 @@ export class MealsService {
       let estimated = false;
       if (quantity === null) {
         if (p.isStockTracked) {
-          throw new UnprocessableEntityException(`quantity is required for ${p.name}`);
+          throw unprocessable('QUANTITY_REQUIRED', `quantity is required for ${p.name}`);
         }
         // 소스: 기본 추정량을 stock_unit 기준으로 쓴다 (D-09)
         if (p.defaultServingAmount !== null && i.unit === p.stockUnit) {
@@ -554,7 +557,7 @@ export class MealsService {
         data: { ...data, version: { increment: 1 } },
       });
       if (updated.count === 0) {
-        throw new ConflictException('record was modified concurrently; reload and retry');
+        throw conflict('RECORD_CONFLICT', 'record was modified concurrently; reload and retry');
       }
       // 2) 기존 차감 복구 → 스냅샷 제거 (잠금 이후이므로 먼저 커밋된 쓰기의 결과를 본다)
       await this.reverseDeductions(tx, user.id, existing);
@@ -577,7 +580,7 @@ export class MealsService {
       } catch (e) {
         // 동시 생성 경쟁(요구사항 §7-7): 유니크 위반은 409
         if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-          throw new ConflictException('record was created concurrently; reload and retry');
+          throw conflict('RECORD_CONFLICT', 'record was created concurrently; reload and retry');
         }
         throw e;
       }

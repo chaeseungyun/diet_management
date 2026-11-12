@@ -1,4 +1,5 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { unprocessable } from '../common/errors';
 import { dec } from '../common/decimal';
 import { IdempotencyService } from '../common/idempotency.service';
 import { Decimal, round3, toStockUnit } from '../domain/units';
@@ -28,17 +29,21 @@ export class StockService {
       idemKey,
       { op: 'stock.adjust', productId, dto },
       async (tx) => {
+        // 차이는 읽은 시점의 합계·단위 설정에 기대므로 행을 먼저 잠그고 그 뒤에 읽는다.
+        // 같은 제품의 보정끼리, 그리고 진행 중인 식품 수정(PATCH)과 줄을 세운다
+        await tx.$queryRaw`
+          SELECT id FROM products
+          WHERE id = ${productId}::uuid AND user_id = ${userId}::uuid
+          FOR UPDATE`;
         const product = await this.products.loadOwned(tx, userId, productId);
         if (!product.isStockTracked) {
-          throw new UnprocessableEntityException('product is not stock tracked');
+          throw unprocessable('PRODUCT_NOT_STOCK_TRACKED', 'product is not stock tracked');
         }
-        // 차이는 읽은 시점의 합계에 기대므로 같은 제품의 보정끼리 줄 세운다
-        await tx.$queryRaw`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
 
         const unit = dto.unit ?? product.stockUnit;
         const measured = toStockUnit(dec(dto.measuredQuantity), unit, product);
         if (!measured) {
-          throw new UnprocessableEntityException(`unit ${unit} is not allowed for this product`);
+          throw unprocessable('UNIT_NOT_ALLOWED', `unit ${unit} is not allowed for this product`);
         }
         const target = round3(measured);
         const current =

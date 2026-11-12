@@ -1,11 +1,6 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
+import { AppException } from './errors';
 import { ENV, type Env } from '../config/env';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -24,7 +19,7 @@ export class OriginGuard implements CanActivate {
 
     const origin = req.headers.origin ?? originOf(req.headers.referer);
     if (origin !== this.env.WEB_ORIGIN) {
-      throw new ForbiddenException('Cross-site request rejected');
+      throw new AppException(403, 'CSRF_REJECTED', 'Cross-site request rejected');
     }
     return true;
   }

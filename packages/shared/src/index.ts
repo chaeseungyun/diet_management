@@ -111,6 +111,73 @@ export const NOTE_MAX_LENGTH = 500;
 /** 멱등성 키 헤더 (api.md §0) */
 export const IDEMPOTENCY_HEADER = 'idempotency-key';
 
+/**
+ * API 오류 코드 (DEC-079, api.md §0). 오류 본문은 `{ statusCode, code, message, fields? }`.
+ * `message` 는 개발자용 영어이고 화면에 내지 않는다. 화면 문구는 웹 `error-messages.ts` 가 code 로 고른다.
+ * 코드를 더하면 웹 문구 표가 타입 오류로 누락을 알려 준다.
+ */
+export const ERROR_CODES = [
+  // 상태별 기본 (code 를 따로 주지 않은 예외)
+  'BAD_REQUEST',
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'CONFLICT',
+  'VALIDATION_FAILED',
+  'PAYLOAD_TOO_LARGE',
+  'SERVICE_UNAVAILABLE',
+  'INTERNAL',
+  // 공통
+  'CSRF_REJECTED',
+  'IDEMPOTENCY_KEY_REUSED',
+  'FUTURE_DATE',
+  // 식품·영양·재고
+  'UNIT_LABEL_REQUIRED',
+  'UNIT_NOT_ALLOWED',
+  'STOCK_UNIT_LOCKED',
+  'UNIT_SETTINGS_IN_USE',
+  'PRODUCT_ARCHIVED',
+  'PRODUCT_IN_TEMPLATE',
+  'PRODUCT_NOT_STOCK_TRACKED',
+  'NUTRITION_MISSING',
+  'PURCHASE_NOT_ORDERED',
+  // 식단·식단표
+  'TEMPLATE_REQUIRED',
+  'TEMPLATE_ARCHIVED',
+  'TEMPLATE_IN_PLAN',
+  // 식사 기록·하루 완료
+  'RECORD_CONFLICT',
+  'EMPTY_HOME_MEAL',
+  'OUTSIDE_MENU_REQUIRED',
+  'QUANTITY_REQUIRED',
+  'DAY_HAS_UNRECORDED',
+  'BEFORE_SIGNUP',
+  // 체중
+  'WEIGHT_EXISTS',
+  // 알림
+  'NOTIFY_TIME_REQUIRED',
+  'PUSH_ENDPOINT_INVALID',
+  'PUSH_NOT_CONFIGURED',
+] as const;
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export function isErrorCode(v: unknown): v is ErrorCode {
+  return typeof v === 'string' && (ERROR_CODES as readonly string[]).includes(v);
+}
+
+/** 상태 코드만 있을 때의 기본 code */
+export function defaultErrorCode(status: number): ErrorCode {
+  if (status === 401) return 'UNAUTHENTICATED';
+  if (status === 403) return 'FORBIDDEN';
+  if (status === 404) return 'NOT_FOUND';
+  if (status === 409) return 'CONFLICT';
+  if (status === 413) return 'PAYLOAD_TOO_LARGE';
+  if (status === 422) return 'VALIDATION_FAILED';
+  if (status === 503) return 'SERVICE_UNAVAILABLE';
+  if (status >= 400 && status < 500) return 'BAD_REQUEST';
+  return 'INTERNAL';
+}
+
 /** YYYY-MM-DD */
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

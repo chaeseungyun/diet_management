@@ -15,6 +15,7 @@
 - 상태를 바꾸는 요청(POST/PUT/PATCH/DELETE)은 `Origin`(없으면 `Referer`)이 WEB_ORIGIN과 같아야 하며 불일치는 `403`이다(CSRF, DEC-051). D-06의 404 규칙은 리소스 접근에만 해당한다.
 - 재고에 영향을 주는 쓰기 요청은 `Idempotency-Key` 헤더를 받는다. (user, key) 재전송은 저장된 응답을 그대로 돌려주고 재차감하지 않는다. 같은 키에 다른 본문이면 `422`(ERD A5).
 - 식사 기록 쓰기는 정수 `version`(**D-08**)을 함께 보내고 불일치면 `409`(D-04). 응답은 새 `version`을 돌려준다.
+- 오류 본문은 `{ statusCode, code, message, fields? }`(DEC-079). `code` 는 `@diet/shared` 의 `ERROR_CODES` 중 하나이고 화면 문구는 웹이 `code` 로 고른다. `message` 는 개발자용 영어로 화면에 내지 않는다. `fields` 는 검증 실패(`VALIDATION_FAILED`)에만 `[{field, rule}]`, 중첩은 `items.0.quantity`. 업무 거부는 고유 코드(예: `STOCK_UNIT_LOCKED`, `RECORD_CONFLICT`, `WEIGHT_EXISTS`), 그 밖은 상태별 기본 코드(`UNAUTHENTICATED`·`NOT_FOUND`·`CONFLICT`·`INTERNAL` 등). 헬스 체크 본문은 예외.
 - 상태 코드: 미인증 `401`, 검증 실패 `422`, 버전 충돌·덮어쓰기 확인 필요 `409`. 타인 리소스와 없는 리소스는 모두 `404`(존재 여부 비노출, **D-06**). `403`은 쓰지 않는다.
 - 날짜·슬롯의 계획은 저장하지 않고 `DateOverride` → `WeeklySchedule[weekday]` 순으로 계산하는 함수 하나를 둔다. 오늘 조회·소진 예측·완료 판정·알림 예약이 모두 이 함수를 쓴다(D-01).
 

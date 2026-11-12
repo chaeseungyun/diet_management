@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { unprocessable } from '../common/errors';
 import type {
   MealTemplate,
   MealTemplateItem,
@@ -127,9 +128,10 @@ export class TemplatesService {
     for (const item of dto.items) {
       const p = products.get(item.productId);
       if (!p) throw new NotFoundException();
-      if (p.archivedAt) throw new UnprocessableEntityException(`product ${p.name} is archived`);
+      if (p.archivedAt) throw unprocessable('PRODUCT_ARCHIVED', `product ${p.name} is archived`);
       if (!isAllowedUnit(p, item.unit)) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'UNIT_NOT_ALLOWED',
           `unit ${item.unit} is not allowed for ${p.name} (D-02: g needs packWeightG on ea products)`,
         );
       }
@@ -190,7 +192,8 @@ export class TemplatesService {
       if (!t) throw new NotFoundException();
       const u = (await this.usage(tx, user.id, todayIn(user.timezone), [id]))(id);
       if (u.weeklyCells > 0 || u.upcomingOverrides > 0) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'TEMPLATE_IN_PLAN',
           'template is referenced by the weekly plan or upcoming overrides; unassign it first',
         );
       }

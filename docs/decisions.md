@@ -838,6 +838,8 @@
   - 결과가 '이만큼 남았다' 라는 설정이라 같은 값을 다시 보내도 두 번째는 차이 0 이다. 그래도 재고 쓰기 규칙대로 `IdempotencyService.run` 안에서 하고, 같은 제품의 동시 보정은 `products` 행 `FOR UPDATE` 로 줄 세운다. 식사 기록 쓰기와는 잠금을 공유하지 않는다(한 사용자 앱이라 같은 순간의 경합은 받아들임).
   - 입력 단위는 `stock_unit`, 또는 단위 중량(`pack_weight_g`)이 있는 ea 제품의 g(D-02). 환산은 서버가 하고 소수 3자리로 저장한다(600g ÷ 1000g = 0.6팩). 단위 중량이 없는데 g 를 보내면 422.
   - 재고 비관리 제품은 422, 타인 제품은 404(D-06). 음수 실측은 422. 음수 합계(확인 필요, D-21)도 실측으로 되돌릴 수 있다.
+  - 리뷰 반영(2026-11-12): 보정은 제품 행을 `FOR UPDATE`(조건에 `user_id` 포함)로 **먼저 잠근 뒤** 제품을 읽는다. 읽고 나서 잠그면 동시에 들어온 제품 수정(단위 중량·재고 관리 끄기) 전의 값으로 환산할 수 있다. 화면은 g 로 적은 남은 양이 ea 로 보내지지 않게, 단위 중량을 비우면 직전 단위 중량으로 개수로 바꿔 보여 주고, 수량 단위를 g 가 아닌 단위로 바꾸면 남은 양 입력을 비운다(보내지 않음).
+  - 남은 위험(기존): `PATCH /products` 의 D-13 검사(원장 이동 수 세기)는 행 잠금보다 앞이라, 그 사이 생긴 이동(입고·식사 차감·보정)과 겹치면 단위 변경이 통과할 수 있다. 1인 사용이라 드물어 이번에는 두었다.
   - **사유(note)는 선택**이다. `api.md`·`screens.md` S-42 의 '사유 필수'는 제안이었고, 실측 잔량 보정은 '실제로 세어 보니' 가 사유 자체라 입력을 강요하지 않는다. 폐기·다른 용도는 S-42 구현 때 다시 정한다.
   - **화면**: 식품 수정(S-32 `?edit=1`)에 '지금 남은 양' 칸. 기록상 값으로 채워 두고(음수면 빈칸), 사용자가 고쳤을 때만 저장 시 `PATCH /products/{id}` 다음에 보정을 보낸다(같은 저장에서 단위 중량을 바꿨다면 새 값으로 환산되게 PATCH 가 먼저). 단위 중량이 있으면 `팩/g` 선택이 붙는다. 상세 화면의 남은 양 옆에 '맞추기' 링크.
   - **수량 단위 잠금(D-13)은 그대로**다. 원장 합계가 한 단위의 합이라 단위를 바꾸면 과거 이동·스냅샷이 다른 단위로 읽힌다. 대신 상세 응답에 `stockUnitLocked`(원장 이동 존재)를 싣고, 수정 화면이 단위 선택을 잠근 채 "기록이 있어 바꿀 수 없어요. g 로 적으려면 '1팩의 무게'를 넣으세요" 라고 안내한다. 보고 사례는 단위 중량 1000g 을 넣고 600g 을 적으면 된다(표시: 0.6팩 (600g)). 식사 기록도 같은 조건에서 g 입력이 된다.
@@ -847,14 +849,14 @@
 
 ### DEC-079 오류 문구 매핑 — 서버는 기계용 `code`, 문구는 웹 한 곳에서
 
-- 날짜 2026-11-11 / 상태 확정(계획, **미구현 — 사용자가 착수를 지시할 때까지 시작하지 않음**) / 범위: `api.md` §0 오류 형식, G-01 상태 배너, 웹 `src/lib/client.ts`·`src/lib/api.ts`
+- 날짜 2026-11-11(계획) · 2026-11-12(구현, 사용자 지시) / 상태 확정(구현) / 범위: `api.md` §0 오류 형식, G-01 상태 배너, 웹 `src/lib/client.ts`·`src/lib/api.ts`
 - **맥락**: 사용자 보고(2026-11-11)에서 `stockUnit cannot change once stock movements exist (D-13)` 가 화면에 그대로 보였다. 원인은 웹 `ApiError` 의 `messageOf` 가 409·422·그 밖의 상태에서 서버 `message` 를 그대로 쓰기 때문이다. API 의 오류 문장은 개발자용 영어이고(직접 쓴 것 약 50곳, `NotFoundException()` 제외), class-validator 실패는 `["quantity must not be less than 0", …]` 배열이다. 서버 페이지의 `apiGet` 실패는 `app/error.tsx` 로 간다.
 - **계획**:
   1. **오류 본문 형식**: `{ statusCode, code, message, fields? }`. `code` 는 기계용 식별자(예: `STOCK_UNIT_LOCKED`), `message` 는 지금처럼 개발자용 영어(로그·Swagger·디버깅). `fields` 는 검증 실패일 때만 `[{ field, rule }]`. OpenAPI 에 `ErrorDto` 로 싣는다.
   2. **코드 목록은 `@diet/shared` 의 `ERROR_CODES` 상수 하나**. API 는 `new UnprocessableEntityException({ code, message })` 꼴의 작은 헬퍼(`appError(status, code, message)`)로 던지고, 전역 `ExceptionFilter` 가 형식을 맞춘다(`code` 없는 예외는 상태별 기본 코드: `NOT_FOUND`·`UNAUTHENTICATED`·`CSRF_REJECTED`·`CONFLICT`·`INTERNAL`). `ValidationPipe` 의 `exceptionFactory` 가 `VALIDATION_FAILED` + `fields` 를 만든다.
   3. **문구는 웹 `src/lib/error-messages.ts`** 의 `Record<ErrorCode, string>`(`satisfies` 로 새 코드의 문구 누락을 타입 오류로 잡음). 문구 고르기는 표현이라 웹 몫이고, 판정은 서버에 그대로 둔다(NFR-07 과 맞음). `ApiError.message` 는 이 표에서 고르고, **서버 `message` 는 어떤 경우에도 화면에 내지 않는다**(개발 모드에서만 `console.warn`).
   4. **대체 순서**: 화면이 넘긴 덮어쓰기(같은 코드라도 화면 맥락이 다를 때, `run(work, saved, { messages: { … } })`) → 코드 표 → 상태별 기본 문구 → 네트워크 실패. 상태별 기본 문구(제안): 400·422 "입력한 값을 확인해 주세요", 401 "다시 로그인해 주세요", 403 "요청이 막혔어요. 새로 고침 후 다시 해 주세요", 404 "찾을 수 없어요. 이미 지워졌을 수 있어요", 409 "다른 기기에서 먼저 바뀌었어요. 새로 고침 후 다시 해 주세요", 5xx "잠시 문제가 생겼어요. 잠시 뒤 다시 해 주세요", `fetch` 실패 "연결이 끊겼어요. 적은 내용은 그대로 있어요"(NFR-03, 실패를 저장으로 보이지 않음). 검증 실패는 화면이 넘긴 필드 라벨이 있으면 "'남은 양'을 확인해 주세요".
-  5. **첫 코드 표(예)** — 구현 때 50곳 전수를 표로 만든다:
+  5. **첫 코드 표(계획 때의 예)** — 구현된 전체 목록은 `@diet/shared` `ERROR_CODES` 와 웹 `error-messages.ts` 가 기준이다:
 
      | code | 지금 서버 문장 | 화면 문구(제안) |
      | --- | --- | --- |
@@ -875,6 +877,15 @@
 
   6. **화면에서 먼저 막기**: 문구 매핑과 별개로, 화면이 미리 알 수 있는 거부는 버튼·입력을 잠그고 이유를 보여 준다(예: DEC-078 의 수량 단위 잠금). 오류 문구는 마지막 안전망이다.
   7. **작업 순서**: ① shared `ERROR_CODES` + API 헬퍼·필터·`exceptionFactory`, 기존 throw 에 code 추가(문장은 유지) + e2e 에서 대표 코드 검사 ② 웹 `error-messages.ts`·`ApiError` 교체·네트워크 실패 처리·`error.tsx` 문구 ③ `api.md` §0 에 오류 형식, `screens.md` G-01 에 문구 규칙. ①②는 한 커밋씩, 타입 재생성 포함.
+- **구현 중 정한 것**(2026-11-12):
+  - 코드 34개(상태별 기본 9 + 업무 25). 사용자 화면에서 막혀 의미가 있는 사유만 고유 코드를 주고, 화면이 미리 막는 형식 오류(`invalid date`, `weekday must be 1..7`, `packWeightG applies only to ea products` 등)는 `UnprocessableEntityException` 그대로 두어 기본 `VALIDATION_FAILED` 가 된다.
+  - 한 코드에 여러 문장을 묶었다: `RECORD_CONFLICT`(version 불일치·동시 생성·동시 수정), `UNIT_NOT_ALLOWED`(식사·식단·보정의 입력 단위와 영양 기준 단위), `IDEMPOTENCY_KEY_REUSED`(다른 본문 재사용·키 상태 유실), `PURCHASE_NOT_ORDERED`(수정·입고·취소). 하루 완료 거부는 사유별로 `DAY_HAS_UNRECORDED`·`FUTURE_DATE`·`BEFORE_SIGNUP`.
+  - API: `src/common/errors.ts` 의 `AppException(status, code, message, fields?)` 와 `unprocessable()`·`conflict()`, 전역 `ApiExceptionFilter`(`configureApp` 에서 등록, e2e 도 같은 설정). 본문에 `message` 가 없는 객체(헬스 체크 `{status, db}`)는 그대로 둔다. body-parser 의 잘못된 JSON 은 400 `BAD_REQUEST`. 그 밖의 예외는 500 `INTERNAL` 로 응답하고 스택은 서버 로그에만 남긴다. 기존 Nest 기본 본문의 `error` 필드("Unprocessable Entity")는 없앴다.
+  - 검증 실패 `fields` 는 중첩 경로를 점으로 잇는다(`items.0.quantity`). `message` 는 class-validator 문장을 `, ` 로 이은 문자열(배열 아님).
+  - 웹: `ApiError` 가 `code`·`fields`·`serverMessage` 를 갖고 `message` 는 문구 표의 값. `describeError(e, { messages, fields })` 가 화면 덮어쓰기 → 검증 필드 라벨(을/를 받침 처리) → 표 → 네트워크(`NetworkError`, fetch 실패) → 알 수 없음(콘솔에 원 예외). `useStatus().run(work, saved, errors?)` 세 번째 인자로 넘긴다. 서버 응답이 JSON 이 아니면(프록시 오류 페이지) 상태 코드로만 판단한다.
+  - 배너의 '새로 고침' 충돌 표시는 `RECORD_CONFLICT`·`CONFLICT` 일 때만이다. 같은 409 라도 `WEIGHT_EXISTS` 는 덮어쓰기 확인이라 제외(체중 빠른 입력이 직접 만들던 문구도 표의 문구로 대체).
+  - 테스트 알림 실패의 푸시 서비스 원문 사유(`reason`)도 화면에 내지 않는다(404·410 은 '구독이 만료됐어요', 그 밖은 응답 코드만). 서버 원문 표시 금지 원칙을 성공 응답의 사유 필드에도 적용했다.
+  - 검증 필드 라벨은 식품 등록·수정 화면에 먼저 붙였다. 다른 화면은 필요할 때 `FIELD_LABELS` 를 더한다.
 - **버린 대안**: (a) 서버가 한국어 `message` 를 바로 보냄 — 가장 단순하지만 화면 맥락별 문구(같은 409 라도 화면마다 다른 안내)를 못 하고, 표현이 API 에 섞인다. (b) 웹이 영어 문장을 문자열로 대조 — 서버 문장을 고치면 조용히 깨진다. (c) HTTP 상태만으로 문구 — 422 하나에 사유가 열 가지 넘게 섞여 있어 안내가 안 된다.
 - **사용자 확정**(2026-11-11): ① 코드 이름은 대문자 스네이크(`STOCK_UNIT_LOCKED`). ② 화면 문구는 해요체. ③ 서버 원문은 개발 모드에서도 배너에 붙이지 않고 콘솔에만 남긴다. ④ 착수 시점은 사용자가 정한다 — 그 전까지 위 계획은 구현하지 않는다. 재고 화면(S-40~S-42)이 먼저 들어가면 그 화면의 새 오류도 착수 때 같이 옮긴다.
 
@@ -901,7 +912,7 @@
 
 2026-11-08에 닫힌 항목: 음수 재고의 소진 예측 표시(DEC-063, D-21), 알림 체계 공유(DEC-064, D-22), 통계 정의와 계획 실천율 허용 오차(DEC-028 확정, DEC-068: 정확 일치), 끼니 공유 방향 7건(DEC-066: 기본 비공개, 영양 합계까지 공유·체중 비공유, 가입 이후 전부, 차단 202, 반응+댓글+좋아요, 사진 업로드 뒤 배치), 식사 사진 보관 정책(DEC-069: 리사이즈본 7~30일, 20 GB 예산, 기간 자동 산정), EXT-02 분할과 확장 순서(DEC-071: 단계 3 사진 업로드·보관 → 4 끼니 공유 → 5 OCR → 6 사진 AI 분석 → 7 크롤링·추천). 단계 2 착수 전 질문은 모두 닫혔다.
 
-2026-11-11에 닫힌 항목: 오류 문구 매핑의 코드 명명·어조·원문 표시(DEC-079, 착수는 사용자 지시 시).
+2026-11-11에 닫힌 항목: 오류 문구 매핑의 코드 명명·어조·원문 표시(DEC-079, 2026-11-12 구현).
 
 ---
 

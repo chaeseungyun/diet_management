@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { unprocessable } from '../common/errors';
 import type { Prisma, Product, Purchase, PurchaseStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { IdempotencyService, type Tx } from '../common/idempotency.service';
@@ -51,7 +52,7 @@ export class PurchasesService {
     }
     return this.idempotency.run(userId, idemKey, { op: 'purchases.create', dto }, async (tx) => {
       const product = await this.products.loadOwned(tx, userId, dto.productId);
-      if (product.archivedAt) throw new UnprocessableEntityException('product is archived');
+      if (product.archivedAt) throw unprocessable('PRODUCT_ARCHIVED', 'product is archived');
       const purchase = await tx.purchase.create({
         data: {
           userId,
@@ -74,7 +75,7 @@ export class PurchasesService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const p = await this.loadOwned(tx, userId, id);
       if (p.status !== 'ordered') {
-        throw new UnprocessableEntityException('only ordered purchases can be edited');
+        throw unprocessable('PURCHASE_NOT_ORDERED', 'only ordered purchases can be edited');
       }
       await tx.purchase.update({
         where: { id },
@@ -104,7 +105,7 @@ export class PurchasesService {
       async (tx) => {
         const p = await this.loadOwned(tx, userId, id);
         if (p.status !== 'ordered') {
-          throw new UnprocessableEntityException('purchase is not in ordered state');
+          throw unprocessable('PURCHASE_NOT_ORDERED', 'purchase is not in ordered state');
         }
         await this.receiveInTx(tx, userId, p, p.product, dto.quantity);
         return PurchaseDto.from(await this.loadOwned(tx, userId, id));
@@ -145,7 +146,7 @@ export class PurchasesService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const p = await this.loadOwned(tx, userId, id);
       if (p.status !== 'ordered') {
-        throw new UnprocessableEntityException('only ordered purchases can be cancelled');
+        throw unprocessable('PURCHASE_NOT_ORDERED', 'only ordered purchases can be cancelled');
       }
       await tx.purchase.update({ where: { id }, data: { status: 'cancelled' } });
       return this.loadOwned(tx, userId, id);
@@ -162,7 +163,7 @@ export class PurchasesService {
     return this.idempotency.run(userId, idemKey, { op: 'receipts.create', dto }, async (tx) => {
       const product = await this.products.loadOwned(tx, userId, dto.productId);
       if (!product.isStockTracked) {
-        throw new UnprocessableEntityException('product is not stock tracked');
+        throw unprocessable('PRODUCT_NOT_STOCK_TRACKED', 'product is not stock tracked');
       }
       const receipt = await this.products.createInitialReceipt(
         tx,

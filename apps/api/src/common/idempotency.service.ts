@@ -1,4 +1,5 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { unprocessable } from './errors';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,9 +52,10 @@ export class IdempotencyService {
             WHERE user_id = ${userId}::uuid AND key = ${key}
             FOR UPDATE`;
           const row = rows[0];
-          if (!row) throw new UnprocessableEntityException('Idempotency-Key state lost');
+          if (!row) throw unprocessable('IDEMPOTENCY_KEY_REUSED', 'Idempotency-Key state lost');
           if (row.request_hash !== hash) {
-            throw new UnprocessableEntityException(
+            throw unprocessable(
+              'IDEMPOTENCY_KEY_REUSED',
               'Idempotency-Key was already used with a different request',
             );
           }

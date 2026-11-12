@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { unprocessable } from '../common/errors';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { MEAL_SLOTS, WEEKDAYS, type MealSlot } from '@diet/shared';
@@ -73,11 +74,11 @@ export class PlansService {
   ): Promise<{ planType: PutPlanCellDto['planType']; templateId: string | null }> {
     if (cell.planType !== 'template') return { planType: cell.planType, templateId: null };
     if (!cell.templateId) {
-      throw new UnprocessableEntityException('templateId is required when planType=template');
+      throw unprocessable('TEMPLATE_REQUIRED', 'templateId is required when planType=template');
     }
     const t = await db.mealTemplate.findFirst({ where: { id: cell.templateId, userId } });
     if (!t) throw new NotFoundException();
-    if (t.archivedAt) throw new UnprocessableEntityException('template is archived');
+    if (t.archivedAt) throw unprocessable('TEMPLATE_ARCHIVED', 'template is archived');
     return { planType: 'template', templateId: t.id };
   }
 

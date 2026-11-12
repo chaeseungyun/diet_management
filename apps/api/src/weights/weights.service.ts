@@ -1,9 +1,5 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { conflict, unprocessable } from '../common/errors';
 import type { User, WeightRecord } from '@prisma/client';
 import { todayIn } from '@diet/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -87,11 +83,11 @@ export class WeightsService {
 
   async put(user: User, date: string, dto: PutWeightDto): Promise<WeightDto> {
     const today = todayIn(user.timezone);
-    if (date > today) throw new UnprocessableEntityException('future date');
+    if (date > today) throw unprocessable('FUTURE_DATE', 'future date');
     const onDate = toDbDate(date);
     const existing = await this.forDate(user.id, date);
     if (existing && !dto.overwrite) {
-      throw new ConflictException('weight already recorded for this date; send overwrite=true');
+      throw conflict('WEIGHT_EXISTS', 'weight already recorded for this date; send overwrite=true');
     }
     const saved = await this.prisma.weightRecord.upsert({
       where: { userId_onDate: { userId: user.id, onDate } },

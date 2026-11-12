@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  defaultErrorCode,
   displayUnit,
+  ERROR_CODES,
+  isErrorCode,
   formatQuantity,
   isValidDateString,
   isValidTimezone,
@@ -46,4 +49,17 @@ test('formatQuantity trims zeros and marks unknown', () => {
 test('displayUnit uses the label for ea products', () => {
   assert.equal(displayUnit({ stockUnit: 'ea', unitLabel: '팩' }), '팩');
   assert.equal(displayUnit({ stockUnit: 'g', unitLabel: null }), 'g');
+});
+
+test('error codes: defaults by status and membership (DEC-079)', () => {
+  assert.equal(defaultErrorCode(401), 'UNAUTHENTICATED');
+  assert.equal(defaultErrorCode(404), 'NOT_FOUND');
+  assert.equal(defaultErrorCode(409), 'CONFLICT');
+  assert.equal(defaultErrorCode(422), 'VALIDATION_FAILED');
+  assert.equal(defaultErrorCode(418), 'BAD_REQUEST');
+  assert.equal(defaultErrorCode(502), 'INTERNAL');
+  assert.equal(isErrorCode('STOCK_UNIT_LOCKED'), true);
+  assert.equal(isErrorCode('stock_unit_locked'), false);
+  assert.equal(new Set(ERROR_CODES).size, ERROR_CODES.length);
+  for (const c of ERROR_CODES) assert.match(c, /^[A-Z][A-Z0-9_]*$/);
 });

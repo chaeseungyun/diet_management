@@ -1773,6 +1773,17 @@ export interface components {
             sentAt: string | null;
             failureReason: string | null;
         };
+        ErrorFieldDto: {
+            field: string;
+            rule: string;
+        };
+        ErrorDto: {
+            statusCode: number;
+            /** @enum {string} */
+            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
+            message: string;
+            fields?: components["schemas"]["ErrorFieldDto"][];
+        };
     };
     responses: never;
     parameters: never;

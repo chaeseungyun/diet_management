@@ -1,10 +1,5 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { AppException, unprocessable } from '../common/errors';
 import { SUGGESTED_NOTIFY_MINUTES, todayIn, type MealSlot } from '@diet/shared';
 import type { NotificationKind, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,7 +50,10 @@ export class NotificationsService {
     const notifyMinute =
       dto.notifyMinute !== undefined ? dto.notifyMinute : (existing?.notifyMinute ?? null);
     if (SLOT_KINDS.includes(kind) && dto.enabled && notifyMinute === null) {
-      throw new UnprocessableEntityException('notifyMinute is required to enable a meal reminder');
+      throw unprocessable(
+        'NOTIFY_TIME_REQUIRED',
+        'notifyMinute is required to enable a meal reminder',
+      );
     }
     const data = {
       enabled: dto.enabled,
@@ -112,7 +110,7 @@ export class NotificationsService {
     userAgent: string | undefined,
   ): Promise<PushSubscriptionDto> {
     if (!isAllowedPushEndpoint(dto.endpoint)) {
-      throw new UnprocessableEntityException('endpoint is not a known push service');
+      throw unprocessable('PUSH_ENDPOINT_INVALID', 'endpoint is not a known push service');
     }
     const data = {
       userId: user.id,
@@ -149,7 +147,9 @@ export class NotificationsService {
    * 서버에 VAPID 키가 없으면 503, 내 활성 구독이 아니면 404.
    */
   async testPush(user: User, endpoint: string): Promise<TestPushResultDto> {
-    if (!this.env.pushEnabled) throw new ServiceUnavailableException('push is not configured');
+    if (!this.env.pushEnabled) {
+      throw new AppException(503, 'PUSH_NOT_CONFIGURED', 'push is not configured');
+    }
     const sub = await this.prisma.pushSubscription.findFirst({
       where: { endpoint, userId: user.id, revokedAt: null },
     });

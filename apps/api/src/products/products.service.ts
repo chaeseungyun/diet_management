@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { unprocessable } from '../common/errors';
 import { Prisma, type Product, type ProductNutritionVersion } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { dec, numReq } from '../common/decimal';
@@ -157,7 +158,8 @@ export class ProductsService {
   } {
     if (input.stockUnit === 'ea') {
       const label = input.unitLabel?.trim();
-      if (!label) throw new UnprocessableEntityException('unitLabel is required for ea products');
+      if (!label)
+        throw unprocessable('UNIT_LABEL_REQUIRED', 'unitLabel is required for ea products');
       return { unitLabel: label, packWeightG: dec(input.packWeightG ?? null) };
     }
     if (input.packWeightG) {
@@ -220,7 +222,8 @@ export class ProductsService {
       if (stockUnit !== existing.stockUnit) {
         const moved = await tx.stockMovement.count({ where: { productId: id } });
         if (moved > 0) {
-          throw new UnprocessableEntityException(
+          throw unprocessable(
+            'STOCK_UNIT_LOCKED',
             'stockUnit cannot change once stock movements exist (D-13)',
           );
         }
@@ -242,12 +245,14 @@ export class ProductsService {
         tx.productNutritionVersion.findFirst({ where: { productId: id, supersededAt: null } }),
       ]);
       if (items.some((i) => !isAllowedUnit(merged, i.unit))) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'UNIT_SETTINGS_IN_USE',
           'a meal template uses a unit that the new unit settings do not allow',
         );
       }
       if (current && !isAllowedBasisUnit(merged, current.basisUnit)) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'UNIT_SETTINGS_IN_USE',
           'the current nutrition basis unit is not allowed by the new unit settings',
         );
       }
@@ -283,7 +288,8 @@ export class ProductsService {
         where: { productId: id, template: { archivedAt: null } },
       });
       if (used > 0) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'PRODUCT_IN_TEMPLATE',
           'product is used by an active meal template; remove it from the template first',
         );
       }
@@ -320,7 +326,8 @@ export class ProductsService {
     return this.prisma.$transaction(async (tx) => {
       const product = await this.loadOwned(tx, userId, id);
       if (!isAllowedBasisUnit(product, dto.basisUnit)) {
-        throw new UnprocessableEntityException(
+        throw unprocessable(
+          'UNIT_NOT_ALLOWED',
           'basisUnit must equal the product stock unit, or g for ea products with packWeightG (D-11)',
         );
       }
@@ -364,7 +371,7 @@ export class ProductsService {
       const version = await tx.productNutritionVersion.findFirst({
         where: { productId: id, supersededAt: null },
       });
-      if (!version) throw new UnprocessableEntityException('product has no nutrition version');
+      if (!version) throw unprocessable('NUTRITION_MISSING', 'product has no nutrition version');
       const targets = await tx.mealItemSnapshot.findMany({
         where: {
           productId: id,

@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 예약 작업은 `@nestjs/schedule`(6.x)의 `@Cron`. 놓친 실행을 다음 실행이 메우게("지금 기준 지난 것 전부"), 두 번 돌아도 같은 결과가 되게(DB 유니크 선점), 매일 작업은 `timeZone: 'Asia/Seoul'` 을 명시한다(서버 시계는 UTC, DEC-074).
 - 스키마 변경: `apps/api/prisma/schema.prisma` 수정 → 로컬 DB 띄운 뒤 `pnpm --filter @diet/api prisma:migrate --name <이름>` → 생성 SQL 검토(NULLS NOT DISTINCT 같은 수동 SQL은 파일에 직접) → 커밋. 테이블은 snake_case 복수형, 모델·필드는 camelCase(DEC-052).
 - 새 리소스는 `findFirst({ where: { id, userId } })` 결과가 없으면 404 다(`ProductsService.loadOwned` 패턴). 본문의 FK(제품·템플릿 ID)도 소유 검사로 404. 재고에 영향을 주는 쓰기는 `IdempotencyService.run` 안에서 하고, 식사 기록 쓰기는 version 조건부 갱신으로 행을 잠근 뒤 원장을 만든다(DEC-055). `OriginGuard`(CSRF)·`AuthGuard`가 전역이며 공개 엔드포인트만 `@Public()`.
+- 오류는 `{ statusCode, code, message, fields? }`(DEC-079). 사용자에게 의미 있는 거부는 `unprocessable('CODE', 'english message')`·`conflict(...)`(`src/common/errors.ts`)로 던지고, 새 코드는 `@diet/shared` `ERROR_CODES` 와 웹 `src/lib/error-messages.ts`(해요체) 에 함께 더한다. 웹은 서버 `message` 를 화면에 내지 않는다.
 - 환경 변수는 `src/config/env.ts`의 zod 스키마에 추가하고 `.env.example`과 `deploy/docker-compose.yml`을 함께 갱신한다. 비밀 값은 로그·응답에 싣지 않는다.
 - 웹에서 API 호출은 `src/lib/api.ts`(서버)·같은 오리진 `fetch('/api/v1/…')`(클라이언트)만. 업무 규칙을 Next 쪽에 두지 않는다.
 
