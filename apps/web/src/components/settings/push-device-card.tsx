@@ -107,8 +107,9 @@ export function PushDeviceCard() {
         });
         router.refresh();
       } else if (r === 'dismissed')
-        set({ kind: 'error', message: '권한 요청을 닫았습니다. 다시 눌러 허용해 주세요.' });
-      else if (r === 'unavailable') set({ kind: 'error', message: '알림을 켤 수 없습니다.' });
+        set({ kind: 'error', message: '권한 요청을 닫았어요. 다시 눌러 허용해 주세요.' });
+      else if (r === 'unavailable')
+        set({ kind: 'error', message: '이 기기에서는 알림을 켤 수 없어요.' });
       else set({ kind: 'idle' });
     } catch {
       // 배너
@@ -127,13 +128,23 @@ export function PushDeviceCard() {
 
   async function sendTest(endpoint: string) {
     try {
-      const r = await run(() => testPush(endpoint));
+      const r = await run(() => testPush(endpoint), undefined, {
+        messages: {
+          NOT_FOUND: '이 기기 알림 구독이 서버에 없어요. 이 기기 알림을 껐다가 다시 켜 주세요.',
+        },
+      });
       if (r.ok) set({ kind: 'saved', message: '테스트 알림을 보냈습니다. 몇 초 안에 도착합니다' });
-      else
+      else {
+        // 푸시 서비스의 원문 사유는 화면에 내지 않는다 (DEC-079)
+        if (process.env.NODE_ENV !== 'production') console.warn('[push] test failed', r);
         set({
           kind: 'error',
-          message: `보내지 못했습니다${r.status ? ` (${r.status})` : ''}${r.reason ? `: ${r.reason}` : ''}`,
+          message:
+            r.status === 404 || r.status === 410
+              ? '구독이 만료됐어요. 이 기기 알림을 다시 켜 주세요.'
+              : `보내지 못했어요${r.status ? ` (응답 ${r.status})` : ''}. 잠시 뒤 다시 해 주세요.`,
         });
+      }
     } catch {
       // 배너 (404 = 이 기기 구독이 서버에 없음 → 껐다 다시 켜기)
     }

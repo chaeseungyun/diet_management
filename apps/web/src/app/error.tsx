@@ -28,10 +28,9 @@ export default function ErrorPage({
     });
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="text-xl font-semibold">화면을 불러오지 못했습니다</h1>
+      <h1 className="text-xl font-semibold">화면을 불러오지 못했어요</h1>
       <p className="text-sm text-muted-foreground">
-        서버에 연결하지 못했거나 처리 중 오류가 났습니다. API가 아직 켜지는 중이라면 잠시 뒤 다시
-        시도해 주세요.
+        서버에 연결하지 못했거나 처리 중 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.
       </p>
       {error.digest ? (
         <p className="text-xs text-muted-foreground">오류 코드 {error.digest}</p>

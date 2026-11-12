@@ -29,10 +29,8 @@ export function WeightQuick({
         try {
           await api('PUT', `/weights/${date}`, { weightKg: Number(value), overwrite });
         } catch (e) {
-          if (e instanceof ApiError && e.status === 409 && !overwrite) {
-            setConfirm(true);
-            throw new Error('이미 기록된 날입니다. 덮어쓸까요?');
-          }
+          // 배너 문구는 WEIGHT_EXISTS 의 '이 날 체중이 이미 있어요. 덮어쓸까요?'
+          if (e instanceof ApiError && e.code === 'WEIGHT_EXISTS' && !overwrite) setConfirm(true);
           throw e;
         }
       }, '체중 저장');

@@ -12,6 +12,22 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 type Product = Schemas['ProductDto'];
 type ProductDetail = Schemas['ProductDetailDto'];
 
+/** 검증 실패 필드 → 화면 라벨 (DEC-079) */
+const FIELD_LABELS = {
+  fields: {
+    name: '식품명',
+    brand: '브랜드',
+    stockUnit: '수량 단위',
+    unitLabel: '표시 단위명',
+    unitsPerPackage: '포장 1개에 들어 있는 양',
+    packWeightG: '단위 무게',
+    defaultServingAmount: '1회 추정 섭취량',
+    purchaseUrl: '구매 링크',
+    initialStock: '현재 보유',
+    measuredQuantity: '지금 남은 양',
+  },
+};
+
 /**
  * 식품 등록·수정 (S-31, S-32 수정). 단위 모델은 D-11:
  * 수량 단위(g/ml/개) + 개일 때 표시 단위명 + 포장 1개에 들어 있는 양 + 선택 단위 중량 + 재고 관리 여부.
@@ -64,6 +80,42 @@ export function ProductForm({
     setF({ ...f, stockInG: toG, stock });
   }
 
+  /**
+   * g 선택이 사라지는 변경(단위 중량 비움·0, 수량 단위 바꿈)에서 g 로 적힌 남은 양이
+   * 그대로 다른 단위로 보내지지 않게 한다.
+   */
+  function changePackWeight(packWeightG: string) {
+    const next = Number(packWeightG);
+    if (f.stockInG && !(packWeightG !== '' && next > 0)) {
+      // g 선택이 사라진다: 직전 단위 중량으로 개 단위로 되돌려 둔다
+      const n = Number(f.stock);
+      const stock =
+        f.stock === '' || !Number.isFinite(n) || !canUseG ? '' : formatQuantity(n / packWeight);
+      setF({
+        ...f,
+        packWeightG,
+        stockInG: false,
+        stock,
+        stockTouched: stock !== '' && f.stockTouched,
+      });
+      return;
+    }
+    setF({ ...f, packWeightG });
+  }
+
+  function changeStockUnit(stockUnit: StockUnit) {
+    if (!f.stockInG) {
+      setF({ ...f, stockUnit });
+      return;
+    }
+    // g 로 적던 값: 새 단위가 g 면 그대로 쓰고, 아니면 의미가 없으니 비운다
+    setF(
+      stockUnit === 'g'
+        ? { ...f, stockUnit, stockInG: false }
+        : { ...f, stockUnit, stockInG: false, stock: '', stockTouched: false },
+    );
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -81,18 +133,22 @@ export function ProductForm({
     try {
       if (product) {
         const adjust = f.isStockTracked && f.stockTouched && f.stock !== '';
-        await run(async () => {
-          await api<Product>('PATCH', `/products/${product.id}`, body);
-          // 단위 중량을 같이 바꿨다면 PATCH 뒤라야 g 환산이 새 값을 쓴다
-          if (adjust) {
-            await api(
-              'POST',
-              `/stock/${product.id}/adjustments`,
-              { measuredQuantity: Number(f.stock), unit: stockInG ? 'g' : f.stockUnit },
-              { idempotencyKey: newIdempotencyKey() },
-            );
-          }
-        }, '식품 수정');
+        await run(
+          async () => {
+            await api<Product>('PATCH', `/products/${product.id}`, body);
+            // 단위 중량을 같이 바꿨다면 PATCH 뒤라야 g 환산이 새 값을 쓴다
+            if (adjust) {
+              await api(
+                'POST',
+                `/stock/${product.id}/adjustments`,
+                { measuredQuantity: Number(f.stock), unit: stockInG ? 'g' : f.stockUnit },
+                { idempotencyKey: newIdempotencyKey() },
+              );
+            }
+          },
+          '식품 수정',
+          FIELD_LABELS,
+        );
         router.push(`/products/${product.id}`);
       } else {
         const created = await run(
@@ -104,6 +160,7 @@ export function ProductForm({
                 : {}),
             }),
           '식품 등록',
+          FIELD_LABELS,
         );
         router.push(
           next === 'nutrition'
@@ -148,7 +205,7 @@ export function ProductForm({
             id="stockUnit"
             disabled={locked}
             value={f.stockUnit}
-            onChange={(e) => setF({ ...f, stockUnit: e.target.value as StockUnit })}
+            onChange={(e) => changeStockUnit(e.target.value as StockUnit)}
           >
             {STOCK_UNITS.map((u) => (
               <option key={u} value={u}>
@@ -197,7 +254,7 @@ export function ProductForm({
             step="any"
             min="0"
             value={f.packWeightG}
-            onChange={(e) => setF({ ...f, packWeightG: e.target.value })}
+            onChange={(e) => changePackWeight(e.target.value)}
           />
         </Field>
       ) : null}
