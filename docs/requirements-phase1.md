@@ -428,7 +428,7 @@
    - 알림이 꺼진 슬롯의 ‘지난 슬롯’ 기준 시각 (권고: 슬롯별 기본 시각 상수, 설정 시각이 있으면 그것).
    - 템플릿·제품 보관 시 참조 중인 주간 계획·템플릿 품목 처리 (권고: 참조가 있으면 보관 거부 422).
    - 온보딩 완료 표시 (권고: `User.onboarded_at` 컬럼).
-   - 소진 예측에서 오늘 `skipped` 슬롯 (권고: `eaten`과 같이 건너뜀).
+   - ~~소진 예측에서 오늘 `skipped` 슬롯~~ → 2026-11-12 확정: `eaten` 과 같이 앞으로 먹을 양에서 빼고, 오늘 미기록 식단 끼니는 넣는다([`decisions.md`](decisions.md) DEC-080).
    - 자식 테이블(`MealItemSnapshot`·`MealTemplateItem`·`ProductNutritionVersion`)의 `user_id` (권고: 두지 않고 부모 조인으로 격리, CLAUDE.md 불변식 문구 수정).
 
 ## 8. 참고 자료
