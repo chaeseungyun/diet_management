@@ -300,6 +300,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 식품별 남은 양·배송 중·소진 예정일·수준 배지. 보관한 식품은 빠진다 (DEC-080) */
+        get: operations["StockController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 식품 하나의 남은 양·소진 예정일. 보관한 식품도 조회된다 */
+        get: operations["StockController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stock/{productId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 원장 목록(최근 것부터 30건씩). 수정·삭제는 없다(append-only) */
+        get: operations["StockController_movements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stock/{productId}/adjustments": {
         parameters: {
             query?: never;
@@ -309,7 +360,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 남은 양 맞추기: 실측 잔량과 현재 합계의 차이만큼 adjust 이동 (차이 0 이면 이동 없음) */
+        /** 남은 양 맞추기: 실측 잔량과의 차이를 adjust 이동으로 남긴다(차이 0 도 남김) */
         post: operations["StockController_adjust"];
         delete?: never;
         options?: never;
@@ -446,7 +497,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능 */
+        /** 기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능. 소진일이 바뀐 식품을 함께 돌려준다 */
         post: operations["PlansController_batch"];
         delete?: never;
         options?: never;
@@ -1153,6 +1204,114 @@ export interface components {
             quantity: number;
             note?: string | null;
         };
+        StockItemDto: {
+            /** Format: uuid */
+            productId: string;
+            name: string;
+            brand: string | null;
+            /** @enum {string} */
+            stockUnit: "g" | "ml" | "ea";
+            unitLabel: string | null;
+            packWeightG: number | null;
+            /** @description 원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 */
+            currentStock: number | null;
+            /** @description 배송 중 수량(stock_unit 환산). 재고·예측에 넣지 않는다 */
+            orderedQuantity: number;
+            /**
+             * @description 수준 배지. 하나만 붙는다
+             * @enum {string}
+             */
+            level: "untracked" | "check_needed" | "depleted" | "unpredictable" | "imminent" | "ok";
+            /**
+             * @description 남은 양으로 필요량을 못 채우는 첫 끼니의 날짜. 예측하지 않거나 범위 안에 없으면 null
+             * @example 2026-11-20
+             */
+            depletionDate: string | null;
+            /** @description 오늘부터 소진일까지 일수(오늘이면 0) */
+            daysLeft: number | null;
+            /** @description 예정 소비가 있는데 계산 범위를 넘겨도 남는다 */
+            beyondHorizon: boolean;
+            /** @description 마지막 남은 양 맞추기 뒤, 이 식품이 든 과거 식단 끼니에 미기록이 있다 */
+            lowConfidence: boolean;
+            purchaseUrl: string | null;
+        };
+        StockOverviewDto: {
+            /**
+             * @description 사용자 시간대의 오늘
+             * @example 2026-11-12
+             */
+            today: string;
+            /** @description 소진 임박 기준 N일 (소진 알림 설정과 같은 값) */
+            daysBefore: number;
+            /** @description 오늘을 포함해 며칠을 계산했는가 */
+            horizonDays: number;
+            /** @description 할 일이 있는 것부터: 확인 필요 → 다 먹음 → 소진일 빠른 순 → 예측 불가 → 수량 안 셈 */
+            items: components["schemas"]["StockItemDto"][];
+        };
+        StockDetailDto: {
+            /** Format: uuid */
+            productId: string;
+            name: string;
+            brand: string | null;
+            /** @enum {string} */
+            stockUnit: "g" | "ml" | "ea";
+            unitLabel: string | null;
+            packWeightG: number | null;
+            /** @description 원장 합계(stock_unit). 재고 비관리 제품은 null. 음수는 그대로 */
+            currentStock: number | null;
+            /** @description 배송 중 수량(stock_unit 환산). 재고·예측에 넣지 않는다 */
+            orderedQuantity: number;
+            /**
+             * @description 수준 배지. 하나만 붙는다
+             * @enum {string}
+             */
+            level: "untracked" | "check_needed" | "depleted" | "unpredictable" | "imminent" | "ok";
+            /**
+             * @description 남은 양으로 필요량을 못 채우는 첫 끼니의 날짜. 예측하지 않거나 범위 안에 없으면 null
+             * @example 2026-11-20
+             */
+            depletionDate: string | null;
+            /** @description 오늘부터 소진일까지 일수(오늘이면 0) */
+            daysLeft: number | null;
+            /** @description 예정 소비가 있는데 계산 범위를 넘겨도 남는다 */
+            beyondHorizon: boolean;
+            /** @description 마지막 남은 양 맞추기 뒤, 이 식품이 든 과거 식단 끼니에 미기록이 있다 */
+            lowConfidence: boolean;
+            purchaseUrl: string | null;
+            /** @example 2026-11-12 */
+            today: string;
+            daysBefore: number;
+            horizonDays: number;
+            archived: boolean;
+        };
+        MovementMealDto: {
+            /** @example 2026-11-12 */
+            date: string;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
+        };
+        StockMovementDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description 부호 있는 변화량(stock_unit) */
+            delta: number;
+            /** @enum {string} */
+            reason: "receipt" | "initial" | "consume" | "consume_reverse" | "adjust" | "waste" | "other_use";
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description 섭취 차감·복구와 연결된 식사 */
+            meal: components["schemas"]["MovementMealDto"] | null;
+        };
+        StockMovementPageDto: {
+            /** @description 최근 것부터 */
+            items: components["schemas"]["StockMovementDto"][];
+            /**
+             * Format: uuid
+             * @description 다음 쪽이 있으면 `cursor` 로 보낼 값
+             */
+            nextCursor: string | null;
+        };
         CreateAdjustmentDto: {
             /**
              * @description 지금 실제로 남은 양(unit 기준). 0 이상
@@ -1169,15 +1328,15 @@ export interface components {
         AdjustmentResultDto: {
             /** Format: uuid */
             productId: string;
-            /** @description 이번 보정으로 생긴 변화량(stock_unit). 0 이면 이동을 만들지 않았다 */
+            /** @description 이번 보정으로 생긴 변화량(stock_unit). 맞추기에서 기록과 같았으면 0 */
             delta: number;
             /** @description 보정 뒤 남은 양(stock_unit) */
             currentStock: number;
             /**
              * Format: uuid
-             * @description 만든 원장 이동. 차이가 없으면 null
+             * @description 만든 원장 이동. 차이가 0 인 맞추기도 '확인했다' 는 이동을 남긴다 (DEC-080 4)
              */
-            movementId: string | null;
+            movementId: string;
         };
         NutritionValuesDto: {
             kcal: number | null;
@@ -1325,10 +1484,20 @@ export interface components {
             /** @description 바꿀 슬롯. 유지할 슬롯은 빼면 된다 */
             slots: ("breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack")[];
         };
+        DepletionChangeDto: {
+            /** Format: uuid */
+            productId: string;
+            name: string;
+            /** @description 바꾸기 전 소진일. null = 계산 범위 안에 없음 */
+            before: string | null;
+            after: string | null;
+        };
         BatchResultDto: {
             /** Format: uuid */
             batchId: string;
             count: number;
+            /** @description 이 변경으로 소진일이 바뀐 식품 (S-24, DEC-080 14) */
+            depletionChanges: components["schemas"]["DepletionChangeDto"][];
         };
         PutOverrideDto: {
             /** @enum {string} */
@@ -1339,6 +1508,25 @@ export interface components {
              */
             templateId?: string | null;
             note?: string | null;
+        };
+        SavedOverrideDto: {
+            /** Format: uuid */
+            id: string;
+            /** @example 2026-11-10 */
+            date: string;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack";
+            /** @enum {string} */
+            planType: "template" | "none";
+            /** Format: uuid */
+            templateId: string | null;
+            templateName: string | null;
+            /** Format: uuid */
+            batchId: string | null;
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            depletionChanges: components["schemas"]["DepletionChangeDto"][];
         };
         ResolvedSlotDto: {
             /** @example 2026-11-10 */
@@ -1515,6 +1703,8 @@ export interface components {
             /** @description S-10 ⑧ 하루 완료 버튼 상태. GET /days/{date}/completion 과 같은 계산 */
             completionCheck: components["schemas"]["DayCompletionCheckDto"];
             hasOverride: boolean;
+            /** @description S-10 ⑦ 곧 떨어질 식품(소진 임박만, 소진일 빠른 순). 오늘이 아니면 빈 배열 (DEC-080 13) */
+            depleting: components["schemas"]["StockItemDto"][];
         };
         CompleteDayDto: {
             /**
@@ -2314,6 +2504,70 @@ export interface operations {
             };
         };
     };
+    StockController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockOverviewDto"];
+                };
+            };
+        };
+    };
+    StockController_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockDetailDto"];
+                };
+            };
+        };
+    };
+    StockController_movements: {
+        parameters: {
+            query?: {
+                /** @description 앞 쪽의 nextCursor */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockMovementPageDto"];
+                };
+            };
+        };
+    };
     StockController_adjust: {
         parameters: {
             query?: never;
@@ -2627,7 +2881,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OverrideDto"];
+                    "application/json": components["schemas"]["SavedOverrideDto"];
                 };
             };
         };

@@ -6,7 +6,8 @@ import { MEAL_SLOTS, WEEKDAYS, type MealSlot } from '@diet/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertRange } from '../common/validators';
 import { eachDate, fromDbDate, toDbDate } from '../domain/dates';
-import { PlanResolver, type OverrideCell, type WeeklyCell } from '../domain/plan';
+import { PlanResolver } from '../domain/plan';
+import { loadPlanResolver } from './plan-loader';
 import {
   BatchOverrideDto,
   BatchResultDto,
@@ -31,29 +32,8 @@ export class PlansService {
   // ---------- 해석 (다른 모듈 공용) ----------
 
   /** 기간의 반복 계획·예외를 한 번에 읽어 해석기를 만든다 */
-  async loadResolver(db: Db, userId: string, from: string, to: string): Promise<PlanResolver> {
-    const [weekly, overrides] = await Promise.all([
-      db.weeklySchedule.findMany({ where: { userId } }),
-      db.dateOverride.findMany({
-        where: { userId, onDate: { gte: toDbDate(from), lte: toDbDate(to) } },
-      }),
-    ]);
-    const weeklyCells: WeeklyCell[] = weekly.map((w) => ({
-      weekday: w.weekday,
-      slot: w.slot,
-      planType: w.planType,
-      templateId: w.templateId,
-    }));
-    const overrideCells: OverrideCell[] = overrides.map((o) => ({
-      id: o.id,
-      onDate: fromDbDate(o.onDate),
-      slot: o.slot,
-      planType: o.planType,
-      templateId: o.templateId,
-      batchId: o.batchId,
-      note: o.note,
-    }));
-    return new PlanResolver(weeklyCells, overrideCells);
+  loadResolver(db: Db, userId: string, from: string, to: string): Promise<PlanResolver> {
+    return loadPlanResolver(db, userId, from, to);
   }
 
   private async templateNames(db: Db, userId: string, ids: (string | null)[]) {
@@ -195,7 +175,10 @@ export class PlansService {
   }
 
   /** 기간·슬롯 일괄 변경(출장). 같은 batch_id 로 묶어 한 번에 해제할 수 있다 */
-  async batch(userId: string, dto: BatchOverrideDto): Promise<BatchResultDto> {
+  async batch(
+    userId: string,
+    dto: BatchOverrideDto,
+  ): Promise<Omit<BatchResultDto, 'depletionChanges'>> {
     assertRange(dto.from, dto.to, MAX_PLAN_RANGE_DAYS);
     const slots = [...new Set(dto.slots)];
     const batchId = randomUUID();

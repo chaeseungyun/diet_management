@@ -102,6 +102,18 @@ export class UuidParamPipe implements PipeTransform<string, string> {
   }
 }
 
+/** 선택 UUID 쿼리(쪽 넘김 cursor 등). 비어 있으면 undefined, 형식이 틀리면 422 */
+@Injectable()
+export class OptionalUuidPipe implements PipeTransform<string | undefined, string | undefined> {
+  transform(value: string | undefined): string | undefined {
+    if (value === undefined || value === '') return undefined;
+    if (typeof value !== 'string' || !UUID_RE.test(value)) {
+      throw new UnprocessableEntityException('invalid id');
+    }
+    return value.toLowerCase();
+  }
+}
+
 /** 정규 5슬롯 경로 파라미터. extra 나 모르는 값은 404 */
 @Injectable()
 export class SlotParamPipe implements PipeTransform<string, MealSlot> {

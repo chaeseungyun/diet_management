@@ -20,11 +20,14 @@ import { Dialog } from '@/components/ui/dialog';
 import { Checkbox, Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { addDays, dateLabel, monthLabel, pad2 } from '@/lib/format';
+import { depletionChangeText, type DepletionChange } from '@/lib/stock';
 import { cn } from '@/lib/utils';
 import { PlanCellDialog, type TemplateRef } from './plan-cell-dialog';
 
 type Summary = Schemas['DaySummaryDto'];
 type Resolved = Schemas['ResolvedSlotDto'];
+type SavedOverride = Schemas['SavedOverrideDto'];
+type BatchResult = Schemas['BatchResultDto'];
 
 export function Calendar({
   year,
@@ -46,7 +49,7 @@ export function Calendar({
   templates: TemplateRef[];
 }) {
   const router = useRouter();
-  const { status, run } = useStatus();
+  const { status, run, set } = useStatus();
   const [editing, setEditing] = useState<Resolved | null>(null);
   const [batch, setBatch] = useState(false);
   const byDate = new Map(days.map((d) => [d.date, d]));
@@ -58,20 +61,27 @@ export function Calendar({
     v: { planType: PlanType; templateId: string | null; note?: string },
   ) {
     try {
-      await run(
+      const saved = await run(
         () =>
-          api('PUT', `/plans/overrides/${r.date}/${r.slot}`, {
+          api<SavedOverride>('PUT', `/plans/overrides/${r.date}/${r.slot}`, {
             planType: v.planType,
             templateId: v.templateId,
             note: v.note || null,
           }),
         '날짜 예외 저장',
       );
+      announceDepletion(saved.depletionChanges);
       setEditing(null);
       router.refresh();
     } catch {
       // 배너
     }
+  }
+
+  /** 계획 변경으로 떨어질 날이 바뀐 식품을 알려 준다 (S-24, DEC-080 14) */
+  function announceDepletion(changes: DepletionChange[]) {
+    const message = depletionChangeText(changes);
+    if (message) set({ kind: 'saved', message, long: true });
   }
 
   async function clearOverride(r: Resolved) {
@@ -237,12 +247,13 @@ export function Calendar({
           router.refresh();
         }}
         run={run}
+        onChanges={announceDepletion}
       />
     </div>
   );
 }
 
-/** S-24 기간 일괄 변경. 영향 미리보기(예정 소비·소진일)는 소진 예측과 함께 단계 2 */
+/** S-24 기간 일괄 변경. 저장 뒤 떨어질 날이 바뀐 식품을 알려 준다(미리보기 없음, DEC-080 14) */
 function BatchSheet({
   open,
   onClose,
@@ -250,6 +261,7 @@ function BatchSheet({
   templates,
   onDone,
   run,
+  onChanges,
 }: {
   open: boolean;
   onClose: () => void;
@@ -257,6 +269,7 @@ function BatchSheet({
   templates: TemplateRef[];
   onDone: () => void;
   run: <T>(work: () => Promise<T>, msg?: string) => Promise<T>;
+  onChanges: (changes: DepletionChange[]) => void;
 }) {
   const [f, setF] = useState({
     from,
@@ -269,9 +282,9 @@ function BatchSheet({
 
   async function apply() {
     try {
-      await run(
+      const saved = await run(
         () =>
-          api('POST', '/plans/overrides/batch', {
+          api<BatchResult>('POST', '/plans/overrides/batch', {
             from: f.from,
             to: f.to,
             slots,
@@ -281,6 +294,7 @@ function BatchSheet({
           }),
         '기간 예외 적용',
       );
+      onChanges(saved.depletionChanges);
       onDone();
     } catch {
       // 배너

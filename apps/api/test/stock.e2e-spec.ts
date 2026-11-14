@@ -36,6 +36,17 @@ describe('phase 2: stock adjustments', () => {
     const fresh = await a.get(`/products/${broccoli}`).expect(200);
     expect(fresh.body.stockUnitLocked).toBe(false);
 
+    // 받은 적 없는 식품을 0 으로 맞춰도(차이 0) 단위는 잠기지 않는다 (DEC-081)
+    const zero = await a
+      .post(`/stock/${broccoli}/adjustments`)
+      .send({ measuredQuantity: 0 })
+      .expect(201);
+    expect(zero.body).toMatchObject({ delta: 0, currentStock: 0 });
+    const still = await a.get(`/products/${broccoli}`).expect(200);
+    expect(still.body.stockUnitLocked).toBe(false);
+    await a.patch(`/products/${broccoli}`).send({ stockUnit: 'g' }).expect(200);
+    await a.patch(`/products/${broccoli}`).send({ stockUnit: 'ea', unitLabel: '팩' }).expect(200);
+
     await a
       .post('/purchases')
       .send({ productId: broccoli, quantity: 1, purchasedOn: TODAY, received: true })
@@ -93,14 +104,16 @@ describe('phase 2: stock adjustments', () => {
     expect(await movements()).toBe(before + 1);
   });
 
-  it('makes no movement when the measured amount already matches', async () => {
+  it('keeps a zero adjust movement when the measured amount already matches (DEC-080 4)', async () => {
     const before = await movements();
     const res = await a
       .post(`/stock/${broccoli}/adjustments`)
       .send({ measuredQuantity: 0.6 })
       .expect(201);
-    expect(res.body).toMatchObject({ delta: 0, currentStock: 0.6, movementId: null });
-    expect(await movements()).toBe(before);
+    expect(res.body).toMatchObject({ delta: 0, currentStock: 0.6 });
+    expect(res.body.movementId).toEqual(expect.any(String));
+    expect(await movements()).toBe(before + 1);
+    expect((await a.get(`/products/${broccoli}`)).body.currentStock).toBe(0.6);
   });
 
   it('brings a negative balance back to the measured amount', async () => {

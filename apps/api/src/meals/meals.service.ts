@@ -31,6 +31,7 @@ import { GoalsService } from '../goals/goals.service';
 import { GoalDto } from '../goals/goals.dto';
 import { WeightsService } from '../weights/weights.service';
 import { WeightDto } from '../weights/weights.dto';
+import { StockService } from '../stock/stock.service';
 import {
   CompleteDayDto,
   DayCompletionCheckDto,
@@ -97,6 +98,7 @@ export class MealsService {
     private readonly plans: PlansService,
     private readonly goals: GoalsService,
     private readonly weights: WeightsService,
+    private readonly stock: StockService,
   ) {}
 
   // ---------- 조회 ----------
@@ -114,14 +116,16 @@ export class MealsService {
   }
 
   async getDay(user: User, date: string): Promise<DayDto> {
-    const [ev, goal, weight] = await Promise.all([
+    const isToday = date === todayIn(user.timezone);
+    const [ev, goal, weight, depleting] = await Promise.all([
       this.evaluateDay(this.prisma, user, date),
       this.goals.effectiveGoal(this.prisma, user.id, date),
       this.weights.forDate(user.id, date),
+      isToday ? this.stock.imminent(this.prisma, user) : [],
     ]);
     return {
       date,
-      isToday: date === todayIn(user.timezone),
+      isToday,
       slots: ev.slots.map((s) => s.dto),
       extras: ev.extras,
       nutrition: {
@@ -134,6 +138,7 @@ export class MealsService {
       completion: ev.completion ? DayCompletionDto.from(ev.completion) : null,
       completionCheck: this.checkFrom(user, date, ev),
       hasOverride: ev.hasOverride,
+      depleting,
     };
   }
 

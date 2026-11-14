@@ -25,6 +25,7 @@ import {
 import { IsCalendarDate } from '../common/validators';
 import { fromDbDate } from '../domain/dates';
 import type { ResolvedPlan } from '../domain/plan';
+import { DepletionChangeDto } from '../stock/stock.dto';
 
 export class PutPlanCellDto {
   @ApiProperty({ enum: PLAN_TYPES })
@@ -126,6 +127,10 @@ export class BatchResultDto {
 
   @ApiProperty()
   count!: number;
+
+  /** 이 변경으로 소진일이 바뀐 식품 (S-24, DEC-080 14) */
+  @ApiProperty({ type: DepletionChangeDto, isArray: true })
+  depletionChanges!: DepletionChangeDto[];
 }
 
 export class OverrideDto {
@@ -214,4 +219,10 @@ export class ResolvedSlotDto {
       note: plan.note,
     };
   }
+}
+
+/** 단일 예외 저장 응답: 예외 + 소진일이 바뀐 식품 */
+export class SavedOverrideDto extends OverrideDto {
+  @ApiProperty({ type: DepletionChangeDto, isArray: true })
+  depletionChanges!: DepletionChangeDto[];
 }

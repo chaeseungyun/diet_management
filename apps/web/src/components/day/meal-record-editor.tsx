@@ -14,6 +14,7 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker } from '@/components/products/product-picker';
 import { PlanCellDialog } from '@/components/plans/plan-cell-dialog';
+import { depletionChangeText } from '@/lib/stock';
 import { cn } from '@/lib/utils';
 
 type MealRecord = Schemas['MealRecordDto'];
@@ -156,17 +157,21 @@ export function MealRecordEditor({
     note?: string;
   }) {
     try {
-      await run(
+      const saved = await run(
         () =>
-          api('PUT', `/plans/overrides/${date}/${slot}`, {
+          api<Schemas['SavedOverrideDto']>('PUT', `/plans/overrides/${date}/${slot}`, {
             planType: v.planType,
             templateId: v.templateId,
             note: v.note?.trim() ? v.note.trim() : null,
           }),
         '이 날 계획 변경',
       );
+      // 계획 변경으로 떨어질 날이 바뀐 식품을 알려 준다 (S-24, DEC-080 14)
+      const moved = depletionChangeText(saved.depletionChanges);
       setPlanDialog(false);
       await reload();
+      // reload 가 상태 배너를 비우므로 안내는 그 뒤에 띄운다
+      if (moved) set({ kind: 'saved', message: moved, long: true });
       router.refresh();
     } catch {
       // 배너

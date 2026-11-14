@@ -70,10 +70,14 @@
 | --- | --- | --- |
 | `GET /stock` | 제품별 현재 재고(`SUM(delta)`), 배송 중 수량 별도, 소진 예정일, 수준 배지(정상/소진 임박/소진/재고 확인 필요/예측 불가), 미기록 과거 식사가 있으면 ‘추정 신뢰도 낮음’ 플래그 | 음수는 0으로 자르지 않고 그대로 노출 |
 | `GET /stock/{productId}` | 상세: 날짜별 예정 소비·입고 예정 등 예측 근거 | 오늘 이미 `eaten`인 슬롯은 예정량에서 제외 |
-| `GET /stock/{productId}/movements?cursor=` | 원장 목록. 사유·시각·연결 식사 | 수정·삭제 API 없음(append-only) |
+| `GET /stock/{productId}/movements?cursor=` | 원장 목록. 사유·시각·연결 식사 | 수정·삭제 API 없음(append-only). 최근 것부터 30건, 응답 `{items, nextCursor}` |
 | `POST /stock/{productId}/adjustments` | 실측 잔량 보정·폐기·다른 용도 소비. `delta` 또는 `measuredQuantity`, `note` 필수 | reason `adjust | waste | other_use`. Idempotency-Key. **2026-11-11 구현은 실측 잔량만**(DEC-078): `{measuredQuantity ≥ 0, unit?, note?}`, 사유 선택, `unit` 은 stock_unit 또는 단위 중량 있는 ea 의 g, 차이 0 이면 이동 없음. 응답 `{productId, delta, currentStock, movementId}`. 비관리 제품 422. **2026-11-12 (DEC-080)**: 폐기·다른 용도는 화면 하나로 받아 항상 `reason=waste`(`other_use` 미사용), 사유 선택, 현재 재고를 넘어도 거부하지 않음(음수 허용) |
 
 DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 첫 식단 끼니의 날짜, 범위 60일(넘으면 소진일 `null` + '60일 넘게 충분'). 오늘 `eaten`·`skipped` 는 예정에서 빼고 오늘 미기록은 넣는다. `activeSlots` 밖 끼니·보관 제품 제외. 신뢰도 낮음은 제품별(마지막 `adjust` 이후, 없으면 첫 이동 이후의 과거 미기록 식단 끼니). 임박 N = `stock_depletion` 설정의 `daysBefore`. 날짜 예외 저장 응답에 소진일이 바뀐 제품 목록을 싣는다(S-24, 미리보기 API 없음).
+
+구현(2026-11-12, DEC-080): `GET /stock` → `{today, daysBefore, horizonDays, items[]}`, 항목은 `{productId, name, brand, stockUnit, unitLabel, packWeightG, currentStock, orderedQuantity, level, depletionDate, daysLeft, beyondHorizon, lowConfidence, purchaseUrl}`, `level` 은 `untracked|check_needed|depleted|unpredictable|imminent|ok`. `GET /stock/{productId}` 는 여기에 `today·daysBefore·horizonDays·archived·planned[{date, quantity}]`. 보정은 `measuredQuantity`(맞추기, 차이 0 도 delta 0 인 `adjust` 를 남김) 또는 `wasteQuantity`(> 0, `waste`) 중 정확히 하나. `GET /days/{date}` 는 오늘일 때 `depleting`(소진 임박 항목)을 싣고, `PUT /plans/overrides/{date}/{slot}`·`POST /plans/overrides/batch` 응답에 `depletionChanges[{productId, name, before, after}]` 가 붙는다(해제·식단표 변경에는 없음). `POST /plans/overrides/batch/preview` 는 만들지 않는다.
+
+변경(2026-11-14, DEC-081): 남은 양 화면을 식품 화면에 합치면서 `GET /stock/{productId}` 의 `planned` 와 보정의 `wasteQuantity` 를 뺐다. `POST /stock/{productId}/adjustments` 는 `{ measuredQuantity(필수, ≥ 0), unit?, note? }` 만 받고 항상 `adjust` 이동을 만든다(버리거나 준 양도 남은 양을 맞춰 반영). 차이 0 인 이동은 수량 단위 잠금(`stockUnitLocked`, D-13)에 세지 않는다. `depletionChanges` 는 예측 계산이 실패하면 빈 배열이고 저장은 그대로 성공한다. `lowConfidence` 는 식단표 칸이 마지막으로 바뀐 날과 그 앞 날짜를 세지 않는다. 웹은 `GET /stock` 을 식품 목록(S-30)에, `GET /stock/{productId}`·`/movements` 를 식품 상세(S-32)에 쓴다.
 
 ## 6. 식단 템플릿 (단계 1) — FR-04, S-20, S-21
 

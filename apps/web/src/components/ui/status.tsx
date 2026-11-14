@@ -13,7 +13,8 @@ import type { ErrorMessageOptions } from '@/lib/error-messages';
 export type Status =
   | { kind: 'idle' }
   | { kind: 'saving' }
-  | { kind: 'saved'; message?: string }
+  /** long: 읽을 내용이 있는 안내(예: 바뀐 떨어질 날)는 더 오래 보인다 */
+  | { kind: 'saved'; message?: string; long?: boolean }
   | { kind: 'error'; message: string; conflict?: boolean };
 
 export function useStatus() {
@@ -24,7 +25,7 @@ export function useStatus() {
     if (timer.current) window.clearTimeout(timer.current);
     setStatus(s);
     if (s.kind === 'saved') {
-      timer.current = window.setTimeout(() => setStatus({ kind: 'idle' }), 2500);
+      timer.current = window.setTimeout(() => setStatus({ kind: 'idle' }), s.long ? 8000 : 2500);
     }
   }, []);
 

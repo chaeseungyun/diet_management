@@ -13,10 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, EmptyState } from '@/components/ui/card';
 import { ProductForm } from '@/components/products/product-form';
 import { ProductActions } from '@/components/products/product-actions';
+import { MovementList } from '@/components/stock/movement-list';
+import { depletionLong } from '@/lib/stock';
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-/** 식품 상세 (S-32). ?edit=1 이면 수정 폼 */
+/** 식품 상세 (S-32). ?edit=1 이면 수정 폼. 떨어질 날과 남은 양 변동 기록을 함께 보인다 (DEC-081) */
 export default async function ProductPage({
   params,
   searchParams,
@@ -37,6 +39,16 @@ export default async function ProductPage({
       </Page>
     );
   }
+
+  // 수량을 세는 식품만 예측·변동 기록이 있다. 보관한 식품은 떨어질 날을 보이지 않는다 (DEC-080 8)
+  const [stock, movements] = p.isStockTracked
+    ? await Promise.all([
+        apiGet<Schemas['StockDetailDto']>(`/stock/${id}`),
+        apiGet<Schemas['StockMovementPageDto']>(`/stock/${id}/movements`),
+      ])
+    : [null, null];
+  const depletion = stock && !p.archivedAt ? depletionLong(stock, stock.horizonDays) : null;
+  const lowConfidence = stock !== null && !p.archivedAt && stock.lowConfidence;
 
   return (
     <Page
@@ -94,12 +106,26 @@ export default async function ProductPage({
                     {unit}
                   </span>
                 ) : null}
-                <Link
-                  href={`/products/${p.id}?edit=1#stock`}
-                  className="ml-2 text-xs text-accent-foreground underline"
-                >
-                  맞추기
-                </Link>
+                {depletion ? (
+                  <p
+                    className={
+                      stock?.level === 'imminent'
+                        ? 'font-medium text-warning-foreground'
+                        : undefined
+                    }
+                  >
+                    {depletion}
+                  </p>
+                ) : null}
+                {lowConfidence ? (
+                  <p className="text-xs text-muted-foreground">
+                    <Badge variant="outline" className="mr-1">
+                      기록 빠진 끼니 있음
+                    </Badge>
+                    먹었는지 적지 않은 끼니가 있어 실제로는 덜 남았을 수 있어요. 수정에서 남은 양을
+                    맞추면 사라져요.
+                  </p>
+                ) : null}
               </>
             )}
           </dd>
@@ -213,6 +239,18 @@ export default async function ProductPage({
           </ul>
         )}
       </Section>
+
+      {movements ? (
+        <Section title="남은 양 변동 기록">
+          {/* 새로 고친 뒤(남은 양 맞추기 등) 첫 쪽이 바뀌면 목록 상태를 버리고 다시 그린다 */}
+          <MovementList
+            key={movements.items[0]?.id ?? 'empty'}
+            productId={p.id}
+            unit={unit}
+            first={movements}
+          />
+        </Section>
+      ) : null}
 
       <ProductActions product={p} />
     </Page>

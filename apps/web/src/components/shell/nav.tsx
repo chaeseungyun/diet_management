@@ -24,8 +24,7 @@ const items = [
     href: '/products',
     label: '식품',
     icon: Package,
-    match: (p: string) =>
-      p.startsWith('/products') || p.startsWith('/purchases') || p.startsWith('/stock'),
+    match: (p: string) => p.startsWith('/products') || p.startsWith('/purchases'),
   },
   {
     href: '/stats',

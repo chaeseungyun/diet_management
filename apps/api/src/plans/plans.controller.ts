@@ -31,16 +31,21 @@ import {
   PutPlanCellDto,
   PutWeeklyGridDto,
   ResolvedSlotDto,
+  SavedOverrideDto,
   WeeklyCellDto,
   WeeklyGridDto,
 } from './plans.dto';
+import { StockService } from '../stock/stock.service';
 import { PlansService } from './plans.service';
 
 /** 주간 반복·날짜 예외 (api.md §7, FR-04, D-01, S-22~S-24) */
 @ApiTags('plans')
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly plans: PlansService) {}
+  constructor(
+    private readonly plans: PlansService,
+    private readonly stock: StockService,
+  ) {}
 
   @Get('weekly')
   @ApiOperation({ summary: '요일 7 × 슬롯 5 격자' })
@@ -85,10 +90,16 @@ export class PlansController {
   // batch 경로는 ':date/:slot' 보다 먼저 선언해야 가려지지 않는다
   @Post('overrides/batch')
   @HttpCode(201)
-  @ApiOperation({ summary: '기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능' })
+  @ApiOperation({
+    summary:
+      '기간·슬롯 일괄 변경(출장). batchId 로 묶음 해제 가능. 소진일이 바뀐 식품을 함께 돌려준다',
+  })
   @ApiCreatedResponse({ type: BatchResultDto })
-  batch(@CurrentUser() user: User, @Body() body: BatchOverrideDto): Promise<BatchResultDto> {
-    return this.plans.batch(user.id, body);
+  async batch(@CurrentUser() user: User, @Body() body: BatchOverrideDto): Promise<BatchResultDto> {
+    const { result, changes } = await this.stock.depletionChanges(user, () =>
+      this.plans.batch(user.id, body),
+    );
+    return { ...result, depletionChanges: changes };
   }
 
   @Delete('overrides/batch/:batchId')
@@ -104,14 +115,17 @@ export class PlansController {
 
   @Put('overrides/:date/:slot')
   @ApiOperation({ summary: '단일 예외 설정 (반복 계획보다 우선)' })
-  @ApiOkResponse({ type: OverrideDto })
-  putOverride(
+  @ApiOkResponse({ type: SavedOverrideDto })
+  async putOverride(
     @CurrentUser() user: User,
     @Param('date', DateParamPipe) date: string,
     @Param('slot', SlotParamPipe) slot: MealSlot,
     @Body() body: PutOverrideDto,
-  ): Promise<OverrideDto> {
-    return this.plans.putOverride(user.id, date, slot, body);
+  ): Promise<SavedOverrideDto> {
+    const { result, changes } = await this.stock.depletionChanges(user, () =>
+      this.plans.putOverride(user.id, date, slot, body),
+    );
+    return { ...result, depletionChanges: changes };
   }
 
   @Delete('overrides/:date/:slot')

@@ -14,8 +14,9 @@ import { WeightQuick } from './weight-quick';
 import { DayComplete } from './day-complete';
 import { InstallBanner } from '@/components/pwa/install-banner';
 import { PushBanner } from '@/components/pwa/push-banner';
+import { StockRow } from '@/components/stock/stock-row';
 
-/** 오늘 홈 (S-10 ①~⑥, ⑧ 하루 완료). ⑦ 소진 임박은 재고 화면과 함께 (D-20 순서) */
+/** 오늘 홈 (S-10 ①~⑧). ⑦ 곧 떨어질 식품은 소진 임박만 보이고 없으면 숨긴다 (DEC-080 13) */
 export async function DayScreen({
   date,
   today,
@@ -110,6 +111,21 @@ export async function DayScreen({
       </Section>
 
       <ExtrasPanel date={date} dayHref={dayHref} extras={day.extras} initialOpen={openExtra} />
+
+      {day.depleting.length > 0 ? (
+        <Section
+          title="곧 떨어질 식품"
+          actions={
+            <Link href="/products" className="text-xs text-accent-foreground">
+              식품 보기
+            </Link>
+          }
+        >
+          {day.depleting.map((item) => (
+            <StockRow key={item.productId} item={item} />
+          ))}
+        </Section>
+      ) : null}
 
       <Section title="체중">
         <WeightQuick date={date} weight={day.weight} />

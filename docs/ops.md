@@ -204,6 +204,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 확인(2026-11-11): 운영 VAPID 키 설정, 갤럭시 크롬·아이폰 홈 화면 앱에서 테스트 알림 수신.
 - 진행: 알림 접근성(DEC-077) — `POST /notification-settings/enable-meals`, '알림 켜기' 시 쓰는 끼니 일괄 켜기, 오늘 화면 알림 배너, S-72 알림 링크, 서비스 워커 `renotify`(재알림이 소리 없이 교체되던 버그). e2e 63건 통과.
 - 다음(나중): 매분 판정의 소요 시간 로그·대상 사용자 SQL 필터(사용자 수가 늘 때), S-71 팝업 설정 안내.
+- 완료(2026-11-12, DEC-080): 소진 예측 `src/domain/forecast.ts`, `GET /stock`·`/stock/{id}`·`/stock/{id}/movements`, 버린 양(`wasteQuantity`), 오늘 화면 `depleting`, 날짜 예외 저장 응답의 `depletionChanges`. 웹 `/stock`·`/stock/[productId]`·식품 탭 전환·오늘 화면 '곧 떨어질 식품'. 단위 80건·e2e 84건, `pnpm build` 통과. 로컬 `dev:tester` 의 닭가슴살·오트밀 남은 양을 화면 확인용으로 맞췄다(4팩·5000g). 남은 것: 소진 알림 판정(결정 5건, `decisions.md` §F), 휴대폰에서 남은 양 화면·시트 확인.
+- 변경(2026-11-14, DEC-081): 남은 양 화면(`/stock`·`/stock/[productId]`·탭·버린 양 시트)을 없애고 식품 카드·식품 상세에 합쳤다. `wasteQuantity`·`planned` 삭제, 차이 0 맞추기는 단위 잠금에서 제외, '기록 빠진 끼니' 는 식단표 변경일 뒤만. 단위 81건·e2e 84건, `pnpm build` 통과.
 - 다음: 갤럭시에서 오늘 화면 배너·일괄 켜기·재알림 소리 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)

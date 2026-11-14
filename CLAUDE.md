@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077; 2026-11-12~14: 소진 예측 DEC-080, 남은 양은 식품 화면에 합침 DEC-081, 소진 알림 판정은 아직). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
 
 명령(저장소 루트에서):
 
@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 검사: `pnpm typecheck`, `pnpm test`(API e2e는 DB를 자동으로 띄움). 단일 테스트: `pnpm --filter @diet/api exec jest --selectProjects unit -t "<이름>"`, e2e만: `pnpm --filter @diet/api test:e2e`.
 - 빌드: `pnpm build`. API 타입 재생성: `pnpm --filter @diet/api openapi:export && pnpm --filter @diet/web api-types`(`openapi.json`·`api-types.d.ts` 둘 다 커밋, CI가 검사).
 - 린트: 미도입(ESLint 는 단계 2 착수 시 검토). Prettier는 `pnpm format:check`.
-- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2)·`stock`(adjustments: 실측 잔량 보정만, DEC-078)·`notifications`(설정·구독·매분 판정 스케줄러·web-push 발송, DEC-074·075)·`maintenance`(매일 04:00 정리). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,pwa,ui,shell}`. PWA 는 `app/manifest.ts`·`public/sw.js`(푸시 전용, fetch 캐시 없음)·`public/icons/`(`pnpm --filter @diet/web icons` 로 생성). 웹 푸시 구독은 `src/lib/push.ts`(앱 열 때 재등록 `PushSync`, 로그아웃은 서버만 해제, DEC-076). DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
+- 단계 1 구조: API 모듈 `goals`·`products`(영양·backfill 포함)·`purchases`(stock-receipts 포함)·`templates`·`plans`·`meals`(days·meal-records·extra·days/{date}/completion)·`weights`·`stats`(summary·daily, 단계 2)·`stock`(남은 양 현황·상세·원장·맞추기, 예측은 조회마다 계산, 화면은 식품 목록·상세가 씀, DEC-078·080·081)·`notifications`(설정·구독·매분 판정 스케줄러·web-push 발송, DEC-074·075)·`maintenance`(매일 04:00 정리). e2e 파일은 한 DB 를 공유하므로 jest `maxWorkers: 1`. 순수 계산은 `src/domain/`(units·nutrition·plan·dates·stats·forecast), 공통은 `src/common/`(idempotency·validators·nutrition.dto). 웹은 `src/app/(app)/`(로그인 영역), `src/components/{day,products,plans,settings,stats,stock,pwa,ui,shell}`. PWA 는 `app/manifest.ts`·`public/sw.js`(푸시 전용, fetch 캐시 없음)·`public/icons/`(`pnpm --filter @diet/web icons` 로 생성). 웹 푸시 구독은 `src/lib/push.ts`(앱 열 때 재등록 `PushSync`, 로그아웃은 서버만 해제, DEC-076). DB 제약은 Prisma 로 표현 가능한 것만(DEC-055).
 
 코드 규칙:
 

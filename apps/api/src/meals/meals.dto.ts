@@ -45,6 +45,7 @@ import { allowedUnits } from '../domain/units';
 import type { ResolvedPlan } from '../domain/plan';
 import { GoalDto } from '../goals/goals.dto';
 import { WeightDto } from '../weights/weights.dto';
+import { StockItemDto } from '../stock/stock.dto';
 
 export class MealItemInputDto {
   @ApiProperty({ format: 'uuid' })
@@ -472,6 +473,10 @@ export class DayDto {
 
   @ApiProperty()
   hasOverride!: boolean;
+
+  /** S-10 ⑦ 곧 떨어질 식품(소진 임박만, 소진일 빠른 순). 오늘이 아니면 빈 배열 (DEC-080 13) */
+  @ApiProperty({ type: StockItemDto, isArray: true })
+  depleting!: StockItemDto[];
 }
 
 export class DaySummaryDto {

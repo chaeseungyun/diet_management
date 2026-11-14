@@ -136,7 +136,11 @@ export class ProductsService {
         where: { productId: id, template: { archivedAt: null } },
         include: { template: { select: { id: true, name: true } } },
       }),
-      this.prisma.stockMovement.findFirst({ where: { productId: id }, select: { id: true } }),
+      // 차이 0 인 맞추기(delta 0)는 '확인했다' 는 표시일 뿐이라 단위 잠금에 세지 않는다 (DEC-081)
+      this.prisma.stockMovement.findFirst({
+        where: { productId: id, delta: { not: 0 } },
+        select: { id: true },
+      }),
     ]);
     const templates = new Map(templateItems.map((t) => [t.template.id, t.template]));
     return {
@@ -220,7 +224,9 @@ export class ProductsService {
       const existing = await this.loadOwned(tx, userId, id);
       const stockUnit = dto.stockUnit ?? existing.stockUnit;
       if (stockUnit !== existing.stockUnit) {
-        const moved = await tx.stockMovement.count({ where: { productId: id } });
+        const moved = await tx.stockMovement.count({
+          where: { productId: id, delta: { not: 0 } },
+        });
         if (moved > 0) {
           throw unprocessable(
             'STOCK_UNIT_LOCKED',
