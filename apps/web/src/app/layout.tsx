@@ -4,11 +4,11 @@ import { ThemeScript } from '@/components/settings/theme-script';
 import { PwaClient } from '@/components/pwa/pwa-client';
 
 export const metadata: Metadata = {
-  title: '식단 관리',
+  title: '끼니로그',
   description: '적은 입력으로 식사·영양·체중을 기록하고 식품이 떨어질 날을 예측한다.',
-  applicationName: '식단 관리',
+  applicationName: '끼니로그',
   // 매니페스트는 app/manifest.ts 가 자동으로 연결한다 (DEC-073)
-  appleWebApp: { capable: true, title: '식단 관리', statusBarStyle: 'default' },
+  appleWebApp: { capable: true, title: '끼니로그', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
   icons: {
     icon: [

@@ -7,8 +7,8 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: '식단 관리',
-    short_name: '식단 관리',
+    name: '끼니로그',
+    short_name: '끼니로그',
     description: '적은 입력으로 식사·영양·체중을 기록하고 식품이 떨어질 날을 예측한다.',
     lang: 'ko',
     dir: 'ltr',

@@ -42,7 +42,7 @@ function safePath(url) {
 self.addEventListener('push', (event) => {
   const data = readPayload(event);
   const tag = typeof data.tag === 'string' && data.tag ? data.tag : undefined;
-  const title = typeof data.title === 'string' && data.title ? data.title : '식단 관리';
+  const title = typeof data.title === 'string' && data.title ? data.title : '끼니로그';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: typeof data.body === 'string' ? data.body : undefined,

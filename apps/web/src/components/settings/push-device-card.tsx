@@ -222,7 +222,7 @@ function unsupportedMessage(env: PwaEnv): string | null {
 }
 
 function deniedHelp(env: PwaEnv): string {
-  if (env.os === 'ios') return '설정 앱 → 알림 → 식단 관리 → 알림 허용';
+  if (env.os === 'ios') return '설정 앱 → 알림 → 끼니로그 → 알림 허용';
   if (env.os === 'android' && env.standalone)
     return '앱 아이콘 길게 누르기 → 앱 정보 → 알림 → 허용';
   if (env.os === 'android') return '주소창 왼쪽 아이콘 → 권한(사이트 설정) → 알림 → 허용';

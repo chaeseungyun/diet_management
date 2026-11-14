@@ -75,7 +75,7 @@ export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-      <div className="px-5 py-5 text-lg font-semibold">식단 관리</div>
+      <div className="px-5 py-5 text-lg font-semibold">끼니로그</div>
       <ul className="flex flex-1 flex-col gap-1 px-3">
         {items.map((it) => {
           const active = it.match(pathname);
