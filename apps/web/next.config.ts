@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
+  // next dev 가 AGENTS.md 를 만들지 않게 한다. AI 지침은 저장소 루트 CLAUDE.md 가 맡는다
+  agentRules: false,
   async headers() {
     return [
       {

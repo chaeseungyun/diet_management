@@ -2,6 +2,8 @@
 node_modules/
 dist/
 .next/
+# next dev·build 가 매번 다시 쓰는 생성 파일
+apps/web/next-env.d.ts
 out/
 coverage/
 *.tsbuildinfo
