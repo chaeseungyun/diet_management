@@ -1,9 +1,12 @@
 import type { MealSlot, MealStatus, PlanType } from '@prisma/client';
 import {
+  type DayCompleteInput,
   type DeliveryLite,
   type DueInput,
+  dueDayComplete,
   dueMealNotifications,
   GRACE_MS,
+  stockAlertScheduledAt,
   zonedMinuteToUtc,
 } from './notifications';
 
@@ -219,5 +222,129 @@ describe('dueMealNotifications', () => {
         }),
       ),
     ).toMatchObject([{ targetDate: '2026-11-09', slot: 'dinner' }]);
+  });
+});
+
+describe('dueDayComplete (DEC-084)', () => {
+  const rec = (hhmm: string, status: MealStatus = 'eaten') => ({ status, updatedAt: kst(hhmm) });
+  const on10 = (
+    by: Partial<Record<MealSlot, { status: MealStatus; updatedAt: Date }>>,
+  ): DayCompleteInput['record'] => {
+    return (date, slot) => (date === '2026-11-10' ? (by[slot] ?? null) : null);
+  };
+  function day(over: Partial<DayCompleteInput> = {}): DayCompleteInput {
+    return {
+      now: kst('21:00'),
+      timezone: SEOUL,
+      enabled: true,
+      signupDate: '2026-11-01',
+      activeSlots: ['lunch', 'dinner'],
+      plan: () => ({ planType: 'template' as PlanType }),
+      record: on10({ lunch: rec('12:10'), dinner: rec('20:00') }),
+      completed: new Set(),
+      notified: new Set(),
+      lastSlotMinute: 19 * 60,
+      ...over,
+    };
+  }
+
+  it('is due one hour after the last record once every planned meal is recorded', () => {
+    expect(dueDayComplete(day())).toEqual([
+      { targetDate: '2026-11-10', scheduledAt: kst('21:00') },
+    ]);
+    expect(dueDayComplete(day({ now: kst('20:59') }))).toEqual([]);
+    // 15분을 넘기면 보내지 않는다
+    expect(dueDayComplete(day({ now: kst('21:16') }))).toEqual([]);
+  });
+
+  it('waits while a planned meal in use is unrecorded, ignoring free and unused slots', () => {
+    const noDinner = day({ record: on10({ lunch: rec('20:00') }) });
+    expect(dueDayComplete(noDinner)).toEqual([]);
+    // 저녁이 자유 끼니이거나 쓰지 않는 끼니면 막지 않는다
+    expect(
+      dueDayComplete({
+        ...noDinner,
+        plan: (_d, slot) => ({ planType: slot === 'dinner' ? 'none' : 'template' }),
+      }),
+    ).toHaveLength(1);
+    expect(dueDayComplete({ ...noDinner, activeSlots: ['lunch'] })).toHaveLength(1);
+    // '취소' 로 미기록이 된 행은 기록이 아니다
+    expect(
+      dueDayComplete(
+        day({ record: on10({ lunch: rec('12:00'), dinner: rec('20:00', 'unrecorded') }) }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('skips completed, already notified, pre-signup days, days with no record, and when off', () => {
+    const d = new Set(['2026-11-10']);
+    expect(dueDayComplete(day({ completed: d }))).toEqual([]);
+    expect(dueDayComplete(day({ notified: d }))).toEqual([]);
+    expect(dueDayComplete(day({ signupDate: '2026-11-11' }))).toEqual([]);
+    expect(dueDayComplete(day({ enabled: false }))).toEqual([]);
+    // 식단 끼니가 하나도 없는 날은 기록이 없으면 보낼 기준 시각이 없다
+    expect(dueDayComplete(day({ plan: () => ({ planType: 'none' }), record: () => null }))).toEqual(
+      [],
+    );
+  });
+
+  it('never fires before the latest slot in use, even if everything planned is recorded early', () => {
+    // 점심만 식단이고 저녁은 자유 끼니: 12:30 에 점심을 적어도 13:30 이 아니라 저녁 시각(19:00)에 간다
+    const early = day({
+      plan: (_d, slot) => ({ planType: slot === 'lunch' ? 'template' : 'none' }),
+      record: on10({ lunch: rec('12:30') }),
+    });
+    expect(dueDayComplete({ ...early, now: kst('13:30') })).toEqual([]);
+    expect(dueDayComplete({ ...early, now: kst('19:00') })).toEqual([
+      { targetDate: '2026-11-10', scheduledAt: kst('19:00') },
+    ]);
+    // 쓰는 끼니가 없으면 기록 1시간 뒤 그대로
+    expect(dueDayComplete({ ...early, lastSlotMinute: null, now: kst('13:30') })).toHaveLength(1);
+  });
+
+  it('does not retry a failed reminder at the same scheduled time, only after a later edit', () => {
+    const failedAt = new Map([['2026-11-10', kst('21:00')]]);
+    expect(dueDayComplete(day({ failedAt }))).toEqual([]);
+    // 저녁 기록을 20:30 에 고치면 예약 시각이 21:30 으로 가서 다시 보낸다
+    const edited = day({
+      failedAt,
+      now: kst('21:30'),
+      record: on10({ lunch: rec('12:10'), dinner: rec('20:30') }),
+    });
+    expect(dueDayComplete(edited)).toEqual([
+      { targetDate: '2026-11-10', scheduledAt: kst('21:30') },
+    ]);
+  });
+
+  it('still reminds for yesterday when the last meal was recorded just before midnight', () => {
+    const out = dueDayComplete(
+      day({
+        now: kst('00:30', '2026-11-11'),
+        record: on10({ lunch: rec('23:30'), dinner: rec('23:30') }),
+      }),
+    );
+    expect(out).toEqual([{ targetDate: '2026-11-10', scheduledAt: kst('00:30', '2026-11-11') }]);
+  });
+
+  it('does not remind about yesterday when its record was edited the next day', () => {
+    // 11/11 14:00 에 어제(11/10) 점심을 고쳤다 → 15:00 에 '어제' 알림을 보내지 않는다
+    const nextDay = { status: 'eaten' as MealStatus, updatedAt: kst('14:00', '2026-11-11') };
+    const out = dueDayComplete(
+      day({
+        now: kst('15:00', '2026-11-11'),
+        record: on10({ lunch: nextDay, dinner: rec('20:00') }),
+      }),
+    );
+    expect(out).toEqual([]);
+  });
+});
+
+describe('stock depletion alert time (DEC-084)', () => {
+  it('is scheduled at the set minute (09:00 by default) with the 15 minute grace', () => {
+    expect(stockAlertScheduledAt(kst('09:00'), SEOUL, null)).toEqual(kst('09:00'));
+    expect(stockAlertScheduledAt(kst('09:15'), SEOUL, null)).toEqual(kst('09:00'));
+    expect(stockAlertScheduledAt(kst('08:59'), SEOUL, null)).toBeNull();
+    expect(stockAlertScheduledAt(kst('09:16'), SEOUL, null)).toBeNull();
+    expect(stockAlertScheduledAt(kst('20:00'), SEOUL, 20 * 60)).toEqual(kst('20:00'));
   });
 });

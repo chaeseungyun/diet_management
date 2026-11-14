@@ -1864,12 +1864,12 @@ export interface components {
             days: components["schemas"]["StatsDayDto"][];
         };
         /** @enum {string} */
-        NotificationKind: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "unrecorded_remind" | "stock_depletion";
+        NotificationKind: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "unrecorded_remind" | "stock_depletion" | "day_complete";
         NotificationSettingDto: {
             kind: components["schemas"]["NotificationKind"];
             enabled: boolean;
             /**
-             * @description 끼니 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류에만 의미가 있다
+             * @description 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류와 소진 알림(기본 540 = 09:00)에 의미가 있다
              * @example 720
              */
             notifyMinute: number | null;
@@ -1888,8 +1888,6 @@ export interface components {
              * @example 3
              */
             daysBefore: number;
-            /** @description false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다 */
-            available: boolean;
         };
         EnableMealsResultDto: {
             /** @description false = 이미 켜진 끼니 알림이 있어 아무것도 바꾸지 않음 */
@@ -1942,7 +1940,7 @@ export interface components {
             reason: string | null;
         };
         /** @enum {string} */
-        NotificationType: "meal_check" | "unrecorded_remind" | "stock_depletion";
+        NotificationType: "meal_check" | "unrecorded_remind" | "stock_depletion" | "day_complete";
         /** @enum {string} */
         MealSlot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
         /** @enum {string} */

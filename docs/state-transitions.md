@@ -252,7 +252,7 @@ stateDiagram-v2
 | §3-a Purchase | 배송중 / 입고완료 / 취소됨 | `status`: ordered / received / cancelled |
 | §3 StockMovement | 입고·초기 / 섭취 차감 / 섭취 복구 / 보정 / 폐기·타용도 | `reason`: receipt·initial / consume / consume_reverse / adjust / waste·other_use |
 | §5 NotificationDelivery | 예약됨 / 발송됨 / 발송실패 / 취소됨·만료됨 | `status`: pending / sent / failed / skipped. DEC-074 이후 ‘예약됨’·‘취소됨’은 저장하지 않고 계산되는 상태이며, 행은 발송 선점 시(pending) 생기고 `skipped` 는 만료만 뜻한다 |
-| §5 알림 유형 ①·③·④ | 식사 체크 / 미기록 재알림 / 소진 (② 외부 사전은 D-19로 폐기) | `type`: meal_check / unrecorded_remind / stock_depletion |
+| §5 알림 유형 ①·③·④·⑤ | 식사 체크 / 미기록 재알림 / 소진 / 하루 완료(⑤, DEC-084) (② 외부 사전은 D-19로 폐기) | `type`: meal_check / unrecorded_remind / stock_depletion / day_complete |
 | §6 영양 출처 | 표시값 / 직접 입력 추정 / AI 추정 | `source`: label / manual_estimate / ai_estimate |
 | §8 AnalysisJob | 대기 / 진행 / 성공 / 실패 / 취소 | `status`: pending / running / succeeded / failed / cancelled |
 

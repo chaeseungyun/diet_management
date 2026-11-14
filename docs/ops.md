@@ -206,6 +206,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 다음(나중): 매분 판정의 소요 시간 로그·대상 사용자 SQL 필터(사용자 수가 늘 때), S-71 팝업 설정 안내.
 - 완료(2026-11-12, DEC-080): 소진 예측 `src/domain/forecast.ts`, `GET /stock`·`/stock/{id}`·`/stock/{id}/movements`, 버린 양(`wasteQuantity`), 오늘 화면 `depleting`, 날짜 예외 저장 응답의 `depletionChanges`. 웹 `/stock`·`/stock/[productId]`·식품 탭 전환·오늘 화면 '곧 떨어질 식품'. 단위 80건·e2e 84건, `pnpm build` 통과. 로컬 `dev:tester` 의 닭가슴살·오트밀 남은 양을 화면 확인용으로 맞췄다(4팩·5000g). 남은 것: 소진 알림 판정(결정 5건, `decisions.md` §F), 휴대폰에서 남은 양 화면·시트 확인.
 - 변경(2026-11-14, DEC-081): 남은 양 화면(`/stock`·`/stock/[productId]`·탭·버린 양 시트)을 없애고 식품 카드·식품 상세에 합쳤다. `wasteQuantity`·`planned` 삭제, 차이 0 맞추기는 단위 잠금에서 제외, '기록 빠진 끼니' 는 식단표 변경일 뒤만. 단위 81건·e2e 84건, `pnpm build` 통과.
+- 완료(2026-11-14, DEC-084): 소진 알림(기본 09:00, 하루 한 통, 식품별 한 번·임박에서 벗어나면 초기화)과 하루 완료 알림(마지막 기록 1시간 뒤이면서 가장 늦은 쓰는 끼니 시각 이후, 하루 한 번). 둘 다 기본 켜짐이라 배포하면 알림을 켠 계정이 바로 받는다. 마이그레이션 둘(`day_complete_notification` enum 값, `product_depletion_alerted_at` 컬럼)은 API 컨테이너 시작 때 `migrate deploy` 로 적용된다. 단위 91건·e2e 93건. 남은 것: 실기기에서 두 알림 수신 확인.
 - 다음: 갤럭시에서 오늘 화면 배너·일괄 켜기·재알림 소리 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
 
 ## 11. 단계 0 상태 (2026-11-05)

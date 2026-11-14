@@ -72,6 +72,7 @@ export function NotificationSettingsForm({
   const changed = [...draft.values()].filter((s) => !same(s, saved.get(s.kind)!));
   const missingTime = slots.some((s) => get(s).enabled && get(s).notifyMinute === null);
   const remind = get('unrecorded_remind');
+  const dayComplete = get('day_complete');
   const stock = get('stock_depletion');
 
   async function submit(e: React.FormEvent) {
@@ -204,20 +205,61 @@ export function NotificationSettingsForm({
         </Card>
       </Section>
 
-      <Section title="재고 소진 알림">
-        <Card className="flex flex-col gap-3 p-4 opacity-60" aria-disabled>
+      <Section title="하루 완료 알림">
+        <Card className="flex flex-col gap-3 p-4">
+          <Checkbox
+            label="하루 완료를 안 눌렀을 때 알림"
+            checked={dayComplete.enabled}
+            onChange={(e) => patch('day_complete', { enabled: e.target.checked })}
+          />
+          <p className="text-xs text-muted-foreground">
+            식단 끼니를 모두 기록하고 1시간이 지나도 하루 완료를 누르지 않았으면 한 번 알립니다.
+          </p>
+        </Card>
+      </Section>
+
+      <Section title="곧 떨어질 식품 알림">
+        <Card className="flex flex-col gap-3 p-4">
+          <Checkbox
+            label="곧 떨어질 식품 알림"
+            checked={stock.enabled}
+            onChange={(e) => patch('stock_depletion', { enabled: e.target.checked })}
+          />
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Checkbox label="소진 예상" checked={stock.enabled} disabled readOnly />
-            <Select aria-label="소진 며칠 전" className="w-28" value={stock.daysBefore} disabled>
+            <span>떨어지기</span>
+            <Select
+              aria-label="떨어지기 며칠 전"
+              className="w-28"
+              value={stock.daysBefore}
+              disabled={!stock.enabled}
+              onChange={(e) => patch('stock_depletion', { daysBefore: Number(e.target.value) })}
+            >
               {withCurrent(DAYS_BEFORE, stock.daysBefore).map((n) => (
                 <option key={n} value={n}>
                   {n}일 전
                 </option>
               ))}
             </Select>
+            <span>부터,</span>
+            <Input
+              type="time"
+              step={60}
+              aria-label="곧 떨어질 식품 알림 시각"
+              className="w-32"
+              value={toTime(stock.notifyMinute)}
+              disabled={!stock.enabled}
+              required={stock.enabled}
+              onChange={(e) => {
+                const minute = fromTime(e.target.value);
+                if (minute !== null) patch('stock_depletion', { notifyMinute: minute });
+              }}
+            />
+            <span>에</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            재고 화면·소진 예측이 생기면 켤 수 있습니다.
+            식품마다 한 번, 같은 날 여러 개면 한 통으로 묶어 알립니다. 다시 채운 뒤 또 떨어져 가면
+            다시 알립니다. 배송 중인 식품은 알리지 않습니다. 며칠 전 기준은 식품 화면의 &apos;곧
+            떨어짐&apos; 표시에도 쓰입니다.
           </p>
         </Card>
       </Section>

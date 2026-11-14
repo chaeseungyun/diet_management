@@ -5471,7 +5471,8 @@
           "dinner",
           "evening_snack",
           "unrecorded_remind",
-          "stock_depletion"
+          "stock_depletion",
+          "day_complete"
         ]
       },
       "NotificationSettingDto": {
@@ -5490,7 +5491,7 @@
           "notifyMinute": {
             "type": "number",
             "nullable": true,
-            "description": "끼니 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류에만 의미가 있다",
+            "description": "알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류와 소진 알림(기본 540 = 09:00)에 의미가 있다",
             "example": 720
           },
           "remindAfterMinutes": {
@@ -5507,10 +5508,6 @@
             "type": "number",
             "description": "stock_depletion: 예측 소진일 N일 전",
             "example": 3
-          },
-          "available": {
-            "type": "boolean",
-            "description": "false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다"
           }
         },
         "required": [
@@ -5519,8 +5516,7 @@
           "notifyMinute",
           "remindAfterMinutes",
           "remindMaxCount",
-          "daysBefore",
-          "available"
+          "daysBefore"
         ]
       },
       "EnableMealsResultDto": {
@@ -5705,7 +5701,8 @@
         "enum": [
           "meal_check",
           "unrecorded_remind",
-          "stock_depletion"
+          "stock_depletion",
+          "day_complete"
         ]
       },
       "MealSlot": {

@@ -21,8 +21,9 @@ import {
   type NotificationSetting,
 } from '@prisma/client';
 import { fromDbDate } from '../domain/dates';
+import { DEFAULT_DAYS_BEFORE, DEFAULT_STOCK_NOTIFY_MINUTE } from '../domain/notifications';
 
-/** 화면 순서 = 5끼니 → 미기록 재알림 → 소진 알림 (S-71) */
+/** 화면 순서 = 5끼니 → 미기록 재알림 → 하루 완료 → 소진 알림 (S-71) */
 export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'breakfast',
   'lunch',
@@ -30,18 +31,31 @@ export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'dinner',
   'evening_snack',
   'unrecorded_remind',
+  'day_complete',
   'stock_depletion',
 ];
 
 export const SLOT_KINDS: readonly NotificationKind[] = NOTIFICATION_KINDS.slice(0, 5);
 
-/** 소진 알림은 재고 화면·소진 예측 단계에서 판정을 붙인다 (DEC-074) */
-export const STOCK_DEPLETION_AVAILABLE = false;
+/**
+ * 설정 행이 없을 때의 켜짐 여부 (DEC-084). 하루 완료·소진 알림은 기본 켜짐이라
+ * 이미 알림을 켠 계정도 따로 손대지 않고 받는다. 끼니·재알림은 기본 꺼짐.
+ */
+export const DEFAULT_ENABLED: Record<NotificationKind, boolean> = {
+  breakfast: false,
+  lunch: false,
+  afternoon_snack: false,
+  dinner: false,
+  evening_snack: false,
+  unrecorded_remind: false,
+  day_complete: true,
+  stock_depletion: true,
+};
 
 export const DEFAULTS = {
   remindAfterMinutes: 60,
   remindMaxCount: 1,
-  daysBefore: 3,
+  daysBefore: DEFAULT_DAYS_BEFORE,
 } as const;
 
 export class NotificationSettingDto {
@@ -51,7 +65,7 @@ export class NotificationSettingDto {
   @ApiProperty()
   enabled!: boolean;
 
-  /** 끼니 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류에만 의미가 있다 */
+  /** 알림 시각, 사용자 시간대 기준 하루 중 분(0~1439). 끼니 종류와 소진 알림(기본 540 = 09:00)에 의미가 있다 */
   @ApiProperty({ type: Number, nullable: true, example: 720 })
   notifyMinute!: number | null;
 
@@ -67,22 +81,18 @@ export class NotificationSettingDto {
   @ApiProperty({ example: 3 })
   daysBefore!: number;
 
-  /** false = 아직 발송하지 않는 종류(소진 알림, 재고 단계 전). 화면은 비활성으로 보인다 */
-  @ApiProperty()
-  available!: boolean;
-
   static from(
     kind: NotificationKind,
     row: NotificationSetting | undefined,
   ): NotificationSettingDto {
     const dto = new NotificationSettingDto();
     dto.kind = kind;
-    dto.enabled = row?.enabled ?? false;
-    dto.notifyMinute = row?.notifyMinute ?? null;
+    dto.enabled = row?.enabled ?? DEFAULT_ENABLED[kind];
+    dto.notifyMinute =
+      row?.notifyMinute ?? (kind === 'stock_depletion' ? DEFAULT_STOCK_NOTIFY_MINUTE : null);
     dto.remindAfterMinutes = row?.remindAfterMinutes ?? DEFAULTS.remindAfterMinutes;
     dto.remindMaxCount = row?.remindMaxCount ?? DEFAULTS.remindMaxCount;
     dto.daysBefore = row?.daysBefore ?? DEFAULTS.daysBefore;
-    dto.available = kind !== 'stock_depletion' || STOCK_DEPLETION_AVAILABLE;
     return dto;
   }
 }

@@ -141,7 +141,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 소진 알림 설정. 행이 없으면 기본값(off) | DEC-074 |
+| `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 하루 완료 + 소진 알림 설정(8종). 행이 없으면 기본값: 끼니·재알림 off, **하루 완료·소진 on**(소진 시각 540 = 09:00, 3일 전). `available` 필드 없음 | DEC-074, DEC-084 |
 | `PUT /notification-settings/{kind}` | 종류별 on/off·시각(`notifyMinute`)·재알림 횟수(0~3)·간격·소진 N일 | 발송 시점 판정이라 재예약 없음(DEC-074) |
 | `POST /notification-settings/enable-meals` | '알림 켜기' 직후. 켜진 끼니 알림이 없으면 쓰는 끼니를 모두 켬(저장된 시각, 없으면 제안 시각). `{ applied, enabledKinds, settings }` | **구현(DEC-077)**. 하나라도 켜져 있으면 변경 없음, 재알림·소진은 건드리지 않음 |
 | `GET /push/public-key` | VAPID 공개키 | |

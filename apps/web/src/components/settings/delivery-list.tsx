@@ -45,8 +45,10 @@ export function DeliveryList({
         const [label, variant] = STATUS[d.status];
         const what =
           d.type === 'stock_depletion'
-            ? '재고 소진'
-            : `${d.slot ? SLOT_LABELS[d.slot] : ''} ${d.seq === 0 ? '알림' : `재알림 ${d.seq}`}`;
+            ? '곧 떨어질 식품'
+            : d.type === 'day_complete'
+              ? '하루 완료'
+              : `${d.slot ? SLOT_LABELS[d.slot] : ''} ${d.seq === 0 ? '알림' : `재알림 ${d.seq}`}`;
         const reason = reasonLabel(d.failureReason);
         return (
           <li key={d.id} className="flex items-center justify-between gap-2 px-3 py-2">

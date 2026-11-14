@@ -13,6 +13,7 @@ import {
   type ForecastItem,
   type ProductForecast,
 } from '../domain/forecast';
+import { DEFAULT_DAYS_BEFORE, type DepletionCandidate } from '../domain/notifications';
 import { Decimal, round3, toStockUnit } from '../domain/units';
 import { loadPlanResolver } from '../plans/plan-loader';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,8 +28,6 @@ import {
   StockOverviewDto,
 } from './stock.dto';
 
-/** 소진 알림 설정 행이 없을 때의 임박 기준 (스키마 기본값과 같다) */
-const DEFAULT_DAYS_BEFORE = 3;
 const MOVEMENT_PAGE_SIZE = 30;
 
 interface StockRow {
@@ -62,8 +61,13 @@ export class StockService {
    * 사용자의 제품 전체를 한 번에 예측한다. 보관한 제품은 빼되(DEC-080 8) `includeId` 는 넣는다.
    * 남은 양 목록·상세·오늘 화면·날짜 예외 저장 응답이 모두 이 결과를 쓴다.
    */
-  private async snapshot(db: Db, user: User, includeId?: string): Promise<StockSnapshot> {
-    const today = todayIn(user.timezone);
+  private async snapshot(
+    db: Db,
+    user: User,
+    includeId?: string,
+    now: Date = new Date(),
+  ): Promise<StockSnapshot> {
+    const today = todayIn(user.timezone, now);
     const products = await db.product.findMany({
       where: {
         userId: user.id,
@@ -243,6 +247,35 @@ export class StockService {
       .filter((r) => r.forecast.level === 'imminent')
       .sort(StockService.order)
       .map((r) => this.toItem(r));
+  }
+
+  /**
+   * 소진 알림에 넣을 식품 (DEC-080 6, DEC-084). now 는 부르는 쪽의 시각이다(예측의 '오늘' 을 맞춘다).
+   * 알린 적이 있는데 지금은 소진 임박이 아닌 식품은 '알렸음' 을 지워 다음에 다시 알리게 하고,
+   * 소진 임박이면서 배송 중이 아니고 아직 알리지 않은 식품을 소진일 빠른 순으로 돌려준다.
+   * 스케줄러(알림 시각)와 매일 정리 작업이 부른다. 두 번 불러도 결과가 같다.
+   */
+  async depletionAlerts(user: User, now: Date): Promise<DepletionCandidate[]> {
+    const snap = await this.snapshot(this.prisma, user, undefined, now);
+    const fresh: DepletionCandidate[] = [];
+    const stale: string[] = [];
+    for (const r of [...snap.rows].sort(StockService.order)) {
+      const alerted = r.product.depletionAlertedAt !== null;
+      if (r.forecast.level !== 'imminent') {
+        if (alerted) stale.push(r.product.id);
+        continue;
+      }
+      const { depletionDate, daysLeft } = r.forecast;
+      if (alerted || depletionDate === null || daysLeft === null || r.ordered.gt(0)) continue;
+      fresh.push({ productId: r.product.id, name: r.product.name, depletionDate, daysLeft });
+    }
+    if (stale.length > 0) {
+      await this.prisma.product.updateMany({
+        where: { userId: user.id, id: { in: stale } },
+        data: { depletionAlertedAt: null },
+      });
+    }
+    return fresh;
   }
 
   /**

@@ -75,7 +75,7 @@ export class NotificationsService {
   /**
    * '알림 켜기' 직후 (DEC-077). 켜진 끼니 알림이 하나도 없을 때만 쓰는 끼니(D-18)를 모두 켠다.
    * 시각이 이미 있으면 그 시각, 없으면 제안 시각. 하나라도 켜져 있으면 사용자가 고른 것이라 건드리지 않는다.
-   * 재알림·소진 알림은 바꾸지 않는다. 두 번 불러도 결과가 같다.
+   * 재알림은 바꾸지 않는다. 하루 완료·소진 알림은 행이 없어도 켜진 것으로 본다(DEC-084). 두 번 불러도 결과가 같다.
    */
   async enableMeals(user: User): Promise<EnableMealsResultDto> {
     const rows = await this.prisma.notificationSetting.findMany({ where: { userId: user.id } });

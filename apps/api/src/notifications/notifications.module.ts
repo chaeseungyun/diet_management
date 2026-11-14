@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PlansModule } from '../plans/plans.module';
+import { StockModule } from '../stock/stock.module';
 import {
   NotificationHistoryController,
   NotificationSettingsController,
@@ -9,9 +10,9 @@ import { NotificationsService } from './notifications.service';
 import { NotificationScheduler } from './notification-scheduler';
 import { PUSH_SENDER, WebPushSender } from './push-sender';
 
-/** 알림 (단계 2, FR-09, D-22, DEC-074·075). 발송은 매분 스케줄러가 판정해 보낸다 */
+/** 알림 (단계 2, FR-09, D-22, DEC-074·075·084). 발송은 매분 스케줄러가 판정해 보낸다 */
 @Module({
-  imports: [PlansModule],
+  imports: [PlansModule, StockModule],
   controllers: [NotificationSettingsController, PushController, NotificationHistoryController],
   providers: [
     NotificationsService,
