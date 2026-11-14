@@ -16,6 +16,28 @@ import { ProductPicker, type ProductDto } from '@/components/products/product-pi
 
 type Record = Schemas['MealRecordDto'];
 
+const OUTSIDE_FIELDS = [
+  ['kcal', 'kcal'],
+  ['carbG', '탄(g)'],
+  ['proteinG', '단(g)'],
+  ['fatG', '지(g)'],
+] as const;
+type OutsideValues = { [K in (typeof OUTSIDE_FIELDS)[number][0]]: string };
+const EMPTY_OUTSIDE: OutsideValues = { kcal: '', carbG: '', proteinG: '', fatG: '' };
+
+/** 빈 칸은 미상(null), 0 은 확인된 0 */
+function num(v: string): number | null {
+  return v.trim() === '' ? null : Number(v);
+}
+
+/** 목록 한 줄의 영양 요약. 열량이 없으면 '열량 미확인', 일부만 있으면 표시 */
+function nutritionLine(n: Record['nutrition']): string {
+  if (n.missing > 0 && n.kcal === 0 && n.carbG === 0 && n.proteinG === 0 && n.fatG === 0)
+    return '영양 미확인';
+  const macros = `탄 ${Math.round(n.carbG)} · 단 ${Math.round(n.proteinG)} · 지 ${Math.round(n.fatG)}g`;
+  return `${Math.round(n.kcal)} kcal · ${macros}${n.missing > 0 ? ' (일부 미확인)' : ''}`;
+}
+
 /** S-10 ④ 추가 간식 목록 + S-13 입력 시트 (slot=extra, D-10). 진입은 식사 섹션의 '+ 식사 추가' (D-20) */
 export function ExtrasPanel({
   date,
@@ -47,14 +69,14 @@ export function ExtrasPanel({
   const [unit, setUnit] = useState<StockUnit>('g');
   const [outside, setOutside] = useState(false);
   const [menu, setMenu] = useState('');
-  const [kcal, setKcal] = useState('');
+  const [nutrition, setNutrition] = useState<OutsideValues>(EMPTY_OUTSIDE);
 
   function reset() {
     setProduct(null);
     setQuantity('');
     setOutside(false);
     setMenu('');
-    setKcal('');
+    setNutrition(EMPTY_OUTSIDE);
   }
 
   async function save() {
@@ -63,7 +85,10 @@ export function ExtrasPanel({
           status: 'eaten',
           kind: 'outside',
           outsideMenu: menu,
-          outsideKcal: kcal === '' ? null : Number(kcal),
+          outsideKcal: num(nutrition.kcal),
+          outsideCarbG: num(nutrition.carbG),
+          outsideProteinG: num(nutrition.proteinG),
+          outsideFatG: num(nutrition.fatG),
         }
       : {
           status: 'eaten',
@@ -118,7 +143,7 @@ export function ExtrasPanel({
                       .join(', ')}
               </p>
               <p className="text-xs text-muted-foreground">
-                {x.nutrition.missing > 0 ? '열량 미확인' : `${Math.round(x.nutrition.kcal)} kcal`}
+                {nutritionLine(x.nutrition)}
                 {x.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
               </p>
             </div>
@@ -156,19 +181,24 @@ export function ExtrasPanel({
             <Field label="메뉴명" htmlFor="extra-menu">
               <Input id="extra-menu" value={menu} onChange={(e) => setMenu(e.target.value)} />
             </Field>
-            <Field
-              label="열량 (kcal, 선택)"
-              htmlFor="extra-kcal"
-              hint="비우면 '미확인' 으로 남는다"
-            >
-              <Input
-                id="extra-kcal"
-                type="number"
-                inputMode="decimal"
-                value={kcal}
-                onChange={(e) => setKcal(e.target.value)}
-              />
-            </Field>
+            <p className="text-xs text-muted-foreground">
+              영양 추정값은 직접 입력합니다. 비운 칸은 &apos;미확인&apos; 으로 남습니다.
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {OUTSIDE_FIELDS.map(([k, label]) => (
+                <Field key={k} label={label} htmlFor={`extra-${k}`}>
+                  <Input
+                    id={`extra-${k}`}
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min={0}
+                    value={nutrition[k]}
+                    onChange={(e) => setNutrition({ ...nutrition, [k]: e.target.value })}
+                  />
+                </Field>
+              ))}
+            </div>
           </>
         ) : product ? (
           <>
