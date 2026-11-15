@@ -80,7 +80,7 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 git clone https://github.com/chaeseungyun/diet_management.git ~/diet && cd ~/diet
 cp deploy/.env.example deploy/.env && nano deploy/.env
 #   DOMAIN=kkinilog.com, POSTGRES_PASSWORD=<openssl rand -hex 24 출력>, JWT_SECRET=<openssl rand -hex 48 출력>(hex: 접속 URL 에 안전),
-#   KAKAO_CLIENT_ID / KAKAO_CLIENT_SECRET, BACKUP_PASSPHRASE(비밀번호 관리자에도 보관), BACKUP_REMOTE(rclone 원격, 없으면 비움)
+#   KAKAO_CLIENT_ID / KAKAO_CLIENT_SECRET, BACKUP_RECIPIENT(age 공개 키, §5), BACKUP_REMOTE(rclone 원격, 없으면 비움)
 chmod 600 deploy/.env
 
 # 첫 기동(이후는 CD 가 한다)
@@ -119,24 +119,32 @@ rm ~/.ssh/deploy_key           # 개인키는 GitHub 에만 둔다
    - **GitHub 시크릿에는 넣지 않는다.** 시크릿은 배포용 SSH 정보(`DEPLOY_*`)만 두고, 앱 환경 변수는 VM 의 `deploy/.env` 에만 있다(Compose 가 `--env-file` 로 읽는다). 로컬 `apps/api/.env` 에는 따로 만든 로컬 전용 키를 쓴다 — 로컬 키가 새도 운영 사용자에게 알림을 보낼 수 없고, 로컬 API 를 실수로 운영 DB 에 붙여도 서명이 맞지 않아 발송되지 않는다.
 3. `docker compose up -d api` — 환경 변수는 컨테이너를 다시 만들어야 반영된다(`restart` 로는 안 바뀜).
 4. 확인: `curl -s https://<도메인>/api/v1/push/public-key` 는 로그인 쿠키가 필요하므로 웹 S-71 의 '테스트 발송' 으로 본다. 로그에는 알림이 나갈 때 `tick claimed=… sent=…` 가 남는다.
-5. **개인키 보관**: `VAPID_PRIVATE_KEY` 는 `BACKUP_PASSPHRASE` 처럼 VM 밖(비밀번호 관리자)에도 둔다. 잃거나 바꾸면 모든 기기 구독이 무효가 되어 사용자가 알림을 다시 켜야 한다.
+5. **개인키 보관**: `VAPID_PRIVATE_KEY` 는 백업 비밀 키(§5)처럼 VM 밖(비밀번호 관리자)에도 둔다. 잃거나 바꾸면 모든 기기 구독이 무효가 되어 사용자가 알림을 다시 켜야 한다.
 6. 발송만 멈추기: `NOTIFICATIONS_ENABLED=false` 후 3번. 구독·설정은 그대로 남는다.
 
 ## 5. 백업·복원 (DEC-014: 매일 1회, 7일 보관, RPO/RTO 24h)
 
 ```bash
+# 키 쌍 만들기(한 번만, DEC-085). 공개 키는 암호화, 비밀 키는 복원에만 쓴다.
+age-keygen -o ~/diet-backup-key.txt        # "Public key: age1…" 이 출력된다
+#   1) 출력된 age1… 을 deploy/.env 의 BACKUP_RECIPIENT 에 넣는다
+#   2) 파일 안의 AGE-SECRET-KEY-1… 한 줄을 비밀번호 관리자에 보관한다
+#   3) 복원 시험이 끝나면 서버의 ~/diet-backup-key.txt 를 지운다
+
 # 백업: pg_dump → gzip → age 암호화 → backups/ + rclone 원격(BACKUP_REMOTE)
 ./scripts/backup.sh
-# cron (매일 03:10 KST = 18:10 UTC)
-10 18 * * * cd /home/<user>/diet && ./scripts/backup.sh >> /var/log/diet-backup.log 2>&1
+# cron (매일 03:10 KST = 18:10 UTC). 로그는 홈에 둔다(/var/log 는 ubuntu 가 쓸 수 없다)
+10 18 * * * cd /home/<user>/diet && ./scripts/backup.sh >> /home/<user>/diet-backup.log 2>&1
 
-# 복원 시험(별도 DB): 출시 전 1회 필수
+# 복원 시험(별도 DB): 출시 전 1회 필수. 비밀 키 파일은 ~/diet-backup-key.txt (다른 곳이면 BACKUP_KEY_FILE=<경로>)
 TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 # 운영 복원(확인 질문 있음, API 정지 후 복원)
 ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 ```
 
-- `BACKUP_PASSPHRASE`는 VM 밖(비밀번호 관리자)에도 보관한다. 이것이 없으면 백업은 복원할 수 없다.
+- 서버에는 **공개 키(`BACKUP_RECIPIENT`)만** 둔다. 공개 키로는 암호화만 되므로 서버가 털려도 백업 파일을 풀 수 없다. **비밀 키(`AGE-SECRET-KEY-1…`)는 VM 밖(비밀번호 관리자)에 보관**하고, 복원할 때만 `~/diet-backup-key.txt`(권한 600)로 올렸다가 지운다. 비밀 키를 잃으면 백업은 복원할 수 없다.
+- `restore.sh` 는 DB 를 지우기 전에 파일이 그 키로 풀리는지 먼저 확인한다. 풀리지 않으면 아무것도 바꾸지 않고 끝난다.
+- 외부 저장소(`BACKUP_REMOTE`)가 없는 동안에는 백업이 VM 디스크에만 있다. 가끔 PC 로 내려받아 둔다: `scp -i <키>.pem "ubuntu@<IP>:~/diet/backups/diet-*.sql.gz.age" ./`
 - 백업에는 사진 등 파일이 없다(DEC-014·DEC-069). 식사 사진은 EXT-02 부터 VM 볼륨 `data/photos/` 에 리사이즈본만 7~30일 보관되고 백업 밖이다. 디스크를 잃으면 사진은 복구되지 않는다(사용자 안내 문구에 포함). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
 - 백업 만료: 7일 후 로컬·원격 모두 삭제. 계정 삭제 요청 시 "최대 7일 안에 백업에서도 사라진다"로 안내한다(NFR-04).
 
