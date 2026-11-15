@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077; 2026-11-12~14: 소진 예측 DEC-080, 남은 양은 식품 화면에 합침 DEC-081, 소진 알림·하루 완료 알림 DEC-084). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험은 아직이다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077; 2026-11-12~14: 소진 예측 DEC-080, 남은 양은 식품 화면에 합침 DEC-081, 소진 알림·하루 완료 알림 DEC-084). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험 완료(2026-11-15, DEC-085, `docs/ops.md` §13). 외부 저장소 보관은 아직 없다.
 
 명령(저장소 루트에서):
 

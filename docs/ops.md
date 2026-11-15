@@ -228,4 +228,14 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - CD: run `42354235785`(커밋 `be5b0e3`)의 `deploy` job 이 secret 등록 뒤 Re-run 으로 성공. 이후 `main` push 마다 자동 배포.
 - 외부 확인(2026-11-07 08:41 UTC): `/api/v1/health` → `{"status":"ok","db":"ok"}`, `/` → 307 `/login`, `http://` → 308 https, `www` → 301 apex, 인증서 Let's Encrypt(`CN=kkinilog.com`, 만료 2027-02-05, 자동 갱신), HSTS·nosniff 헤더 확인.
 - 카카오 콘솔 운영 Redirect URI·플랫폼 등록 완료(2026-11-07). 메모리 실측은 §7 표.
-- 남은 것: `scripts/backup.sh` 1회 + 복원 시험(§5), cron 등록. 이것이 끝나야 단계 0 완료 조건(배포·HTTPS·백업 복원 확인)이 닫힌다.
+- ~~남은 것: `scripts/backup.sh` 1회 + 복원 시험(§5), cron 등록.~~ → 2026-11-15 완료(§13). 단계 0 완료 조건(배포·HTTPS·백업 복원 확인)이 닫혔다.
+
+## 13. 백업·복원 시험 결과 (2026-11-15)
+
+- 첫 실행에서 두 가지가 드러나 고쳤다(DEC-085, 커밋 `bc94772`): 스크립트에 실행 권한이 없었고, age 가 환경 변수 암호를 읽지 않아 자동 생성 암호로 암호화했다(그 파일은 삭제). 암호 방식을 age 키 쌍으로 바꿨다.
+- 백업: `./scripts/backup.sh` → `backups/diet-20261115T054539Z.sql.gz.age`.
+- 복원: `TARGET_DB=diet_restore_test ./scripts/restore.sh <파일>` → 테이블 20개(`_prisma_migrations` 포함) 복원.
+- 대조: 운영 DB 와 복원 DB 의 행 수가 일치했다 — users 2, products 13, meal_records 36, meal_item_snapshots 13, stock_movements 29, weight_records 6, day_completions 5, `SUM(stock_movements.delta)` 1425.800.
+- 정리: 시험 DB 삭제, 서버의 비밀 키 파일 삭제. 비밀 키는 사용자 PC 에 보관(한 곳뿐이라 한 벌 더 두기를 권함).
+- cron 등록: `10 18 * * *`(매일 03:10 KST), 로그 `/home/ubuntu/diet-backup.log`. **cron 으로 실제 파일이 생기는지는 아직 확인하지 않았다**(2026-11-16 이후 `ls -lh ~/diet/backups/` 와 로그로 확인).
+- 미충족: 외부 저장소(`BACKUP_REMOTE`)가 없어 백업이 VM 디스크에만 있다(DEC-014 의 'VM 외부 보관'). 그때까지는 가끔 PC 로 내려받는다(§5).
