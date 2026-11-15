@@ -82,13 +82,22 @@ export async function api<T>(
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (opts.idempotencyKey) headers[IDEMPOTENCY_HEADER] = opts.idempotencyKey;
+  return send<T>(path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/** 파일 올리기(multipart). content-type 은 브라우저가 경계 문자열과 함께 붙인다 */
+export function upload<T>(path: string, form: FormData): Promise<T> {
+  return send<T>(path, { method: 'POST', body: form });
+}
+
+async function send<T>(path: string, init: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_PREFIX}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    res = await fetch(`${API_PREFIX}${path}`, init);
   } catch (e) {
     throw new NetworkError(e);
   }

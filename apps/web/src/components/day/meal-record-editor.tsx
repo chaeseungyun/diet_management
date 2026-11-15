@@ -14,6 +14,7 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker } from '@/components/products/product-picker';
 import { PlanCellDialog } from '@/components/plans/plan-cell-dialog';
+import { MealPhotos, discardDraftPhotos, type MealPhoto } from './meal-photos';
 import { depletionChangeText } from '@/lib/stock';
 import { cn } from '@/lib/utils';
 
@@ -129,6 +130,8 @@ export function MealRecordEditor({
   const [items, setItems] = useState<EditItem[]>(first.items);
   const [menu, setMenu] = useState(first.menu);
   const [outside, setOutside] = useState<OutsideValues>(first.outside);
+  // 저장 전에 올린 사진은 임시 사진(mealRecordId 없음)으로 여기 들고 있다가 저장의 photoIds 로 붙인다 (DEC-086)
+  const [photos, setPhotos] = useState<MealPhoto[]>(initial.photos);
   const [baseline, setBaseline] = useState(() =>
     draftKey(first.kind, first.items, first.menu, first.outside),
   );
@@ -199,10 +202,19 @@ export function MealRecordEditor({
       ? '식단 외 식사는 메뉴명을 입력해야 저장됩니다.'
       : null;
 
-  function applySaved(saved: MealRecord) {
+  function applySaved(saved: MealRecord, keepDrafts = false) {
     const d = draftFromRecord(saved);
     setRecord(saved);
     setItems(d.items);
+    // 저장에 실려 붙은 사진은 saved.photos 에 있다. 남은 임시 사진은 지운다(충돌 뒤 새로 고침에서는 들고 간다)
+    const drafts = photos.filter(
+      (p) => !p.mealRecordId && !saved.photos.some((s) => s.id === p.id),
+    );
+    if (keepDrafts) setPhotos([...saved.photos, ...drafts]);
+    else {
+      discardDraftPhotos(drafts);
+      setPhotos(saved.photos);
+    }
     if (saved.status === 'eaten') {
       setKind(d.kind);
       setMenu(d.menu);
@@ -242,6 +254,7 @@ export function MealRecordEditor({
                     outsideFatG: num(outside.fatG),
                   }
                 : {}),
+              photoIds: photos.filter((ph) => !ph.mealRecordId).map((ph) => ph.id),
               version: record.version,
             }
           : { status: nextStatus, version: record.version };
@@ -270,7 +283,7 @@ export function MealRecordEditor({
 
   async function reload() {
     const fresh = await api<MealRecord>('GET', `/meal-records/${date}/${slot}`);
-    applySaved(fresh);
+    applySaved(fresh, true);
     set({ kind: 'idle' });
   }
 
@@ -290,6 +303,8 @@ export function MealRecordEditor({
     setItems(d.items);
     setMenu(d.menu);
     setOutside(d.outside);
+    discardDraftPhotos(photos);
+    setPhotos(record.photos);
     setEditing(false);
   }
 
@@ -672,6 +687,25 @@ export function MealRecordEditor({
                 </div>
               </div>
             ))}
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <h3 className="text-sm font-medium">사진</h3>
+              <MealPhotos
+                photos={photos}
+                edit={{
+                  recordId: eaten ? record.id : null,
+                  onChange: (next) => {
+                    setPhotos(next);
+                    // 저장된 기록의 사진은 바로 반영되므로 오늘 화면도 새로 받는다
+                    if (eaten) router.refresh();
+                  },
+                }}
+              />
+              {eaten && photos.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  &apos;안 먹음&apos; 으로 바꾸거나 기록을 취소하면 사진도 지워집니다.
+                </p>
+              ) : null}
+            </div>
             {eaten ? (
               <p className="text-xs text-muted-foreground">
                 실제 합계:{' '}

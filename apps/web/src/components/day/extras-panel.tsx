@@ -13,6 +13,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker, type ProductDto } from '@/components/products/product-picker';
+import { MealPhotos, discardDraftPhotos, type MealPhoto } from './meal-photos';
 
 type Record = Schemas['MealRecordDto'];
 
@@ -61,6 +62,9 @@ export function ExtrasPanel({
   }, [initialOpen]);
 
   function close() {
+    // 저장하지 않고 닫으면 올려 둔 임시 사진을 지운다
+    discardDraftPhotos(photos);
+    setPhotos([]);
     setOpen(false);
     if (initialOpen) router.replace(dayHref, { scroll: false });
   }
@@ -70,6 +74,8 @@ export function ExtrasPanel({
   const [outside, setOutside] = useState(false);
   const [menu, setMenu] = useState('');
   const [nutrition, setNutrition] = useState<OutsideValues>(EMPTY_OUTSIDE);
+  // 시트에서 올린 임시 사진. 저장의 photoIds 로 붙인다 (DEC-086)
+  const [photos, setPhotos] = useState<MealPhoto[]>([]);
 
   function reset() {
     setProduct(null);
@@ -80,8 +86,10 @@ export function ExtrasPanel({
   }
 
   async function save() {
+    const photoIds = photos.map((p) => p.id);
     const body = outside
       ? {
+          photoIds,
           status: 'eaten',
           kind: 'outside',
           outsideMenu: menu,
@@ -91,6 +99,7 @@ export function ExtrasPanel({
           outsideFatG: num(nutrition.fatG),
         }
       : {
+          photoIds,
           status: 'eaten',
           kind: 'home',
           items: product
@@ -103,7 +112,10 @@ export function ExtrasPanel({
           api('POST', `/meal-records/${date}/extra`, body, { idempotencyKey: newIdempotencyKey() }),
         '추가 간식 저장',
       );
-      close();
+      // 사진은 기록에 붙었다. close 가 임시 사진으로 보고 지우지 않게 먼저 비운다
+      setPhotos([]);
+      setOpen(false);
+      if (initialOpen) router.replace(dayHref, { scroll: false });
       reset();
       router.refresh();
     } catch {
@@ -115,7 +127,7 @@ export function ExtrasPanel({
     try {
       await run(
         () => api('DELETE', `/meal-records/${date}/extra/${id}`),
-        '삭제됨 (남은 양 되돌림)',
+        '삭제됨 (남은 양 되돌림, 사진도 삭제)',
       );
       router.refresh();
     } catch {
@@ -130,31 +142,38 @@ export function ExtrasPanel({
         <EmptyState>추가 간식 없음. 위 &apos;식사 추가&apos; 에서 넣습니다.</EmptyState>
       ) : (
         extras.map((x) => (
-          <Card key={x.id} className="flex items-center justify-between gap-2 p-3 text-sm">
-            <div className="min-w-0">
-              <p className="truncate">
-                {x.kind === 'outside'
-                  ? `식단 외 · ${x.outsideMenu ?? ''}`
-                  : x.items
-                      .map(
-                        (i) =>
-                          `${i.productName} ${formatQuantity(i.actualQuantity)}${i.displayUnit}`,
-                      )
-                      .join(', ')}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {nutritionLine(x.nutrition)}
-                {x.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
-              </p>
+          <Card key={x.id} className="flex flex-col gap-2 p-3 text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate">
+                  {x.kind === 'outside'
+                    ? `식단 외 · ${x.outsideMenu ?? ''}`
+                    : x.items
+                        .map(
+                          (i) =>
+                            `${i.productName} ${formatQuantity(i.actualQuantity)}${i.displayUnit}`,
+                        )
+                        .join(', ')}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {nutritionLine(x.nutrition)}
+                  {x.stockCheckNeeded ? ' · 남은 양 확인 필요' : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => x.id && remove(x.id)}
+                aria-label="삭제"
+                className="rounded-md p-1 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => x.id && remove(x.id)}
-              aria-label="삭제"
-              className="rounded-md p-1 text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="size-4" />
-            </button>
+            <MealPhotos
+              photos={x.photos}
+              compact
+              edit={{ recordId: x.id, onChange: () => router.refresh() }}
+            />
           </Card>
         ))
       )}
@@ -249,6 +268,9 @@ export function ExtrasPanel({
             }}
           />
         )}
+        {outside || product ? (
+          <MealPhotos photos={photos} edit={{ recordId: null, onChange: setPhotos }} />
+        ) : null}
         <Button onClick={save} disabled={outside ? menu.trim() === '' : !product}>
           저장
         </Button>

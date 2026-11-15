@@ -291,9 +291,16 @@ export class PhotosService {
     return { drafts: drafts.count, retentionDays: days, purged, swept, orphanFiles };
   }
 
-  /** 사진 폴더가 있는 디스크의 사용률(0~1). 폴더가 아직 없거나 읽을 수 없으면 null */
+  /**
+   * 사진 폴더가 있는 디스크의 사용률(0~1). 읽을 수 없으면 null.
+   * 운영에서만 잰다: 80 % 규칙은 운영 VM 의 디스크 배분(DEC-069)에 대한 것이고,
+   * 개발 PC 의 디스크가 차 있다고 로컬 업로드가 막히면 안 된다 (DEC-087)
+   */
   async diskUsedRatio(): Promise<number | null> {
+    if (this.env.NODE_ENV !== 'production') return null;
     try {
+      // 폴더가 아직 없으면 잴 수 없으므로 먼저 만든다(첫 업로드 전)
+      await mkdir(this.env.photosDir, { recursive: true });
       const s = await statfs(this.env.photosDir);
       return s.blocks > 0 ? 1 - s.bavail / s.blocks : null;
     } catch {

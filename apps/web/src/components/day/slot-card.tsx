@@ -12,6 +12,7 @@ import { Button, buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
+import { MealPhotos } from './meal-photos';
 
 type Record = Schemas['MealRecordDto'];
 
@@ -143,6 +144,7 @@ export function SlotCard({
           )}
         </div>
       </div>
+      <MealPhotos photos={record.photos} compact />
       <StatusBanner status={status} />
     </Card>
   );
