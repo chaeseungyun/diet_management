@@ -102,7 +102,7 @@ rm ~/.ssh/deploy_key           # 개인키는 GitHub 에만 둔다
 
 - GitHub → Settings → Secrets and variables → Actions 에 `DEPLOY_HOST`(`16.179.16.224`), `DEPLOY_USER`(`ubuntu`), `DEPLOY_SSH_KEY`, `DEPLOY_HOST_KEY` 를 넣는다.
 - `main` 에 push 하면 `verify` 통과 → 두 이미지를 `latest`·`<sha>` 로 GHCR 에 올림 → `deploy` job 이 VM 에서 `git pull --ff-only` 뒤 `<sha>` 태그로 `pull`·`up -d` 하고 `/api/v1/health` 를 확인한다. 동시 배포는 `deploy-production` 그룹으로 직렬화한다.
-- VM 의 `~/diet` 는 `main` 을 추적하고 로컬 수정이 없어야 한다(`deploy/.env` 는 untracked 라 괜찮다). compose·Caddyfile 변경도 이 `git pull` 로 반영된다.
+- VM 의 `~/diet` 는 `main` 을 추적하고 로컬 수정이 없어야 한다(`deploy/.env` 는 untracked 라 괜찮다). compose 변경은 이 `git pull` 과 `up -d` 로 반영된다. **Caddyfile 변경은 파일만 바뀌고 Caddy 는 옛 설정으로 계속 돈다**(`up -d` 는 연결된 파일 내용이 바뀐 것만으로 컨테이너를 다시 만들지 않는다). 배포 뒤 VM 에서 검사하고 다시 띄운다: `docker run --rm -e DOMAIN=kkinilog.com -v ~/diet/deploy/Caddyfile:/etc/caddy/Caddyfile:ro caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile` 가 `Valid configuration` 을 내면 `docker compose -f deploy/docker-compose.yml --env-file deploy/.env restart caddy`(몇 초 끊긴다). `caddy reload` 가 아니라 `restart` 인 이유: `git pull` 이 파일을 새로 만들어 바꾸므로 돌고 있는 컨테이너는 옛 파일을 계속 보고 있다.
 - 수동 배포가 필요하면 4-1 의 "첫 기동" 명령을 그대로 친다(`latest` = 마지막 성공 push).
 
 - API 컨테이너는 기동 시 `prisma migrate deploy`를 실행한다. **DB 변경이 이전 앱 버전과 호환되는지**(컬럼 삭제·NOT NULL 추가 등) 배포 전에 확인한다(NFR-05).
@@ -225,7 +225,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 완료(1/3, DEC-086): `meal_photos` 마이그레이션, `PHOTOS_DIR`, API `POST/GET/DELETE /meal-photos`, 기록 저장의 `photoIds`, `MealRecordDto.photos`. e2e 101건.
 - 완료(2/3, DEC-087): 매일 04:00 사진 정리(임시 사진 24시간·보관 일수 재계산·만료 파일 삭제·행 없는 파일), 저장 공간이 차면 업로드 거부. API 테스트 201건.
 - 완료(3/3, DEC-086 "웹 화면"): 끼니 편집기·추가 간식 시트의 사진 추가·보기·삭제, 오늘 화면 썸네일. 브라우저에서 눌러 보는 확인은 사용자가 로컬에서 했다(2026-11-15).
-- 배포 뒤 실기기 확인: (1) 아이폰에서 사진 보관함·카메라로 고른 사진이 올라가는지(HEIC 가 JPEG 로 넘어오는지, 안 되면 '이 사진은 올릴 수 없어요'). (2) 큰 사진(10 MB 근처)이 올라가는지 — 운영은 Caddy 가 본문 크기를 제한하지 않는다. (3) 저장 전에 올린 사진이 '먹었음으로 저장' 뒤 오늘 화면 카드에 보이는지, 누르면 크게 보이는지, 삭제되는지.
+- 배포 뒤 실기기 확인: (1) 아이폰에서 사진 보관함·카메라로 고른 사진이 올라가는지(HEIC 가 JPEG 로 넘어오는지, 안 되면 '이 사진은 올릴 수 없어요'). (2) 큰 사진(10 MB 근처)이 올라가는지 — Caddy 의 본문 제한은 사진 올리기만 11MB, 나머지는 2MB 다(`deploy/Caddyfile`). 첫 배포(2026-11-15)에서는 이 제한이 전체 2MB 로 남아 있어 2 MB 넘는 사진이 모두 413 으로 거부됐다(갤럭시 2.9 MB 사진으로 발견). (3) 저장 전에 올린 사진이 '먹었음으로 저장' 뒤 오늘 화면 카드에 보이는지, 누르면 크게 보이는지, 삭제되는지.
 - 배포 때 볼 것: (1) CI 의 API 이미지 빌드 — `sharp` 네이티브 바이너리가 처음 들어간다. (2) 배포 뒤 `docker compose ... exec api sh -c 'touch /app/data/photos/.w && rm /app/data/photos/.w'` 가 오류 없이 끝나는지(볼륨 연결·쓰기 권한). (3) `docker image ls | wc -l` 로 옛 이미지가 정리됐는지(CD 가 7일 넘은 미사용 이미지를 지운다).
 - 배포 다음 날 볼 것: 04:00 뒤 `docker compose logs api | grep 'daily cleanup'` 에 `photos={"drafts":…,"retentionDays":30,…}` 가 찍히는지. `photos=null` 이면 사진 정리가 실패한 것이므로 바로 위의 `photo cleanup failed` 줄을 본다.
 - 다음: 단계 4 끼니 공유(`sharing-plan.md`). 그 전에 위 실기기 확인.
