@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { PhotosService, type PhotoCleanupResult } from '../photos/photos.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../stock/stock.service';
 
@@ -18,6 +19,7 @@ export class MaintenanceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stock: StockService,
+    private readonly photos: PhotosService,
   ) {}
 
   @Cron('0 4 * * *', { name: 'daily-cleanup', timeZone: 'Asia/Seoul' })
@@ -29,18 +31,33 @@ export class MaintenanceService {
     }
   }
 
-  async cleanup(
-    now: Date,
-  ): Promise<{ idempotencyKeys: number; deliveries: number; alertResets: number }> {
+  async cleanup(now: Date): Promise<{
+    idempotencyKeys: number;
+    deliveries: number;
+    alertResets: number;
+    /** 사진 정리 결과. 실패하면 null (다른 정리는 그대로 끝낸다) */
+    photos: PhotoCleanupResult | null;
+  }> {
     const keys = await this.prisma.idempotencyKey.deleteMany({ where: { expiresAt: { lt: now } } });
     const cutoff = new Date(now.getTime() - DELIVERY_RETENTION_DAYS * 86_400_000);
     const deliveries = await this.prisma.notificationDelivery.deleteMany({
       where: { createdAt: { lt: cutoff } },
     });
     const alertResets = await this.resetDepletionAlerts(now);
-    const result = { idempotencyKeys: keys.count, deliveries: deliveries.count, alertResets };
+    let photos: PhotoCleanupResult | null = null;
+    try {
+      photos = await this.photos.cleanup(now);
+    } catch (e) {
+      this.log.error(`photo cleanup failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    const result = {
+      idempotencyKeys: keys.count,
+      deliveries: deliveries.count,
+      alertResets,
+      photos,
+    };
     this.log.log(
-      `daily cleanup idempotencyKeys=${result.idempotencyKeys} deliveries=${result.deliveries} alertResets=${result.alertResets}`,
+      `daily cleanup idempotencyKeys=${result.idempotencyKeys} deliveries=${result.deliveries} alertResets=${result.alertResets} photos=${JSON.stringify(photos)}`,
     );
     return result;
   }

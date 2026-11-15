@@ -324,6 +324,7 @@ erDiagram
 | DateOverride | 특정 날짜 예외 | (user, on_date, slot) 유니크. 반복 계획보다 우선. 출장 일괄 변경은 `batch_id`로 묶어 한 번에 해제 가능 | FR-04 |
 | MealRecord | 날짜×슬롯 실제 섭취 기록 | 정규 5슬롯은 (user, meal_date, slot) 유니크, `extra`는 다건 허용(D-10). `version`은 정수 낙관적 잠금(D-08). 외부 식사 영양은 null=미상. `plan_changed`로 실천율 분모 제외 판단 | FR-05, FR-06 |
 | MealItemSnapshot | 섭취 품목 스냅샷 | 당시 제품명·수량·영양을 복사 보존. `planned_quantity`와 `actual_quantity` 분리. `deducts_stock`가 true인 항목만 원장 차감 | FR-05, NFR-02 |
+| MealPhoto | 식사 사진(단계 3, EXT-02a) | `user_id`, `meal_record_id`(null = 기록 저장 전 임시 사진, 기록 삭제 시 SET NULL), `path`·`thumb_path`(`PHOTOS_DIR` 기준), `bytes`, `width`·`height`, `expires_at`, `deleted_at`(사용자 삭제 → 파일·행 제거), `purged_at`(만료로 파일만 제거, 행은 자리 표시). 파일은 백업 밖 | DEC-069, DEC-086 |
 | DayCompletion | 하루 완료 표시 | (user, on_date) 유니크. `nutrition_complete`는 완료 시점 계산값이며 통계 조회 시 재검증 | FR-06 |
 | WeightRecord | 날짜별 대표 체중 | (user, on_date) 유니크, 덮어쓰기 확인. 미측정일은 행 없음(0 아님) | FR-07 |
 | NotificationSetting | 알림 종류별 설정 | (user, kind) 유니크. 슬롯 5종 + 미기록 재알림 + 소진 알림(DEC-074) + 하루 완료(DEC-084). 행이 없을 때 끼니·재알림은 off, 하루 완료·소진은 on | FR-08, FR-09 |

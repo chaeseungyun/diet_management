@@ -40,7 +40,13 @@ services:
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       NOTIFICATIONS_ENABLED: ${NOTIFICATIONS_ENABLED:-false}
+      # 식사 사진 (DEC-069·086). 컨테이너 안 경로이며 아래 volumes 로 VM 폴더에 연결된다
+      PHOTOS_DIR: /app/data/photos
       # DEV_LOGIN_ENABLED 는 운영에 넣지 않는다(켜져 있으면 API 가 부팅을 거부한다, DEC-067)
+    volumes:
+      # VM 의 ~/diet/data/photos. 컨테이너를 새로 만들어도 사진이 남는다. 컨테이너는 uid 1000(node)으로 쓰므로
+      # VM 폴더 주인도 uid 1000(ubuntu)이어야 한다. 백업에는 넣지 않는다 (DEC-014·069)
+      - ../data/photos:/app/data/photos
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4000/api/v1/health']
       interval: 30s

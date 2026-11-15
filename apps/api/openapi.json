@@ -2271,6 +2271,109 @@
           "notifications"
         ]
       }
+    },
+    "/api/v1/meal-photos": {
+      "post": {
+        "operationId": "PhotosController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "mealRecordId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MealPhotoDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "사진 올리기(JPEG·PNG·WebP, 10 MB 초과는 413). mealRecordId 가 없으면 임시 사진이며 기록 저장의 photoIds 로 붙인다",
+        "tags": [
+          "meal-photos"
+        ]
+      }
+    },
+    "/api/v1/meal-photos/{id}": {
+      "get": {
+        "operationId": "PhotosController_file",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "view",
+                "thumb"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "사진 파일(JPEG). 타인·삭제·보관 기간 지남은 404",
+        "tags": [
+          "meal-photos"
+        ]
+      },
+      "delete": {
+        "operationId": "PhotosController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "사진 삭제. 기록의 version·하루 완료는 바뀌지 않는다",
+        "tags": [
+          "meal-photos"
+        ]
+      }
     }
   },
   "info": {
@@ -4518,6 +4621,48 @@
           "nutritionRegistered"
         ]
       },
+      "MealPhotoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mealRecordId": {
+            "type": "string",
+            "nullable": true,
+            "description": "붙은 기록. 아직 기록 저장 전인 임시 사진은 null",
+            "format": "uuid"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expired": {
+            "type": "boolean",
+            "description": "보관 기간 지남. 파일 요청은 404"
+          }
+        },
+        "required": [
+          "id",
+          "mealRecordId",
+          "width",
+          "height",
+          "createdAt",
+          "expiresAt",
+          "expired"
+        ]
+      },
       "MealRecordDto": {
         "type": "object",
         "properties": {
@@ -4632,6 +4777,13 @@
             "type": "boolean",
             "description": "어떤 항목이든 재고 확인 필요"
           },
+          "photos": {
+            "description": "붙은 사진(올린 순). 보관 기간이 지난 것은 expired=true 자리만 (DEC-069)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MealPhotoDto"
+            }
+          },
           "completionCleared": {
             "type": "boolean",
             "description": "이 쓰기로 하루 완료가 해제됐는가 (D-04). 조회 응답에서는 false"
@@ -4656,6 +4808,7 @@
           "nutrition",
           "eatenAt",
           "stockCheckNeeded",
+          "photos",
           "completionCleared"
         ]
       },
@@ -5042,6 +5195,15 @@
             "nullable": true,
             "description": "조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08)",
             "minimum": 0
+          },
+          "photoIds": {
+            "description": "이 기록에 붙일 사진 id (`POST /meal-photos` 로 먼저 올린 임시 사진, DEC-086). status=eaten 에서만 쓴다.\n붙이기만 한다: 빼려면 `DELETE /meal-photos/{id}`. 이미 붙은 id 를 다시 보내도 된다. 기록당 5장.",
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "required": [
@@ -5842,6 +6004,11 @@
               "QUANTITY_REQUIRED",
               "DAY_HAS_UNRECORDED",
               "BEFORE_SIGNUP",
+              "PHOTO_UNSUPPORTED",
+              "PHOTO_DAILY_LIMIT",
+              "PHOTO_RECORD_LIMIT",
+              "PHOTO_RECORD_NOT_EATEN",
+              "PHOTO_STORAGE_FULL",
               "WEIGHT_EXISTS",
               "NOTIFY_TIME_REQUIRED",
               "PUSH_ENDPOINT_INVALID",

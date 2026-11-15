@@ -91,7 +91,7 @@ export function assertRange(from: string, to: string, maxDays: number): void {
   if (span > maxDays) throw new UnprocessableEntityException(`range exceeds ${maxDays} days`);
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 경로의 리소스 ID. UUID 형식이 아니면 존재할 수 없으므로 404 (D-06 과 일관) */
 @Injectable()

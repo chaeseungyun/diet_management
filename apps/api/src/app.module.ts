@@ -18,6 +18,7 @@ import { WeightsModule } from './weights/weights.module';
 import { StatsModule } from './stats/stats.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { PhotosModule } from './photos/photos.module';
 
 @Module({})
 export class AppModule {
@@ -45,6 +46,8 @@ export class AppModule {
         StatsModule,
         NotificationsModule,
         MaintenanceModule,
+        // 단계 3 (EXT-02a)
+        PhotosModule,
       ],
       controllers: [HealthController],
     };

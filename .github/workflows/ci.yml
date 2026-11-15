@@ -118,7 +118,9 @@ jobs:
           export WEB_IMAGE="ghcr.io/chaeseungyun/diet-web:$IMAGE_TAG"
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull api web
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --remove-orphans
-          docker image prune -f >/dev/null
+          # 지금 쓰지 않는 이미지 중 만든 지 7일 넘은 것을 지운다(SHA 태그가 배포마다 쌓인다).
+          # 기준은 이미지를 만든 시각이다: 직전 이미지도 7일이 넘었으면 지워지고, 롤백 때 GHCR 에서 다시 받는다
+          docker image prune -a -f --filter "until=168h" >/dev/null
           docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
           REMOTE
       - name: 헬스 확인

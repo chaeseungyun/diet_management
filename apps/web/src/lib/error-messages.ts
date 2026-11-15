@@ -44,6 +44,13 @@ export const ERROR_MESSAGES = {
   DAY_HAS_UNRECORDED: '아직 기록하지 않은 끼니가 있어요.',
   BEFORE_SIGNUP: '가입하기 전 날짜는 완료할 수 없어요.',
 
+  PHOTO_UNSUPPORTED: '이 사진은 올릴 수 없어요. JPG·PNG 사진으로 다시 해 주세요.',
+  PHOTO_DAILY_LIMIT: '사진은 하루에 10장까지 올릴 수 있어요.',
+  PHOTO_RECORD_LIMIT: '한 끼에 사진은 5장까지 넣을 수 있어요.',
+  PHOTO_RECORD_NOT_EATEN: "사진은 '먹었음'으로 기록한 끼니에만 넣을 수 있어요.",
+  PHOTO_STORAGE_FULL:
+    '사진 저장 공간이 가득 차서 지금은 올릴 수 없어요. 기록은 사진 없이 저장할 수 있어요.',
+
   WEIGHT_EXISTS: '이 날 체중이 이미 있어요. 덮어쓸까요?',
 
   NOTIFY_TIME_REQUIRED: '알림 시각을 정해 주세요.',

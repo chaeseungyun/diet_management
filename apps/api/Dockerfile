@@ -26,6 +26,8 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /out/prisma ./prisma
 COPY --from=build /repo/apps/api/dist ./dist
+# 식사 사진 폴더(DEC-086). 운영은 VM 폴더를 여기에 연결한다. 연결하지 않아도 node 사용자가 쓸 수 있게 만들어 둔다
+RUN mkdir -p /app/data/photos && chown node:node /app/data /app/data/photos
 USER node
 EXPOSE 4000
 # 기동 시 마이그레이션 적용(이전 앱 버전과의 호환은 배포 전 확인, NFR-05)

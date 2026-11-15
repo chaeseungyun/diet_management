@@ -4,6 +4,7 @@ import {
   Prisma,
   type DayCompletion,
   type MealItemSnapshot,
+  type MealPhoto,
   type MealRecord,
   type Product,
   type ProductNutritionVersion,
@@ -32,6 +33,7 @@ import { GoalDto } from '../goals/goals.dto';
 import { WeightsService } from '../weights/weights.service';
 import { WeightDto } from '../weights/weights.dto';
 import { StockService } from '../stock/stock.service';
+import { PhotosService } from '../photos/photos.service';
 import {
   CompleteDayDto,
   DayCompletionCheckDto,
@@ -47,7 +49,7 @@ import {
 
 type Db = Prisma.TransactionClient | PrismaService;
 type SnapshotWithProduct = MealItemSnapshot & { product: Product | null };
-type RecordWithItems = MealRecord & { items: SnapshotWithProduct[] };
+type RecordWithItems = MealRecord & { items: SnapshotWithProduct[]; photos: MealPhoto[] };
 
 /** 보이는 끼니 하나의 계산 결과 (계획·기록·DTO) */
 interface EvaluatedSlot {
@@ -70,6 +72,8 @@ interface DayEvaluation {
 
 const include = {
   items: { include: { product: true }, orderBy: { sortOrder: 'asc' as const } },
+  // 지운 사진은 빼고, 보관 기간이 지난 사진은 자리 표시를 위해 남긴다 (DEC-069)
+  photos: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' as const } },
 } as const;
 
 const ZERO: NutritionTotals = {
@@ -99,6 +103,7 @@ export class MealsService {
     private readonly goals: GoalsService,
     private readonly weights: WeightsService,
     private readonly stock: StockService,
+    private readonly photos: PhotosService,
   ) {}
 
   // ---------- 조회 ----------
@@ -377,7 +382,7 @@ export class MealsService {
     dto: PutMealRecordDto,
     idemKey: string | undefined,
   ): Promise<MealRecordDto> {
-    return this.idempotency.run(
+    const result = await this.idempotency.run(
       user.id,
       idemKey,
       { op: 'meal.put', date, slot, dto },
@@ -393,6 +398,9 @@ export class MealsService {
         return this.write(tx, user, { date, slot, seq: 0, plan }, existing, dto);
       },
     );
+    // '먹었음' 이 아니게 된 기록의 사진 파일은 커밋 뒤에 지운다 (DEC-086)
+    if (dto.status !== 'eaten') await this.photos.sweepDeleted(user.id);
+    return result;
   }
 
   async createExtra(
@@ -421,7 +429,7 @@ export class MealsService {
     dto: PutMealRecordDto,
     idemKey: string | undefined,
   ): Promise<MealRecordDto> {
-    return this.idempotency.run(
+    const result = await this.idempotency.run(
       user.id,
       idemKey,
       { op: 'extra.update', date, id, dto },
@@ -436,6 +444,8 @@ export class MealsService {
         );
       },
     );
+    if (dto.status !== 'eaten') await this.photos.sweepDeleted(user.id);
+    return result;
   }
 
   /** 삭제 시 차감 전량 복구 (D-10) */
@@ -445,9 +455,12 @@ export class MealsService {
       // 행 잠금: 동시 수정이 끝난 뒤 복구한다
       await tx.$queryRaw`SELECT id FROM meal_records WHERE id = ${existing.id}::uuid FOR UPDATE`;
       await this.reverseDeductions(tx, user.id, existing);
+      // 사진은 삭제 표시만 하고(FK 는 SET NULL) 파일은 커밋 뒤에 지운다 (DEC-086)
+      await this.photos.markRecordDeleted(tx, existing.id);
       await tx.mealRecord.delete({ where: { id: existing.id } });
       await tx.dayCompletion.deleteMany({ where: { userId: user.id, onDate: toDbDate(date) } });
     });
+    await this.photos.sweepDeleted(user.id);
   }
 
   private async loadExtra(
@@ -499,6 +512,10 @@ export class MealsService {
         'EMPTY_HOME_MEAL',
         'items must not be empty for an eaten home meal; use status=skipped instead',
       );
+    }
+
+    if (!eaten && dto.photoIds?.length) {
+      throw unprocessable('PHOTO_RECORD_NOT_EATEN', 'photoIds can be sent with status=eaten only');
     }
 
     // 품목 검증: 소유 제품(404), 단위 허용(422), 수량 규칙(422)
@@ -651,6 +668,10 @@ export class MealsService {
         });
       }
     }
+
+    // 사진 (DEC-086): 먹었음이면 보낸 임시 사진을 붙이고, 아니면 이 기록의 사진을 지운다
+    if (eaten) await this.photos.attach(tx, user.id, record.id, dto.photoIds ?? []);
+    else await this.photos.markRecordDeleted(tx, record.id);
 
     // 5) 완료된 날이면 완료 해제 (D-04). 알림 skipped/pending 처리는 단계 2
     const cleared = await tx.dayCompletion.deleteMany({

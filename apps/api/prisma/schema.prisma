@@ -103,6 +103,7 @@ model User {
   weeklySchedules        WeeklySchedule[]
   dateOverrides          DateOverride[]
   mealRecords            MealRecord[]
+  mealPhotos             MealPhoto[]
   dayCompletions         DayCompletion[]
   weightRecords          WeightRecord[]
   idempotencyKeys        IdempotencyKey[]
@@ -358,9 +359,41 @@ model MealRecord {
   template  MealTemplate?      @relation(fields: [templateId], references: [id])
   items     MealItemSnapshot[]
   movements StockMovement[]
+  photos    MealPhoto[]
 
   @@unique([userId, mealDate, slot, seq])
   @@map("meal_records")
+}
+
+/// 식사 사진 (EXT-02a, DEC-069·086). 파일은 PHOTOS_DIR 아래 리사이즈본(path)과 썸네일(thumbPath)뿐이고 원본은 저장하지 않는다.
+/// mealRecordId 가 null 이면 아직 기록에 붙지 않은 임시 사진(업로드 뒤 기록 저장 전)이며 24시간 뒤 정리한다.
+/// 사용자 삭제는 deletedAt 을 찍고 파일을 지운 뒤 행을 없앤다. 보관 기간 만료는 행을 남기고(자리 표시) 파일만 지운다(purgedAt).
+model MealPhoto {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  mealRecordId String?   @map("meal_record_id") @db.Uuid
+  /// PHOTOS_DIR 기준 상대 경로 (`<user_id>/<yyyy-mm>/<id>.jpg`)
+  path         String
+  thumbPath    String    @map("thumb_path")
+  /// 리사이즈본 + 썸네일 바이트 합 (보관 기간 산정의 유입량)
+  bytes        Int
+  width        Int
+  height       Int
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// 이 시각이 지나면 보이지 않는다. 업로드 때 최대 보관 기간으로 두고 매일 정리 작업이 다시 계산한다
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// 사용자가 지웠거나 기록이 '먹었음' 이 아니게 됨
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  /// 만료로 파일을 지운 시각
+  purgedAt     DateTime? @map("purged_at") @db.Timestamptz(6)
+
+  user       User        @relation(fields: [userId], references: [id])
+  mealRecord MealRecord? @relation(fields: [mealRecordId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([mealRecordId])
+  @@index([expiresAt])
+  @@map("meal_photos")
 }
 
 /// 섭취 품목 스냅샷 (FR-05, NFR-02, D-03). 당시 제품명·수량·영양을 복사해 보존한다

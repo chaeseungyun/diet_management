@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { z } from 'zod';
 
 /**
@@ -29,6 +30,11 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().optional().default(''),
   /** 알림 스케줄러(매분 판정·발송). 켜려면 VAPID 3개가 모두 있어야 한다 */
   NOTIFICATIONS_ENABLED: boolFromString,
+  /** 식사 사진 저장 폴더 (DEC-069·086). 상대 경로는 실행 위치 기준. 운영은 VM 폴더를 연결한 볼륨 */
+  PHOTOS_DIR: z
+    .string()
+    .optional()
+    .transform((v) => v || './data/photos'),
 });
 
 export type Env = z.infer<typeof schema> & {
@@ -37,6 +43,8 @@ export type Env = z.infer<typeof schema> & {
   /** VAPID 3개가 모두 유효하면 true */
   pushEnabled: boolean;
   notificationsEnabled: boolean;
+  /** PHOTOS_DIR 의 절대 경로 */
+  photosDir: string;
 };
 
 /** base64url 로 인코딩된 바이트 길이 검사 (P-256 공개키 65바이트, 개인키 32바이트) */
@@ -85,6 +93,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     devLoginEnabled: env.DEV_LOGIN_ENABLED ?? false,
     pushEnabled,
     notificationsEnabled: env.NOTIFICATIONS_ENABLED ?? false,
+    photosDir: resolve(env.PHOTOS_DIR),
   };
 }
 

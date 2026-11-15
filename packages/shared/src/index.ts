@@ -12,6 +12,13 @@ export const DEFAULT_TIMEZONE = 'Asia/Seoul';
 /** 인증 쿠키 이름 (D-07) */
 export const SESSION_COOKIE = 'session';
 
+/** 식사 사진 상한 (DEC-069·086): 올리는 파일 10 MB, 사용자당 하루 10장, 기록 1건당 5장, 보관 7~30일 */
+export const PHOTO_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const PHOTO_MAX_PER_DAY = 10;
+export const PHOTO_MAX_PER_RECORD = 5;
+export const PHOTO_MAX_RETENTION_DAYS = 30;
+export const PHOTO_MIN_RETENTION_DAYS = 7;
+
 /** 식사 슬롯 5종, 하루 순서대로 (api.md §0). 추가 간식은 EXTRA_SLOT (D-10) */
 /** 하루 끼니(extra 제외). 사용자가 설정에서 쓰는 끼니를 고른다 (D-18) */
 export const MEAL_SLOTS = [
@@ -152,6 +159,12 @@ export const ERROR_CODES = [
   'QUANTITY_REQUIRED',
   'DAY_HAS_UNRECORDED',
   'BEFORE_SIGNUP',
+  // 식사 사진 (EXT-02a)
+  'PHOTO_UNSUPPORTED',
+  'PHOTO_DAILY_LIMIT',
+  'PHOTO_RECORD_LIMIT',
+  'PHOTO_RECORD_NOT_EATEN',
+  'PHOTO_STORAGE_FULL',
   // 체중
   'WEIGHT_EXISTS',
   // 알림

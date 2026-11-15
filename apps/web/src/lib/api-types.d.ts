@@ -868,6 +868,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/meal-photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 사진 올리기(JPEG·PNG·WebP, 10 MB 초과는 413). mealRecordId 가 없으면 임시 사진이며 기록 저장의 photoIds 로 붙인다 */
+        post: operations["PhotosController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meal-photos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 사진 파일(JPEG). 타인·삭제·보관 기간 지남은 404 */
+        get: operations["PhotosController_file"];
+        put?: never;
+        post?: never;
+        /** 사진 삭제. 기록의 version·하루 완료는 바뀌지 않는다 */
+        delete: operations["PhotosController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1590,6 +1625,23 @@ export interface components {
             /** @description 제품에 현재 영양 버전이 있는가(UI 의 '영양 미등록' 배지) */
             nutritionRegistered: boolean;
         };
+        MealPhotoDto: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description 붙은 기록. 아직 기록 저장 전인 임시 사진은 null
+             */
+            mealRecordId: string | null;
+            width: number;
+            height: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description 보관 기간 지남. 파일 요청은 404 */
+            expired: boolean;
+        };
         MealRecordDto: {
             /**
              * Format: uuid
@@ -1631,6 +1683,8 @@ export interface components {
             eatenAt: string | null;
             /** @description 어떤 항목이든 재고 확인 필요 */
             stockCheckNeeded: boolean;
+            /** @description 붙은 사진(올린 순). 보관 기간이 지난 것은 expired=true 자리만 (DEC-069) */
+            photos: components["schemas"]["MealPhotoDto"][];
             /** @description 이 쓰기로 하루 완료가 해제됐는가 (D-04). 조회 응답에서는 false */
             completionCleared: boolean;
         };
@@ -1741,6 +1795,11 @@ export interface components {
             outsideFatG?: number | null;
             /** @description 조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08) */
             version?: number | null;
+            /**
+             * @description 이 기록에 붙일 사진 id (`POST /meal-photos` 로 먼저 올린 임시 사진, DEC-086). status=eaten 에서만 쓴다.
+             *     붙이기만 한다: 빼려면 `DELETE /meal-photos/{id}`. 이미 붙은 id 를 다시 보내도 된다. 기록당 5장.
+             */
+            photoIds?: string[];
         };
         WeightSummaryDto: {
             latest: components["schemas"]["WeightDto"] | null;
@@ -1968,7 +2027,7 @@ export interface components {
         ErrorDto: {
             statusCode: number;
             /** @enum {string} */
-            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
+            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "PHOTO_UNSUPPORTED" | "PHOTO_DAILY_LIMIT" | "PHOTO_RECORD_LIMIT" | "PHOTO_RECORD_NOT_EATEN" | "PHOTO_STORAGE_FULL" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
             message: string;
             fields?: components["schemas"]["ErrorFieldDto"][];
         };
@@ -3449,6 +3508,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["NotificationDeliveryDto"][];
                 };
+            };
+        };
+    };
+    PhotosController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    /** Format: uuid */
+                    mealRecordId?: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealPhotoDto"];
+                };
+            };
+        };
+    };
+    PhotosController_file: {
+        parameters: {
+            query?: {
+                size?: "view" | "thumb";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PhotosController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

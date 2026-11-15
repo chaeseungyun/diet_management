@@ -157,12 +157,14 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
      psql -U diet -d diet -c "DELETE FROM users WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '7 days';"
    ```
 3. 백업은 7일 보관이므로 그 뒤에는 어디에도 남지 않는다.
+4. 식사 사진(DEC-086)은 DB 밖 파일이다. 하드 삭제 전에 그 사용자의 폴더를 지운다: `rm -rf ~/diet/data/photos/<user_id>`. `meal_photos` 행은 `users` 를 참조하므로 2번의 삭제보다 먼저 지워야 한다(다른 사용자 소유 테이블과 같다).
 
 ## 7. 로그·관찰 (NFR-05)
 
 - 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
 - API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
-- 스케줄러 로그: 알림을 보낸 실행만 `tick claimed=… sent=… retried=… expired=…` 한 줄, 매일 04:00 `daily cleanup idempotencyKeys=… deliveries=…`. 사용자 식사 내용·endpoint·키는 남기지 않는다.
+- 스케줄러 로그: 알림을 보낸 실행만 `tick claimed=… sent=… retried=… expired=…` 한 줄, 매일 04:00 `daily cleanup idempotencyKeys=… deliveries=… alertResets=… photos={…}`(사진: `drafts` 임시 사진, `retentionDays` 보관 일수, `purged` 만료 파일, `swept` 삭제분, `orphanFiles` 행 없는 파일). 사용자 식사 내용·endpoint·키는 남기지 않는다.
+- 사진 저장 공간 경고(DEC-087, 운영자 알림은 로그뿐이다): `docker compose logs api | grep -i photo` 로 본다. `photo retention below 30 days`(warn) 는 유입이 늘어 보관 일수가 줄었다는 뜻이고, `photo storage full, uploads are refused`·`photo upload refused`(error) 는 보관량이 20 GB 이상이거나 디스크가 80 % 를 넘어 업로드를 막고 있다는 뜻이다. 뒤쪽이면 `df -h`·`du -sh ~/diet/data/photos`·`docker system df` 로 무엇이 찼는지 먼저 본다. 사진 파일을 손으로 지우지 않는다(DB 행과 어긋난다. 행 없는 파일은 정리 작업이 지운다).
 - 확인 항목(주 1회): `df -h`(디스크, 80 % 초과면 정리), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔). EXT-02 뒤에는 `du -sh data/photos`(사진 예산 20 GB, DEC-069)와 사진 정리 작업 로그(계산된 보관 일수가 30 미만이면 알림)를 추가한다.
 - 메모리 실측(단계 0 완료 조건, 요구사항 §7-5). 2026-11-07 첫 배포 직후, 사용자 0명 유휴 상태의 `docker stats --no-stream`:
 
@@ -215,7 +217,16 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 완료(2026-11-12, DEC-080): 소진 예측 `src/domain/forecast.ts`, `GET /stock`·`/stock/{id}`·`/stock/{id}/movements`, 버린 양(`wasteQuantity`), 오늘 화면 `depleting`, 날짜 예외 저장 응답의 `depletionChanges`. 웹 `/stock`·`/stock/[productId]`·식품 탭 전환·오늘 화면 '곧 떨어질 식품'. 단위 80건·e2e 84건, `pnpm build` 통과. 로컬 `dev:tester` 의 닭가슴살·오트밀 남은 양을 화면 확인용으로 맞췄다(4팩·5000g). 남은 것: 소진 알림 판정(결정 5건, `decisions.md` §F), 휴대폰에서 남은 양 화면·시트 확인.
 - 변경(2026-11-14, DEC-081): 남은 양 화면(`/stock`·`/stock/[productId]`·탭·버린 양 시트)을 없애고 식품 카드·식품 상세에 합쳤다. `wasteQuantity`·`planned` 삭제, 차이 0 맞추기는 단위 잠금에서 제외, '기록 빠진 끼니' 는 식단표 변경일 뒤만. 단위 81건·e2e 84건, `pnpm build` 통과.
 - 완료(2026-11-14, DEC-084): 소진 알림(기본 09:00, 하루 한 통, 식품별 한 번·임박에서 벗어나면 초기화)과 하루 완료 알림(마지막 기록 1시간 뒤이면서 가장 늦은 쓰는 끼니 시각 이후, 하루 한 번). 둘 다 기본 켜짐이라 배포하면 알림을 켠 계정이 바로 받는다. 마이그레이션 둘(`day_complete_notification` enum 값, `product_depletion_alerted_at` 컬럼)은 API 컨테이너 시작 때 `migrate deploy` 로 적용된다. 단위 91건·e2e 93건. 남은 것: 실기기에서 두 알림 수신 확인.
-- 다음: 갤럭시에서 오늘 화면 배너·일괄 켜기·재알림 소리 확인 → 재고 화면·예측·보정 → PWA 마무리(실기기 검증표) (DEC-073 순서).
+- 남은 것(2026-11-15 기준, 사용자가 쓰면서 확인): 소진 알림·하루 완료 알림 실기기 수신, PWA 마무리(실기기 검증표), cron 백업 파일 생성 확인. 재고 화면·예측·보정은 DEC-080·081 로 끝났다. 단계 3 은 §10-2.
+
+## 10-2. 단계 3 상태 (2026-11-15)
+
+- 착수 전 실측: 디스크 58 GB 중 12 GB(21 %), Docker 이미지 37개 7.2 GB. 사진 예산 20 GB 유지(DEC-069). VM 에 `~/diet/data/photos` 생성(uid 1000).
+- 완료(1/3, DEC-086): `meal_photos` 마이그레이션, `PHOTOS_DIR`, API `POST/GET/DELETE /meal-photos`, 기록 저장의 `photoIds`, `MealRecordDto.photos`. e2e 101건.
+- 완료(2/3, DEC-087): 매일 04:00 사진 정리(임시 사진 24시간·보관 일수 재계산·만료 파일 삭제·행 없는 파일), 저장 공간이 차면 업로드 거부. API 테스트 201건.
+- 배포 때 볼 것: (1) CI 의 API 이미지 빌드 — `sharp` 네이티브 바이너리가 처음 들어간다. (2) 배포 뒤 `docker compose ... exec api sh -c 'touch /app/data/photos/.w && rm /app/data/photos/.w'` 가 오류 없이 끝나는지(볼륨 연결·쓰기 권한). (3) `docker image ls | wc -l` 로 옛 이미지가 정리됐는지(CD 가 7일 넘은 미사용 이미지를 지운다).
+- 배포 다음 날 볼 것: 04:00 뒤 `docker compose logs api | grep 'daily cleanup'` 에 `photos={"drafts":…,"retentionDays":30,…}` 가 찍히는지. `photos=null` 이면 사진 정리가 실패한 것이므로 바로 위의 `photo cleanup failed` 줄을 본다.
+- 다음: 웹 화면(S-11·S-12·S-13 사진 추가, 끼니 카드 썸네일·전체 보기, 보관 안내).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

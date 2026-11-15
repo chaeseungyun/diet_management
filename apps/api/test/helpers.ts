@@ -1,6 +1,8 @@
 /** e2e 공용: 앱 부팅, 카카오 stub, 로그인 쿠키 */
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import request from 'supertest';
 import { parseCookies } from '../src/common/cookies';
 import { AppModule } from '../src/app.module';
@@ -19,6 +21,8 @@ const testEnvSource: NodeJS.ProcessEnv = {
   KAKAO_CLIENT_ID: 'kakao-client-id',
   KAKAO_REDIRECT_URI: `${WEB}/api/v1/auth/kakao/callback`,
   WEB_ORIGIN: WEB,
+  // 사진 파일은 임시 폴더에 쓴다 (photos.e2e-spec 이 비운다)
+  PHOTOS_DIR: join(tmpdir(), 'diet-e2e-photos'),
 };
 
 export const testEnv = loadEnv(testEnvSource);

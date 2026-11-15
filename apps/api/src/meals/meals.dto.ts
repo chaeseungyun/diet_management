@@ -18,6 +18,7 @@ import {
 import type {
   DayCompletion,
   MealItemSnapshot,
+  MealPhoto,
   MealRecord,
   Product,
   ProductNutritionVersion,
@@ -38,6 +39,7 @@ import {
   type PlanType,
   type StockUnit,
 } from '@diet/shared';
+import { MealPhotoDto } from '../photos/photos.dto';
 import { NutritionTotalsDto, NutritionValuesDto } from '../common/nutrition.dto';
 import { num } from '../common/decimal';
 import type { NutritionTotals, NutritionValues } from '../domain/nutrition';
@@ -122,6 +124,17 @@ export class PutMealRecordDto {
   @IsInt()
   @Min(0)
   version?: number | null;
+
+  /**
+   * 이 기록에 붙일 사진 id (`POST /meal-photos` 로 먼저 올린 임시 사진, DEC-086). status=eaten 에서만 쓴다.
+   * 붙이기만 한다: 빼려면 `DELETE /meal-photos/{id}`. 이미 붙은 id 를 다시 보내도 된다. 기록당 5장.
+   */
+  @ApiPropertyOptional({ type: String, isArray: true, format: 'uuid' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsUUID(undefined, { each: true })
+  photoIds?: string[];
 }
 
 export class MealItemDto {
@@ -307,12 +320,16 @@ export class MealRecordDto {
   @ApiProperty()
   stockCheckNeeded!: boolean;
 
+  /** 붙은 사진(올린 순). 보관 기간이 지난 것은 expired=true 자리만 (DEC-069) */
+  @ApiProperty({ type: MealPhotoDto, isArray: true })
+  photos!: MealPhotoDto[];
+
   /** 이 쓰기로 하루 완료가 해제됐는가 (D-04). 조회 응답에서는 false */
   @ApiProperty()
   completionCleared!: boolean;
 
   static build(
-    record: MealRecord | null,
+    record: (MealRecord & { photos?: MealPhoto[] }) | null,
     ctx: RecordContext,
     items: MealItemDto[],
     totals: NutritionTotals,
@@ -341,6 +358,7 @@ export class MealRecordDto {
       nutrition: NutritionTotalsDto.from(totals),
       eatenAt: record?.eatenAt ? record.eatenAt.toISOString() : null,
       stockCheckNeeded: items.some((i) => i.stockCheckNeeded),
+      photos: (record?.photos ?? []).map((p) => MealPhotoDto.from(p)),
       completionCleared: ctx.completionCleared ?? false,
     };
   }

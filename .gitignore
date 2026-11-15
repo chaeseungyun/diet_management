@@ -14,9 +14,10 @@ coverage/
 !.env.example
 deploy/.env
 
-# 로컬 개발 DB(embedded-postgres)와 백업
+# 로컬 개발 DB(embedded-postgres)와 백업, 식사 사진(DEC-086)
 .local/
 backups/
+data/
 
 # OS·에디터
 .DS_Store

@@ -122,6 +122,18 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 `PUT /meal-records` 처리 순서(ERD §4-1·4-2): `IdempotencyKey` 삽입 → `version` 비교 → `MealRecord` 상태·종류 갱신 → 기존 `MealItemSnapshot`의 `deducts_stock` 항목마다 `consume_reverse(+)` → 새 스냅샷 생성(현재 `ProductNutritionVersion` 복사) → `deducts_stock` 항목마다 `consume(-)` → `DayCompletion` 해제 → 알림 `skipped` → 응답 저장. 외부 식사 항목은 이동 0, `is_stock_tracked=false` 제품은 차감 제외.
 
+### 8-1. 식사 사진 (단계 3, EXT-02a) — DEC-069·DEC-086·DEC-087
+
+| 엔드포인트 | 설명 | 비고 |
+| --- | --- | --- |
+| `POST /meal-photos` | multipart `file`(JPEG·PNG·WebP, 10 MB 이하), 선택 `mealRecordId`. 없으면 **임시 사진**(기록 저장의 `photoIds` 로 붙임), 있으면 그 기록(본인·먹었음)에 바로 붙임 | **구현(2026-11-15)**. 리사이즈본·썸네일만 저장, EXIF 없음. 형식 `422 PHOTO_UNSUPPORTED`, 크기 `413`, 하루 10장 `422 PHOTO_DAILY_LIMIT`, 기록당 5장 `422 PHOTO_RECORD_LIMIT`, 먹지 않은 기록 `422 PHOTO_RECORD_NOT_EATEN`, 타인 기록 `404`. 기록의 `version`·완료는 그대로 |
+| `GET /meal-photos/{id}` | 사진 파일(JPEG). `?size=thumb` 는 320 px | **구현**. 타인·삭제·보관 기간 지남은 `404`. 서명 URL 없음 |
+| `DELETE /meal-photos/{id}` | 사진 삭제 | **구현**. 기록의 `version`·완료는 그대로 |
+
+기록 쪽: `PUT /meal-records/...`·`POST .../extra` 본문에 `photoIds[]`(붙이기만, status=eaten 에서만), 응답 `MealRecordDto.photos[]`(`id, width, height, createdAt, expiresAt, expired`). 기록이 '먹었음'이 아니게 되거나 추가 간식을 지우면 사진도 지운다. 정리 작업(만료·임시 사진)은 다음 작업.
+
+정리(DEC-087, 매일 04:00): 임시 사진은 24시간 뒤 삭제, 보관 일수(7~30일)를 다시 계산해 만료된 사진의 파일을 지우고 `expired=true` 자리만 남긴다. 저장 공간이 차면(보관량 20 GB 이상 또는 디스크 80 % 초과) `POST /meal-photos` 는 `422 PHOTO_STORAGE_FULL`. 기록 저장은 사진 없이 그대로 된다.
+
 ## 9. 체중 (단계 1) — FR-07, S-50
 
 | 메서드·경로 | 역할 | 비고 |
@@ -158,7 +170,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 - 유형 ④ 소진: 설정·유형 자리만 두고 판정은 재고 화면·소진 예측 단계에서 추가.
 - 예약 시각 15분 초과(재시작 등)는 보내지 않고, 선점했던 `pending` 만 `skipped`(`expired`)로 바꾼다(DEC-075).
 - **구현(2026-11-09, DEC-075)**: `@nestjs/schedule` `@Cron(매분)` → `NotificationScheduler.tick` = 만료 → 재시도(임대 50초, 최대 3회, 저장된 `payload`) → 판정(`src/domain/notifications.ts`)·선점·발송. `web-push` `TTL=900`·`urgency=high`. 전달은 최소 한 번(같은 `tag` 로 폰에서 덮어씀).
-- 매일 04:00 Asia/Seoul 정리 작업: 만료된 `IdempotencyKey`, 90일 지난 발송 기록 삭제(`src/maintenance/`).
+- 매일 04:00 Asia/Seoul 정리 작업: 만료된 `IdempotencyKey`, 90일 지난 발송 기록 삭제, 식사 사진 정리(§8-1, DEC-087)(`src/maintenance/`).
 
 ## 12. 미정·결정 필요
 
