@@ -9,6 +9,7 @@ import {
   PHOTO_MAX_PER_DAY,
   PHOTO_MAX_PER_RECORD,
   PHOTO_MAX_RETENTION_DAYS,
+  PHOTO_VIEW_PX,
   todayIn,
 } from '@diet/shared';
 import { ENV, type Env } from '../config/env';
@@ -25,7 +26,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MealPhotoDto } from './photos.dto';
 
 /** 보기용: 긴 변 1600 px, JPEG 80. 썸네일: 320 px (DEC-069) */
-const VIEW_PX = 1600;
+const VIEW_PX = PHOTO_VIEW_PX;
 const THUMB_PX = 320;
 const JPEG_QUALITY = 80;
 /** 받는 형식. HEIC 는 sharp 기본 바이너리가 풀지 못한다 (DEC-086) */
@@ -93,7 +94,10 @@ export class PhotosService {
     if (mealRecordId) await this.assertAttachable(this.prisma, user.id, mealRecordId, now);
     await this.assertDailyLimit(this.prisma, user, now);
 
+    const started = Date.now();
     const { view, thumb } = await this.serial(() => this.process(input));
+    // 느린 업로드가 전송 탓인지 변환 탓인지 가릴 수 있게 변환 시간(대기 포함)을 남긴다
+    this.log.log(`photo processed inBytes=${input.length} ms=${Date.now() - started}`);
     const id = randomUUID();
     const month = todayIn(user.timezone, now).slice(0, 7);
     const path = `${user.id}/${month}/${id}.jpg`;

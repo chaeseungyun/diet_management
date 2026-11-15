@@ -18,6 +18,8 @@ export const PHOTO_MAX_PER_DAY = 10;
 export const PHOTO_MAX_PER_RECORD = 5;
 export const PHOTO_MAX_RETENTION_DAYS = 30;
 export const PHOTO_MIN_RETENTION_DAYS = 7;
+/** 보관하는 보기용 사진의 긴 변(px). 웹은 올리기 전에 이 크기로 줄여 보낸다 (DEC-088) */
+export const PHOTO_VIEW_PX = 1600;
 
 /** 식사 슬롯 5종, 하루 순서대로 (api.md §0). 추가 간식은 EXTRA_SLOT (D-10) */
 /** 하루 끼니(extra 제외). 사용자가 설정에서 쓰는 끼니를 고른다 (D-18) */
