@@ -83,6 +83,7 @@ describe('phase 3: meal photos', () => {
 
   afterEach(async () => {
     jest.restoreAllMocks();
+    app.get(PhotosService).resetUploadCounts();
     await prisma.mealPhoto.deleteMany({});
     await prisma.mealRecord.deleteMany({});
     rmSync(DIR, { recursive: true, force: true });
@@ -239,6 +240,23 @@ describe('phase 3: meal photos', () => {
     expect(filesUnder(DIR)).toHaveLength(2);
     const direct = await upload(a, jpeg, rec.id).expect(422);
     expect(direct.body.code).toBe('PHOTO_RECORD_NOT_EATEN');
+  });
+
+  it('counts deleted photos toward 30 uploads per day', async () => {
+    const small = await sharp({
+      create: { width: 40, height: 30, channels: 3, background: '#fff' },
+    })
+      .png()
+      .toBuffer();
+    // 올리고 지우기를 되풀이하면 남은 사진은 0 장이어도 30번에서 막힌다
+    for (let i = 0; i < 30; i++) {
+      const id = (await upload(a, small).expect(201)).body.id;
+      await a.delete(`/meal-photos/${id}`).expect(204);
+    }
+    const next = await upload(a, small).expect(422);
+    expect(next.body.code).toBe('PHOTO_DAILY_LIMIT');
+    expect(await prisma.mealPhoto.count()).toBe(0);
+    await upload(b, small).expect(201);
   });
 
   it('limits photos to 5 per record and 10 per day', async () => {

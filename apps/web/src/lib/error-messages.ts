@@ -45,7 +45,7 @@ export const ERROR_MESSAGES = {
   BEFORE_SIGNUP: '가입하기 전 날짜는 완료할 수 없어요.',
 
   PHOTO_UNSUPPORTED: '이 사진은 올릴 수 없어요. JPG·PNG 사진으로 다시 해 주세요.',
-  PHOTO_DAILY_LIMIT: '사진은 하루에 10장까지 올릴 수 있어요.',
+  PHOTO_DAILY_LIMIT: '오늘은 사진을 더 올릴 수 없어요. 하루 10장까지 올릴 수 있어요.',
   PHOTO_RECORD_LIMIT: '한 끼에 사진은 5장까지 넣을 수 있어요.',
   PHOTO_RECORD_NOT_EATEN: "사진은 '먹었음'으로 기록한 끼니에만 넣을 수 있어요.",
   PHOTO_STORAGE_FULL:

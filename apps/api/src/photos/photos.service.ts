@@ -9,6 +9,7 @@ import {
   PHOTO_MAX_PER_DAY,
   PHOTO_MAX_PER_RECORD,
   PHOTO_MAX_RETENTION_DAYS,
+  PHOTO_MAX_UPLOADS_PER_DAY,
   PHOTO_VIEW_PX,
   todayIn,
 } from '@diet/shared';
@@ -68,6 +69,11 @@ export class PhotosService {
   private readonly log = new Logger(PhotosService.name);
   /** 이미지 처리는 한 번에 한 장만 (2GB VM: 큰 사진 한 장을 푸는 데 수백 MB 가 든다) */
   private queue: Promise<unknown> = Promise.resolve();
+  /**
+   * 사용자별 오늘 올리기 횟수(지운 사진 포함, DEC-089). 프로세스 메모리에만 둔다:
+   * 남용을 막는 용도라 재시작으로 0 이 돼도 되고, API 는 프로세스 하나다.
+   */
+  private uploads = new Map<string, { day: string; count: number }>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -94,6 +100,7 @@ export class PhotosService {
     if (mealRecordId) await this.assertAttachable(this.prisma, user.id, mealRecordId, now);
     await this.assertDailyLimit(this.prisma, user, now);
 
+    this.countUpload(user, now);
     const started = Date.now();
     const { view, thumb } = await this.serial(() => this.process(input));
     // 느린 업로드가 전송 탓인지 변환 탓인지 가릴 수 있게 변환 시간(대기 포함)을 남긴다
@@ -282,6 +289,8 @@ export class PhotosService {
     }
 
     const orphanFiles = await this.removeOrphanFiles(now);
+    // 04:00 에 비운다: 날짜가 지난 항목이 쌓이지 않게 한다(자정~04:00 의 횟수도 함께 0 이 된다)
+    this.resetUploadCounts();
 
     // 운영자 알림은 로그로 낸다 (ops.md §10-2)
     const stored = await this.sumBytes(Prisma.sql`purged_at IS NULL`);
@@ -429,6 +438,27 @@ export class PhotosService {
     if (count >= PHOTO_MAX_PER_DAY) {
       throw unprocessable('PHOTO_DAILY_LIMIT', `at most ${PHOTO_MAX_PER_DAY} photos per day`);
     }
+  }
+
+  /** 변환 직전에 센다. 하루 10장(남아 있는 사진)과 별개로, 지운 것까지 30번을 넘으면 거부한다 */
+  private countUpload(user: User, now: Date): void {
+    const day = todayIn(user.timezone, now);
+    const cur = this.uploads.get(user.id);
+    const count = cur && cur.day === day ? cur.count : 0;
+    if (count >= PHOTO_MAX_UPLOADS_PER_DAY) {
+      this.log.warn(`photo upload count limit reached: user=${user.id}`);
+      throw unprocessable(
+        'PHOTO_DAILY_LIMIT',
+        `at most ${PHOTO_MAX_UPLOADS_PER_DAY} uploads per day including deleted photos`,
+      );
+    }
+    // 날짜가 지난 항목은 매일 정리 때 비운다
+    this.uploads.set(user.id, { day, count: count + 1 });
+  }
+
+  /** 올리기 횟수를 비운다(테스트, 매일 정리) */
+  resetUploadCounts(): void {
+    this.uploads.clear();
   }
 
   /** 보기용·썸네일 JPEG 을 만든다. 방향은 EXIF 대로 돌려 굽고 메타데이터는 싣지 않는다 */

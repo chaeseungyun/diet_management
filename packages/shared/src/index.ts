@@ -15,6 +15,8 @@ export const SESSION_COOKIE = 'session';
 /** 식사 사진 상한 (DEC-069·086): 올리는 파일 10 MB, 사용자당 하루 10장, 기록 1건당 5장, 보관 7~30일 */
 export const PHOTO_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const PHOTO_MAX_PER_DAY = 10;
+/** 지운 사진까지 센 하루 올리기 횟수 상한: 올리고 지우기를 되풀이해 서버에 변환을 시키는 것을 막는다 (DEC-089) */
+export const PHOTO_MAX_UPLOADS_PER_DAY = 30;
 export const PHOTO_MAX_PER_RECORD = 5;
 export const PHOTO_MAX_RETENTION_DAYS = 30;
 export const PHOTO_MIN_RETENTION_DAYS = 7;

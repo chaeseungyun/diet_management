@@ -126,7 +126,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 | 엔드포인트 | 설명 | 비고 |
 | --- | --- | --- |
-| `POST /meal-photos` | multipart `file`(JPEG·PNG·WebP, 10 MB 이하), 선택 `mealRecordId`. 없으면 **임시 사진**(기록 저장의 `photoIds` 로 붙임), 있으면 그 기록(본인·먹었음)에 바로 붙임 | **구현(2026-11-15)**. 리사이즈본·썸네일만 저장, EXIF 없음. 형식 `422 PHOTO_UNSUPPORTED`, 크기 `413`, 하루 10장 `422 PHOTO_DAILY_LIMIT`, 기록당 5장 `422 PHOTO_RECORD_LIMIT`, 먹지 않은 기록 `422 PHOTO_RECORD_NOT_EATEN`, 타인 기록 `404`. 기록의 `version`·완료는 그대로 |
+| `POST /meal-photos` | multipart `file`(JPEG·PNG·WebP, 10 MB 이하), 선택 `mealRecordId`. 없으면 **임시 사진**(기록 저장의 `photoIds` 로 붙임), 있으면 그 기록(본인·먹었음)에 바로 붙임 | **구현(2026-11-15)**. 리사이즈본·썸네일만 저장, EXIF 없음. 형식 `422 PHOTO_UNSUPPORTED`, 크기 `413`, 하루 10장(지운 것까지 센 올리기 30번, DEC-089) `422 PHOTO_DAILY_LIMIT`, 기록당 5장 `422 PHOTO_RECORD_LIMIT`, 먹지 않은 기록 `422 PHOTO_RECORD_NOT_EATEN`, 타인 기록 `404`. 기록의 `version`·완료는 그대로 |
 | `GET /meal-photos/{id}` | 사진 파일(JPEG). `?size=thumb` 는 320 px | **구현**. 타인·삭제·보관 기간 지남은 `404`. 서명 URL 없음 |
 | `DELETE /meal-photos/{id}` | 사진 삭제 | **구현**. 기록의 `version`·완료는 그대로 |
 
