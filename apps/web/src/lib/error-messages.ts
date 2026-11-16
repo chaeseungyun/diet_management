@@ -51,6 +51,10 @@ export const ERROR_MESSAGES = {
   PHOTO_STORAGE_FULL:
     '사진 저장 공간이 가득 차서 지금은 올릴 수 없어요. 기록은 사진 없이 저장할 수 있어요.',
 
+  FRIEND_INVITE_OWN: '내가 만든 초대 링크예요. 친구에게 보내 주세요.',
+  FRIEND_ALREADY: '이미 친구예요.',
+  FRIEND_INVITE_LIMIT: '초대 링크는 5개까지 만들 수 있어요. 안 쓰는 링크를 지워 주세요.',
+  FRIEND_LIMIT: '친구는 50명까지 맺을 수 있어요.',
   WEIGHT_EXISTS: '이 날 체중이 이미 있어요. 덮어쓸까요?',
 
   NOTIFY_TIME_REQUIRED: '알림 시각을 정해 주세요.',

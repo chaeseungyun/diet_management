@@ -81,18 +81,20 @@ enum MealKind {
 
 /// 카카오 로그인 계정 (FR-01, NFR-04). 삭제는 소프트 삭제 후 개인 데이터 삭제 절차 적용.
 model User {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  kakaoId     String     @unique @map("kakao_id")
-  nickname    String
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kakaoId         String          @unique @map("kakao_id")
+  nickname        String
   /// IANA 시간대. 식사·체중·완료 날짜의 경계 기준 (D-21)
-  timezone    String     @default("Asia/Seoul")
+  timezone        String          @default("Asia/Seoul")
   /// 첫 설정(S-03) 완료 시각. null이면 미완료 (요구사항 §7-7 권고)
-  onboardedAt DateTime?  @map("onboarded_at") @db.Timestamptz(6)
+  onboardedAt     DateTime?       @map("onboarded_at") @db.Timestamptz(6)
   /// 오늘 화면·주간 계획에 보이는 끼니 (D-18). extra 는 넣지 않는다. 숨긴 끼니도 기록이 있으면 보인다
-  activeSlots MealSlot[] @default([breakfast, lunch, afternoon_snack, dinner, evening_snack]) @map("active_slots")
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  activeSlots     MealSlot[]      @default([breakfast, lunch, afternoon_snack, dinner, evening_snack]) @map("active_slots")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   /// null = 활성. 값이 있으면 로그인·모든 요청 거부
-  deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz(6)
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  /// 내 끼니 공개 범위 (DEC-066 §9-1). 기본 비공개. friends 여도 친구별 끄기(FriendLink)와 AND
+  shareVisibility ShareVisibility @default(private) @map("share_visibility")
 
   goals                  GoalHistory[]
   products               Product[]
@@ -110,8 +112,67 @@ model User {
   notificationSettings   NotificationSetting[]
   pushSubscriptions      PushSubscription[]
   notificationDeliveries NotificationDelivery[]
+  friendLinksLow         FriendLink[]           @relation("FriendLinkLow")
+  friendLinksHigh        FriendLink[]           @relation("FriendLinkHigh")
+  friendInvites          FriendInvite[]
 
   @@map("users")
+}
+
+/// 내 끼니 공개 범위 (sharing-plan §4). public 은 두지 않는다
+enum ShareVisibility {
+  private
+  friends
+}
+
+/// 친구 관계 상태. pending·blocked 는 친구 코드 요청·차단 묶음(공유-1b)에서 쓴다
+enum FriendLinkStatus {
+  pending
+  accepted
+  blocked
+}
+
+/// 친구 관계 (sharing-plan §4, DEC-066·090). 두 사용자 쌍에 1행(대칭). 끊기는 행 삭제
+model FriendLink {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// 두 사용자 id 중 작은 쪽 (같은 쌍이 두 행이 되지 않게)
+  userLowId       String           @map("user_low_id") @db.Uuid
+  userHighId      String           @map("user_high_id") @db.Uuid
+  /// 초대·요청한 쪽
+  requestedBy     String           @map("requested_by") @db.Uuid
+  status          FriendLinkStatus
+  /// status=blocked 일 때 차단한 쪽
+  blockedBy       String?          @map("blocked_by") @db.Uuid
+  /// 친구별 끄기. low 가 high 에게 자기 끼니를 보이는가 (사용자 기본값 shareVisibility 와 AND)
+  lowSharesToHigh Boolean          @default(true) @map("low_shares_to_high")
+  highSharesToLow Boolean          @default(true) @map("high_shares_to_low")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  respondedAt     DateTime?        @map("responded_at") @db.Timestamptz(6)
+
+  userLow  User @relation("FriendLinkLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh User @relation("FriendLinkHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+
+  @@unique([userLowId, userHighId])
+  @@index([userHighId])
+  @@map("friend_links")
+}
+
+/// 초대 링크 (sharing-plan §4·§5). 수락 즉시 친구가 된다. 만료·소진·철회된 링크는 404
+model FriendInvite {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  /// 열거할 수 없는 랜덤 문자열 (node:crypto)
+  code      String    @unique
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  maxUses   Int       @default(1) @map("max_uses")
+  usedCount Int       @default(0) @map("used_count")
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("friend_invites")
 }
 
 /// 목표 이력 (FR-01). 특정 날짜의 목표 = effective_from <= 날짜 중 가장 늦은 행

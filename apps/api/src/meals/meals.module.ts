@@ -21,5 +21,6 @@ import { MealsService } from './meals.service';
   ],
   controllers: [MealsController],
   providers: [MealsService],
+  exports: [MealsService],
 })
 export class MealsModule {}

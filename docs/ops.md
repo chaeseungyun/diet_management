@@ -228,7 +228,13 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 배포 뒤 실기기 확인: (1) 아이폰에서 사진 보관함·카메라로 고른 사진이 올라가는지(HEIC 가 JPEG 로 넘어오는지, 안 되면 '이 사진은 올릴 수 없어요'). (2) 큰 사진(10 MB 근처)이 올라가는지 — Caddy 의 본문 제한은 사진 올리기만 11MB, 나머지는 2MB 다(`deploy/Caddyfile`). 첫 배포(2026-11-15)에서는 이 제한이 전체 2MB 로 남아 있어 2 MB 넘는 사진이 모두 413 으로 거부됐다(갤럭시 2.9 MB 사진으로 발견). (3) 저장 전에 올린 사진이 '먹었음으로 저장' 뒤 오늘 화면 카드에 보이는지, 누르면 크게 보이는지, 삭제되는지.
 - 배포 때 볼 것: (1) CI 의 API 이미지 빌드 — `sharp` 네이티브 바이너리가 처음 들어간다. (2) 배포 뒤 `docker compose ... exec api sh -c 'touch /app/data/photos/.w && rm /app/data/photos/.w'` 가 오류 없이 끝나는지(볼륨 연결·쓰기 권한). (3) `docker image ls | wc -l` 로 옛 이미지가 정리됐는지(CD 가 7일 넘은 미사용 이미지를 지운다).
 - 배포 다음 날 볼 것: 04:00 뒤 `docker compose logs api | grep 'daily cleanup'` 에 `photos={"drafts":…,"retentionDays":30,…}` 가 찍히는지. `photos=null` 이면 사진 정리가 실패한 것이므로 바로 위의 `photo cleanup failed` 줄을 본다.
-- 다음: 단계 4 끼니 공유(`sharing-plan.md`). 그 전에 위 실기기 확인.
+- 다음: 단계 4 끼니 공유(`sharing-plan.md`) → §10-3.
+
+## 10-3. 단계 4 상태 (2026-11-16)
+
+- 단계 3 뒤 고친 것: Caddy 본문 제한(사진 올리기만 11MB), 올리기 전 브라우저에서 줄이기(DEC-088), 하루 올리기 30번 상한(DEC-089).
+- 완료(공유-1a 1/2, DEC-090): `sharing_friends` 마이그레이션(`users.share_visibility`, `friend_links`, `friend_invites`), API `me/sharing`·`friend-invites`·`friends`·친구의 하루·친구 사진, e2e 10건. 새 환경 변수는 없다(초대 주소는 `WEB_ORIGIN` 으로 만든다).
+- 다음: 공유-1a 웹 화면(S-80~S-84, S-10 ⑨) → 공유-1b(친구 코드 요청·차단).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

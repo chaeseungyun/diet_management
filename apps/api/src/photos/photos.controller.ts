@@ -30,6 +30,7 @@ import { PHOTO_MAX_UPLOAD_BYTES } from '@diet/shared';
 import { CurrentUser } from '../auth/auth.guard';
 import { OptionalUuidPipe, UuidParamPipe } from '../common/validators';
 import { MealPhotoDto } from './photos.dto';
+import { sendPhoto } from './photo-response';
 import { PhotosService } from './photos.service';
 
 /** 식사 사진 (EXT-02a, DEC-069·086). 파일 응답은 접근 판정 뒤 API 가 직접 흘려보낸다(서명 URL 없음) */
@@ -80,19 +81,7 @@ export class PhotosController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile | undefined> {
     const variant = size === 'thumb' ? 'thumb' : 'view';
-    const { stream, length } = await this.photos.open(user, id, variant);
-    // 내용은 바뀌지 않지만 삭제·만료·로그아웃 뒤에는 보이면 안 된다.
-    // 그래서 매번 서버에 묻게 하고(no-cache), 그대로면 본문 없이 304 로 답한다
-    const etag = `"${id}-${variant}"`;
-    res.setHeader('Cache-Control', 'private, no-cache');
-    res.setHeader('ETag', etag);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    if (req.headers['if-none-match'] === etag) {
-      stream.destroy();
-      res.status(304);
-      return undefined;
-    }
-    return new StreamableFile(stream, { type: 'image/jpeg', length });
+    return sendPhoto(req, res, id, variant, await this.photos.open(user, id, variant));
   }
 
   @Delete(':id')

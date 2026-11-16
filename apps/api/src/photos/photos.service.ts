@@ -155,9 +155,18 @@ export class PhotosService {
     id: string,
     size: PhotoSize,
     now: Date = new Date(),
+    opts: { attachedOnly?: boolean } = {},
   ): Promise<{ stream: ReadStream; length: number }> {
     const row = await this.prisma.mealPhoto.findFirst({
-      where: { id, userId: user.id, deletedAt: null, purgedAt: null, expiresAt: { gt: now } },
+      where: {
+        id,
+        userId: user.id,
+        deletedAt: null,
+        purgedAt: null,
+        expiresAt: { gt: now },
+        // 친구에게 보일 때는 기록에 붙은 사진만 (DEC-090)
+        ...(opts.attachedOnly ? { mealRecordId: { not: null } } : {}),
+      },
     });
     if (!row) throw new NotFoundException();
     const file = this.abs(size === 'thumb' ? row.thumbPath : row.path);

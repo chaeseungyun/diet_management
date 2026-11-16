@@ -19,6 +19,7 @@ import { StatsModule } from './stats/stats.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PhotosModule } from './photos/photos.module';
+import { SharingModule } from './sharing/sharing.module';
 
 @Module({})
 export class AppModule {
@@ -48,6 +49,8 @@ export class AppModule {
         MaintenanceModule,
         // 단계 3 (EXT-02a)
         PhotosModule,
+        // 단계 4 끼니 공유 (DEC-066·090)
+        SharingModule,
       ],
       controllers: [HealthController],
     };

@@ -134,6 +134,26 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 정리(DEC-087, 매일 04:00): 임시 사진은 24시간 뒤 삭제, 보관 일수(7~30일)를 다시 계산해 만료된 사진의 파일을 지우고 `expired=true` 자리만 남긴다. 저장 공간이 차면(보관량 20 GB 이상 또는 디스크 80 % 초과) `POST /meal-photos` 는 `422 PHOTO_STORAGE_FULL`. 기록 저장은 사진 없이 그대로 된다.
 
+### 8-2. 끼니 공유 (단계 4, 공유-1a) — DEC-066·DEC-090, [`sharing-plan.md`](sharing-plan.md)
+
+**구현(2026-11-16)**. 남의 데이터를 읽는 유일한 경로다. 볼 수 없는 모든 경우(친구 아님·비공개·친구별 끄기·탈퇴·없는 사용자)는 같은 404.
+
+| 메서드·경로 | 역할 | 비고 |
+| --- | --- | --- |
+| `GET /me/sharing` · `PUT /me/sharing` `{visibility}` | 내 끼니 공개 범위 `private`(기본)·`friends` | `private` 로 바꾸면 모든 친구에게 즉시 404 |
+| `POST /friend-invites` | 초대 링크 만들기 → `{id, code, url, expiresAt}` | 1회용·7일. 쓸 수 있는 링크 5개까지 `422 FRIEND_INVITE_LIMIT` |
+| `GET /friend-invites` | 아직 쓸 수 있는 내 링크 | |
+| `GET /friend-invites/{code}` | 미리보기 `{nickname}` | **로그인 불필요**. 만료·소진·철회·초대자 탈퇴는 404 |
+| `POST /friend-invites/{code}/accept` | 수락 → 즉시 친구, `FriendDto` | 내 링크 `422 FRIEND_INVITE_OWN`, 이미 친구 `422 FRIEND_ALREADY`, 친구 50명 `422 FRIEND_LIMIT`, 쓸 수 없는 링크 404. 공개 범위는 바꾸지 않는다 |
+| `DELETE /friend-invites/{id}` | 철회 | 남의 링크 404 |
+| `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
+| `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 내 끼니 끄기·켜기 | 친구가 아니면 404 |
+| `DELETE /friends/{userId}` | 친구 끊기(양쪽 즉시) | |
+| `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed` | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·체중·목표·재고는 없다 |
+| `GET /friends/{userId}/meal-photos/{photoId}?size=thumb` | 친구의 식사 사진(JPEG) | 기록에 붙은 사진만. 캐시 규칙은 §8-1 과 같다 |
+
+친구 코드 요청(`/friends/requests`)·차단(`/friends/{userId}/block`)·`friend-code` 는 공유-1b, 반응·댓글은 공유-2 다.
+
 ## 9. 체중 (단계 1) — FR-07, S-50
 
 | 메서드·경로 | 역할 | 비고 |

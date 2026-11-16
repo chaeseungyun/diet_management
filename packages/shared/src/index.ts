@@ -23,6 +23,15 @@ export const PHOTO_MIN_RETENTION_DAYS = 7;
 /** 보관하는 보기용 사진의 긴 변(px). 웹은 올리기 전에 이 크기로 줄여 보낸다 (DEC-088) */
 export const PHOTO_VIEW_PX = 1600;
 
+/** 끼니 공유 (sharing-plan, DEC-066·090) */
+export const SHARE_VISIBILITIES = ['private', 'friends'] as const;
+export type ShareVisibility = (typeof SHARE_VISIBILITIES)[number];
+/** 초대 링크: 7일 뒤 만료, 1회 사용, 한 사람이 동시에 살려 둘 수 있는 링크 5개 */
+export const FRIEND_INVITE_TTL_DAYS = 7;
+export const FRIEND_INVITE_MAX_ACTIVE = 5;
+/** 친구 수 상한 (친구 목록이 친구마다 오늘 요약을 계산한다) */
+export const FRIEND_MAX = 50;
+
 /** 식사 슬롯 5종, 하루 순서대로 (api.md §0). 추가 간식은 EXTRA_SLOT (D-10) */
 /** 하루 끼니(extra 제외). 사용자가 설정에서 쓰는 끼니를 고른다 (D-18) */
 export const MEAL_SLOTS = [
@@ -169,6 +178,11 @@ export const ERROR_CODES = [
   'PHOTO_RECORD_LIMIT',
   'PHOTO_RECORD_NOT_EATEN',
   'PHOTO_STORAGE_FULL',
+  // 끼니 공유 (DEC-066·090)
+  'FRIEND_INVITE_OWN',
+  'FRIEND_ALREADY',
+  'FRIEND_INVITE_LIMIT',
+  'FRIEND_LIMIT',
   // 체중
   'WEIGHT_EXISTS',
   // 알림

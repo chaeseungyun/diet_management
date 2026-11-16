@@ -34,6 +34,7 @@ import { WeightsService } from '../weights/weights.service';
 import { WeightDto } from '../weights/weights.dto';
 import { StockService } from '../stock/stock.service';
 import { PhotosService } from '../photos/photos.service';
+import type { NutritionTotalsDto } from '../common/nutrition.dto';
 import {
   CompleteDayDto,
   DayCompletionCheckDto,
@@ -68,6 +69,14 @@ interface DayEvaluation {
   nextSlot: MealSlot | null;
   hasOverride: boolean;
   completion: DayCompletion | null;
+}
+
+/** getDayForSharing 의 결과: 공유 DTO 를 만들 재료 */
+export interface SharedDaySource {
+  slots: { planType: ResolvedPlan['planType']; record: MealRecordDto }[];
+  extras: MealRecordDto[];
+  recorded: NutritionTotalsDto;
+  completed: boolean;
 }
 
 const include = {
@@ -144,6 +153,20 @@ export class MealsService {
       completionCheck: this.checkFrom(user, date, ev),
       hasOverride: ev.hasOverride,
       depleting,
+    };
+  }
+
+  /**
+   * 끼니 공유용 하루 (DEC-090). 내 하루와 같은 계산(D-01)을 쓰되 목표·체중·재고는 읽지 않는다.
+   * 접근 판정은 부르는 쪽(SharingAccessService)이 먼저 하고, 보낼 필드도 부르는 쪽이 고른다.
+   */
+  async getDayForSharing(owner: User, date: string): Promise<SharedDaySource> {
+    const ev = await this.evaluateDay(this.prisma, owner, date);
+    return {
+      slots: ev.slots.map((s) => ({ planType: s.plan.planType, record: s.dto })),
+      extras: ev.extras,
+      recorded: this.totalsDto(ev.recorded),
+      completed: ev.completion !== null,
     };
   }
 

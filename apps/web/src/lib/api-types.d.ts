@@ -903,6 +903,162 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 끼니 공개 범위 */
+        get: operations["SharingController_sharing"];
+        /** 공개 범위 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다 */
+        put: operations["SharingController_setSharing"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friend-invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 아직 쓸 수 있는 내 초대 링크 */
+        get: operations["SharingController_invites"];
+        put?: never;
+        /** 초대 링크 만들기(1회용, 7일). 쓸 수 있는 링크는 5개까지 */
+        post: operations["SharingController_createInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friend-invites/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 초대 링크 미리보기(로그인 불필요): 초대한 사람의 닉네임. 만료·소진·철회는 404 */
+        get: operations["SharingController_previewInvite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friend-invites/{code}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 초대 수락 → 즉시 친구. 내 링크·이미 친구는 422, 쓸 수 없는 링크는 404 */
+        post: operations["SharingController_acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friend-invites/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 초대 링크 철회 */
+        delete: operations["SharingController_revokeInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 친구 목록 + 볼 수 있는 친구의 오늘 요약 */
+        get: operations["SharingController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 친구 끊기(양쪽 즉시) */
+        delete: operations["SharingController_unfriend"];
+        options?: never;
+        head?: never;
+        /** 이 친구에게만 내 끼니 끄기·켜기 */
+        patch: operations["SharingController_update"];
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/days/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료. 볼 수 없으면 404 */
+        get: operations["SharingController_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/meal-photos/{photoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 친구의 식사 사진 파일(JPEG). 볼 수 없으면 404 */
+        get: operations["SharingController_photo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2020,6 +2176,119 @@ export interface components {
             sentAt: string | null;
             failureReason: string | null;
         };
+        SharingSettingsDto: {
+            /**
+             * @description private = 나만 보기(기본), friends = 친구에게 공개
+             * @enum {string}
+             */
+            visibility: "private" | "friends";
+        };
+        FriendInviteDto: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            /** @description 친구에게 보낼 주소 (`<웹 오리진>/invite/<code>`) */
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        FriendInvitePreviewDto: {
+            nickname: string;
+        };
+        FriendTodayDto: {
+            /** @description 집계 대상 끼니 수 (DaySummaryDto.activeSlots 와 같은 계산) */
+            activeSlots: number;
+            recordedSlots: number;
+            completed: boolean;
+        };
+        FriendDto: {
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            /**
+             * Format: date-time
+             * @description 친구가 된 시각
+             */
+            since: string;
+            /** @description 내가 이 친구에게 끄지 않았는가(친구별 스위치). 내 공개 범위가 private 이면 이 값과 무관하게 안 보인다 */
+            shareToFriend: boolean;
+            /** @description 이 친구의 끼니를 내가 볼 수 있는가. false 면 today 는 null 이고 친구의 하루는 404 */
+            shared: boolean;
+            /** @description 친구의 오늘(친구 시간대) 요약. 볼 수 없으면 null */
+            today: components["schemas"]["FriendTodayDto"] | null;
+        };
+        UpdateFriendDto: {
+            /** @description 이 친구에게 내 끼니를 보일지 */
+            shareToFriend: boolean;
+        };
+        SharedDayOwnerDto: {
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+        };
+        SharedMealItemDto: {
+            name: string;
+            /** @description 실제로 먹은 양. 재고를 관리하지 않는 식품을 양 없이 기록했으면 null */
+            quantity: number | null;
+            /** @enum {string} */
+            unit: "g" | "ml" | "ea";
+            /** @description 화면에 보일 단위(ea 식품의 '팩'·'개' 등) */
+            displayUnit: string;
+        };
+        SharedPhotoDto: {
+            /**
+             * Format: uuid
+             * @description 파일은 `GET /friends/{userId}/meal-photos/{id}` 로 받는다
+             */
+            id: string;
+            width: number;
+            height: number;
+            /** @description 보관 기간 지남. 파일 요청은 404 */
+            expired: boolean;
+        };
+        SharedMealDto: {
+            /**
+             * Format: uuid
+             * @description 저장된 기록 id. 미기록 끼니는 null
+             */
+            recordId: string | null;
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
+            /** @enum {string} */
+            status: "unrecorded" | "eaten" | "skipped";
+            /**
+             * @description home = 내 식품, outside = 식단 외 식사. 먹었음이 아니면 의미 없음
+             * @enum {string}
+             */
+            kind: "home" | "outside";
+            /** @description 식단 외 식사의 메뉴명. 그 밖에는 null */
+            outsideMenu: string | null;
+            /** @description 먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다) */
+            items: components["schemas"]["SharedMealItemDto"][];
+            photos: components["schemas"]["SharedPhotoDto"][];
+        };
+        SharedDayDto: {
+            owner: components["schemas"]["SharedDayOwnerDto"];
+            /** @example 2026-11-16 */
+            date: string;
+            /**
+             * @description 친구 시간대의 오늘. 이 뒤 날짜는 404
+             * @example 2026-11-16
+             */
+            today: string;
+            /**
+             * @description 볼 수 있는 가장 이른 날짜(친구의 가입일). 이 앞 날짜는 404
+             * @example 2026-11-07
+             */
+            firstDate: string;
+            /** @description 정규 끼니(하루 순서). 미기록 자유 끼니는 빠진다 (D-18) */
+            slots: components["schemas"]["SharedMealDto"][];
+            extras: components["schemas"]["SharedMealDto"][];
+            /** @description 기록된 합계(먹었음 + 안 먹음 0 + 추가 간식). 미상이 있으면 complete=false (null 은 미상) */
+            nutrition: components["schemas"]["NutritionTotalsDto"];
+            /** @description 하루 완료 여부 */
+            completed: boolean;
+        };
         ErrorFieldDto: {
             field: string;
             rule: string;
@@ -2027,7 +2296,7 @@ export interface components {
         ErrorDto: {
             statusCode: number;
             /** @enum {string} */
-            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "PHOTO_UNSUPPORTED" | "PHOTO_DAILY_LIMIT" | "PHOTO_RECORD_LIMIT" | "PHOTO_RECORD_NOT_EATEN" | "PHOTO_STORAGE_FULL" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
+            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "PHOTO_UNSUPPORTED" | "PHOTO_DAILY_LIMIT" | "PHOTO_RECORD_LIMIT" | "PHOTO_RECORD_NOT_EATEN" | "PHOTO_STORAGE_FULL" | "FRIEND_INVITE_OWN" | "FRIEND_ALREADY" | "FRIEND_INVITE_LIMIT" | "FRIEND_LIMIT" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
             message: string;
             fields?: components["schemas"]["ErrorFieldDto"][];
         };
@@ -3572,6 +3841,254 @@ export interface operations {
         requestBody?: never;
         responses: {
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SharingController_sharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharingSettingsDto"];
+                };
+            };
+        };
+    };
+    SharingController_setSharing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SharingSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharingSettingsDto"];
+                };
+            };
+        };
+    };
+    SharingController_invites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendInviteDto"][];
+                };
+            };
+        };
+    };
+    SharingController_createInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendInviteDto"];
+                };
+            };
+        };
+    };
+    SharingController_previewInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendInvitePreviewDto"];
+                };
+            };
+        };
+    };
+    SharingController_acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendDto"];
+                };
+            };
+        };
+    };
+    SharingController_revokeInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SharingController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendDto"][];
+                };
+            };
+        };
+    };
+    SharingController_unfriend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SharingController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFriendDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FriendDto"];
+                };
+            };
+        };
+    };
+    SharingController_day: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedDayDto"];
+                };
+            };
+        };
+    };
+    SharingController_photo: {
+        parameters: {
+            query?: {
+                size?: "view" | "thumb";
+            };
+            header?: never;
+            path: {
+                userId: string;
+                photoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

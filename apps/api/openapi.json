@@ -2374,6 +2374,360 @@
           "meal-photos"
         ]
       }
+    },
+    "/api/v1/me/sharing": {
+      "get": {
+        "operationId": "SharingController_sharing",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "내 끼니 공개 범위",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "put": {
+        "operationId": "SharingController_setSharing",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharingSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "공개 범위 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friend-invites": {
+      "post": {
+        "operationId": "SharingController_createInvite",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendInviteDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 링크 만들기(1회용, 7일). 쓸 수 있는 링크는 5개까지",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "get": {
+        "operationId": "SharingController_invites",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FriendInviteDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "아직 쓸 수 있는 내 초대 링크",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friend-invites/{code}": {
+      "get": {
+        "operationId": "SharingController_previewInvite",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendInvitePreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 링크 미리보기(로그인 불필요): 초대한 사람의 닉네임. 만료·소진·철회는 404",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friend-invites/{code}/accept": {
+      "post": {
+        "operationId": "SharingController_acceptInvite",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "초대 수락 → 즉시 친구. 내 링크·이미 친구는 422, 쓸 수 없는 링크는 404",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friend-invites/{id}": {
+      "delete": {
+        "operationId": "SharingController_revokeInvite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "초대 링크 철회",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends": {
+      "get": {
+        "operationId": "SharingController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FriendDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "친구 목록 + 볼 수 있는 친구의 오늘 요약",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}": {
+      "patch": {
+        "operationId": "SharingController_update",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFriendDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FriendDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "이 친구에게만 내 끼니 끄기·켜기",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "delete": {
+        "operationId": "SharingController_unfriend",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "친구 끊기(양쪽 즉시)",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/days/{date}": {
+      "get": {
+        "operationId": "SharingController_day",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SharedDayDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료. 볼 수 없으면 404",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/meal-photos/{photoId}": {
+      "get": {
+        "operationId": "SharingController_photo",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "view",
+                "thumb"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "친구의 식사 사진 파일(JPEG). 볼 수 없으면 404",
+        "tags": [
+          "sharing"
+        ]
+      }
     }
   },
   "info": {
@@ -5950,6 +6304,329 @@
           "failureReason"
         ]
       },
+      "SharingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "description": "private = 나만 보기(기본), friends = 친구에게 공개",
+            "enum": [
+              "private",
+              "friends"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "visibility"
+        ]
+      },
+      "FriendInviteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "친구에게 보낼 주소 (`<웹 오리진>/invite/<code>`)"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "url",
+          "expiresAt"
+        ]
+      },
+      "FriendInvitePreviewDto": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nickname"
+        ]
+      },
+      "FriendTodayDto": {
+        "type": "object",
+        "properties": {
+          "activeSlots": {
+            "type": "number",
+            "description": "집계 대상 끼니 수 (DaySummaryDto.activeSlots 와 같은 계산)"
+          },
+          "recordedSlots": {
+            "type": "number"
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "activeSlots",
+          "recordedSlots",
+          "completed"
+        ]
+      },
+      "FriendDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "description": "친구가 된 시각",
+            "format": "date-time"
+          },
+          "shareToFriend": {
+            "type": "boolean",
+            "description": "내가 이 친구에게 끄지 않았는가(친구별 스위치). 내 공개 범위가 private 이면 이 값과 무관하게 안 보인다"
+          },
+          "shared": {
+            "type": "boolean",
+            "description": "이 친구의 끼니를 내가 볼 수 있는가. false 면 today 는 null 이고 친구의 하루는 404"
+          },
+          "today": {
+            "nullable": true,
+            "description": "친구의 오늘(친구 시간대) 요약. 볼 수 없으면 null",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FriendTodayDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "nickname",
+          "since",
+          "shareToFriend",
+          "shared",
+          "today"
+        ]
+      },
+      "UpdateFriendDto": {
+        "type": "object",
+        "properties": {
+          "shareToFriend": {
+            "type": "boolean",
+            "description": "이 친구에게 내 끼니를 보일지"
+          }
+        },
+        "required": [
+          "shareToFriend"
+        ]
+      },
+      "SharedDayOwnerDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "nickname"
+        ]
+      },
+      "SharedMealItemDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true,
+            "description": "실제로 먹은 양. 재고를 관리하지 않는 식품을 양 없이 기록했으면 null"
+          },
+          "unit": {
+            "enum": [
+              "g",
+              "ml",
+              "ea"
+            ],
+            "type": "string"
+          },
+          "displayUnit": {
+            "type": "string",
+            "description": "화면에 보일 단위(ea 식품의 '팩'·'개' 등)"
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "unit",
+          "displayUnit"
+        ]
+      },
+      "SharedPhotoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "파일은 `GET /friends/{userId}/meal-photos/{id}` 로 받는다",
+            "format": "uuid"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "expired": {
+            "type": "boolean",
+            "description": "보관 기간 지남. 파일 요청은 404"
+          }
+        },
+        "required": [
+          "id",
+          "width",
+          "height",
+          "expired"
+        ]
+      },
+      "SharedMealDto": {
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "nullable": true,
+            "description": "저장된 기록 id. 미기록 끼니는 null",
+            "format": "uuid"
+          },
+          "slot": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "afternoon_snack",
+              "dinner",
+              "evening_snack",
+              "extra"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "unrecorded",
+              "eaten",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "description": "home = 내 식품, outside = 식단 외 식사. 먹었음이 아니면 의미 없음",
+            "enum": [
+              "home",
+              "outside"
+            ],
+            "type": "string"
+          },
+          "outsideMenu": {
+            "type": "string",
+            "nullable": true,
+            "description": "식단 외 식사의 메뉴명. 그 밖에는 null"
+          },
+          "items": {
+            "description": "먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedMealItemDto"
+            }
+          },
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedPhotoDto"
+            }
+          }
+        },
+        "required": [
+          "recordId",
+          "slot",
+          "status",
+          "kind",
+          "outsideMenu",
+          "items",
+          "photos"
+        ]
+      },
+      "SharedDayDto": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "$ref": "#/components/schemas/SharedDayOwnerDto"
+          },
+          "date": {
+            "type": "string",
+            "example": "2026-11-16"
+          },
+          "today": {
+            "type": "string",
+            "description": "친구 시간대의 오늘. 이 뒤 날짜는 404",
+            "example": "2026-11-16"
+          },
+          "firstDate": {
+            "type": "string",
+            "description": "볼 수 있는 가장 이른 날짜(친구의 가입일). 이 앞 날짜는 404",
+            "example": "2026-11-07"
+          },
+          "slots": {
+            "description": "정규 끼니(하루 순서). 미기록 자유 끼니는 빠진다 (D-18)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedMealDto"
+            }
+          },
+          "extras": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SharedMealDto"
+            }
+          },
+          "nutrition": {
+            "description": "기록된 합계(먹었음 + 안 먹음 0 + 추가 간식). 미상이 있으면 complete=false (null 은 미상)",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionTotalsDto"
+              }
+            ]
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "하루 완료 여부"
+          }
+        },
+        "required": [
+          "owner",
+          "date",
+          "today",
+          "firstDate",
+          "slots",
+          "extras",
+          "nutrition",
+          "completed"
+        ]
+      },
       "ErrorFieldDto": {
         "type": "object",
         "properties": {
@@ -6009,6 +6686,10 @@
               "PHOTO_RECORD_LIMIT",
               "PHOTO_RECORD_NOT_EATEN",
               "PHOTO_STORAGE_FULL",
+              "FRIEND_INVITE_OWN",
+              "FRIEND_ALREADY",
+              "FRIEND_INVITE_LIMIT",
+              "FRIEND_LIMIT",
               "WEIGHT_EXISTS",
               "NOTIFY_TIME_REQUIRED",
               "PUSH_ENDPOINT_INVALID",
