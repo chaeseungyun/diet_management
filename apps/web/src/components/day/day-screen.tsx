@@ -22,18 +22,27 @@ import type { Friend } from '@/lib/friends';
 export async function DayScreen({
   date,
   today,
+  meId,
   openExtra = false,
 }: {
   date: string;
   today: string;
+  /** 내 끼니의 댓글 경로에 쓴다 (DEC-092) */
+  meId: string;
   /** '+ 식사 추가 → 추가 간식' 으로 들어왔을 때 간식 시트를 열어 둔다 */
   openExtra?: boolean;
 }) {
   // ⑨ 친구 오늘 줄은 오늘 화면에서만 (sharing-plan §7)
-  const [day, friends] = await Promise.all([
+  const [day, socials, friends] = await Promise.all([
     apiGet<Schemas['DayDto']>(`/days/${date}`),
+    // 친구가 남긴 반응·댓글 수 (DEC-092). 있는 끼니에만 줄이 보인다
+    apiGet<Schemas['RecordSocialDto'][]>(`/days/${date}/social`),
     date === today ? apiGet<Friend[]>('/friends') : Promise.resolve<Friend[]>([]),
   ]);
+  const social = new Map(
+    socials.filter((s) => s.reactions.length > 0 || s.commentCount > 0).map((s) => [s.recordId, s]),
+  );
+  const socialOf = (id: string | null) => ({ meId, social: id ? social.get(id) : undefined });
   const link = (d: string) => (d === today ? '/' : `/day/${d}`);
   const dayHref = link(date);
   // 식단·기록 있는 끼니를 먼저, 미기록 자유 끼니는 뒤에 흐리게 (D-18·D-20)
@@ -102,7 +111,13 @@ export async function DayScreen({
         actions={<AddMealMenu date={date} dayHref={dayHref} hiddenSlots={hidden} />}
       >
         {planned.map((s) => (
-          <SlotCard key={s.slot} record={s} date={date} highlight={day.nextSlot === s.slot} />
+          <SlotCard
+            key={s.slot}
+            record={s}
+            date={date}
+            highlight={day.nextSlot === s.slot}
+            {...socialOf(s.id)}
+          />
         ))}
         {planned.length === 0 && free.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -114,11 +129,18 @@ export async function DayScreen({
           <p className="text-xs text-muted-foreground">다음 식사: {SLOT_LABELS[day.nextSlot]}</p>
         ) : null}
         {free.map((s) => (
-          <SlotCard key={s.slot} record={s} date={date} highlight={false} />
+          <SlotCard key={s.slot} record={s} date={date} highlight={false} {...socialOf(s.id)} />
         ))}
       </Section>
 
-      <ExtrasPanel date={date} dayHref={dayHref} extras={day.extras} initialOpen={openExtra} />
+      <ExtrasPanel
+        date={date}
+        dayHref={dayHref}
+        extras={day.extras}
+        initialOpen={openExtra}
+        meId={meId}
+        socials={[...social.values()]}
+      />
 
       {day.depleting.length > 0 ? (
         <Section

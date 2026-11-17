@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
 import { MealPhotos } from './meal-photos';
+import { MealSocial, type RecordSocial } from '@/components/friends/meal-social';
 
 type Record = Schemas['MealRecordDto'];
 
@@ -24,10 +25,15 @@ export function SlotCard({
   record,
   date,
   highlight,
+  meId,
+  social,
 }: {
   record: Record;
   date: string;
   highlight: boolean;
+  meId: string;
+  /** 친구가 남긴 반응·댓글이 있을 때만 온다 (DEC-092) */
+  social?: RecordSocial;
 }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -145,6 +151,7 @@ export function SlotCard({
         </div>
       </div>
       <MealPhotos photos={record.photos} compact />
+      {social ? <MealSocial ownerId={meId} social={social} canReact={false} /> : null}
       <StatusBanner status={status} />
     </Card>
   );

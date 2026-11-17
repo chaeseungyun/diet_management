@@ -15,5 +15,7 @@ export default async function DayPage({
   if (!isValidDateString(date)) notFound();
   const me = await getMe();
   if (!me) redirect('/login');
-  return <DayScreen date={date} today={todayIn(me.timezone)} openExtra={sp.extra === '1'} />;
+  return (
+    <DayScreen date={date} today={todayIn(me.timezone)} meId={me.id} openExtra={sp.extra === '1'} />
+  );
 }

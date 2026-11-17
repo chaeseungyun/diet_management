@@ -9,12 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, EmptyState } from '@/components/ui/card';
 import { SharedPhotos } from '@/components/friends/shared-photos';
+import { MealSocial } from '@/components/friends/meal-social';
 import { cn } from '@/lib/utils';
 
 type Meal = Schemas['SharedMealDto'];
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
-/** 친구의 하루 (S-83): S-10 의 읽기 전용 축소판. 기록 버튼이 없고 서버가 고른 필드만 그린다 */
+/** 친구의 하루 (S-83): S-10 의 읽기 전용 축소판. 기록 버튼이 없고 서버가 고른 필드만 그린다. 쓰는 것은 반응·댓글뿐 (DEC-092) */
 export default async function FriendDayPage({
   params,
 }: {
@@ -172,6 +173,7 @@ function MealCard({ meal, ownerId }: { meal: Meal; ownerId: string }) {
         )}
       </div>
       <SharedPhotos ownerId={ownerId} photos={meal.photos} />
+      {meal.social ? <MealSocial ownerId={ownerId} social={meal.social} canReact /> : null}
     </Card>
   );
 }

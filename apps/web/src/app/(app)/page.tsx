@@ -14,5 +14,5 @@ export default async function HomePage({
   if (!me) redirect('/login');
   if (!me.onboardedAt) redirect('/onboarding');
   const today = todayIn(me.timezone);
-  return <DayScreen date={today} today={today} openExtra={sp.extra === '1'} />;
+  return <DayScreen date={today} today={today} meId={me.id} openExtra={sp.extra === '1'} />;
 }

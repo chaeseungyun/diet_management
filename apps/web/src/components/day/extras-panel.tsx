@@ -14,6 +14,7 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker, type ProductDto } from '@/components/products/product-picker';
 import { MealPhotos, discardDraftPhotos, type MealPhoto } from './meal-photos';
+import { MealSocial, type RecordSocial } from '@/components/friends/meal-social';
 
 type Record = Schemas['MealRecordDto'];
 
@@ -45,7 +46,12 @@ export function ExtrasPanel({
   dayHref,
   extras,
   initialOpen = false,
+  meId,
+  socials,
 }: {
+  meId: string;
+  /** 반응·댓글이 달린 기록만 (DEC-092) */
+  socials: RecordSocial[];
   date: string;
   /** 이 날의 오늘 화면 경로. 시트를 닫을 때 ?extra=1 을 지우는 데 쓴다 */
   dayHref: string;
@@ -174,6 +180,11 @@ export function ExtrasPanel({
               compact
               edit={{ recordId: x.id, onChange: () => router.refresh() }}
             />
+            {socials
+              .filter((s) => s.recordId === x.id)
+              .map((s) => (
+                <MealSocial key={s.recordId} ownerId={meId} social={s} canReact={false} />
+              ))}
           </Card>
         ))
       )}
