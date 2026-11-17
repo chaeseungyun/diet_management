@@ -30,6 +30,7 @@ import { PhotosService } from '../photos/photos.service';
 import { sendPhoto } from '../photos/photo-response';
 import { FriendsService } from './friends.service';
 import {
+  BlockedUserDto,
   FriendDto,
   FriendInviteDto,
   FriendInvitePreviewDto,
@@ -114,6 +115,32 @@ export class SharingController {
   @ApiOkResponse({ type: FriendDto, isArray: true })
   list(@CurrentUser() user: User): Promise<FriendDto[]> {
     return this.friends.listFriends(user);
+  }
+
+  @Get('friends/blocked')
+  @ApiOperation({ summary: '내가 차단한 사람 목록' })
+  @ApiOkResponse({ type: BlockedUserDto, isArray: true })
+  listBlocked(@CurrentUser() user: User): Promise<BlockedUserDto[]> {
+    return this.friends.listBlocked(user);
+  }
+
+  @Post('friends/:userId/block')
+  @HttpCode(204)
+  @ApiOperation({ summary: '친구 차단(친구 끊기 + 다시 친구 맺기·서로의 반응·댓글·알림 막기)' })
+  @ApiNoContentResponse()
+  block(@CurrentUser() user: User, @Param('userId', UuidParamPipe) userId: string): Promise<void> {
+    return this.friends.block(user, userId);
+  }
+
+  @Delete('friends/:userId/block')
+  @HttpCode(204)
+  @ApiOperation({ summary: '차단 해제(친구로 돌아가지 않음)' })
+  @ApiNoContentResponse()
+  unblock(
+    @CurrentUser() user: User,
+    @Param('userId', UuidParamPipe) userId: string,
+  ): Promise<void> {
+    return this.friends.unblock(user, userId);
   }
 
   @Patch('friends/:userId')

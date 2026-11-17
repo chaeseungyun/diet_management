@@ -128,7 +128,7 @@ enum ShareVisibility {
   friends
 }
 
-/// 친구 관계 상태. pending·blocked 는 친구 코드 요청·차단 묶음(공유-1b)에서 쓴다
+/// 친구 관계 상태. blocked 는 차단(DEC-097). pending 은 친구 코드 요청용이었으나 만들지 않아 쓰지 않는다(DEC-092)
 enum FriendLinkStatus {
   pending
   accepted

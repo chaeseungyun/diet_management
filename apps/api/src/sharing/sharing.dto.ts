@@ -94,6 +94,15 @@ export class FriendDto {
   today!: FriendTodayDto | null;
 }
 
+/** 내가 차단한 사람 (DEC-097) */
+export class BlockedUserDto {
+  @ApiProperty({ format: 'uuid' })
+  userId!: string;
+
+  @ApiProperty()
+  nickname!: string;
+}
+
 export class UpdateFriendDto {
   /** 이 친구에게 내 끼니를 보일지 */
   @ApiProperty()

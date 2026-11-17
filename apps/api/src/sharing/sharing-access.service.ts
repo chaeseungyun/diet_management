@@ -21,7 +21,7 @@ export function ownerShares(link: FriendLink, owner: User): boolean {
 /**
  * 끼니 공유의 접근 판정 (sharing-plan §3, DEC-066·090).
  * 사용자 격리(NFR-04)의 유일한 예외다: 남의 데이터를 읽는 코드는 반드시 여기서 owner 를 받아서만 읽는다.
- * 판정 실패는 이유(없는 사용자·친구 아님·비공개·친구별 끄기·탈퇴)와 무관하게 같은 404 다 (D-06).
+ * 판정 실패는 이유(없는 사용자·친구 아님·비공개·친구별 끄기·탈퇴·차단)와 무관하게 같은 404 다 (D-06).
  */
 @Injectable()
 export class SharingAccessService {
@@ -37,6 +37,26 @@ export class SharingAccessService {
     const owner = link.userLowId === ownerId ? link.userLow : link.userHigh;
     if (!ownerShares(link, owner)) throw new NotFoundException();
     return owner;
+  }
+
+  /**
+   * userId 와 차단 관계인 사람들(내가 차단했거나 나를 차단한 사람, DEC-097).
+   * 같은 친구의 끼니에 서로 남긴 반응·댓글을 서로에게 숨기고, 서로의 알림을 막는 데 쓴다.
+   */
+  async blockedWith(userId: string): Promise<string[]> {
+    const links = await this.prisma.friendLink.findMany({
+      where: { status: 'blocked', OR: [{ userLowId: userId }, { userHighId: userId }] },
+      select: { userLowId: true, userHighId: true },
+    });
+    return links.map((l) => (l.userLowId === userId ? l.userHighId : l.userLowId));
+  }
+
+  async isBlocked(a: string, b: string): Promise<boolean> {
+    const link = await this.prisma.friendLink.findUnique({
+      where: { userLowId_userHighId: friendPair(a, b) },
+      select: { status: true },
+    });
+    return link?.status === 'blocked';
   }
 
   /**

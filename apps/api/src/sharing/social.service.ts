@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { User } from '@prisma/client';
+import type { MealRecord, User } from '@prisma/client';
 import { COMMENT_MAX_PER_RECORD, REACTION_EMOJIS, type ReactionEmoji } from '@diet/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { unprocessable } from '../common/errors';
@@ -21,8 +21,15 @@ export class SocialService {
     private readonly notify: SocialNotifyService,
   ) {}
 
-  /** 기록들의 반응 집계·내 반응·댓글 수. 접근 판정은 부르는 쪽이 끝낸 기록 id 만 넘긴다 */
-  async summaries(viewerId: string, recordIds: string[]): Promise<Map<string, RecordSocialDto>> {
+  /**
+   * 기록들의 반응 집계·내 반응·댓글 수. 접근 판정은 부르는 쪽이 끝낸 기록 id 만 넘긴다.
+   * recordIds 는 모두 ownerId 의 기록이어야 한다(친구의 하루·내 하루 단위로 부른다).
+   */
+  async summaries(
+    viewerId: string,
+    ownerId: string,
+    recordIds: string[],
+  ): Promise<Map<string, RecordSocialDto>> {
     const out = new Map<string, RecordSocialDto>(
       recordIds.map((id) => [
         id,
@@ -30,8 +37,8 @@ export class SocialService {
       ]),
     );
     if (recordIds.length === 0) return out;
-    // 탈퇴(삭제 대기)한 사용자가 남긴 것은 세지 않는다
-    const alive = { user: { deletedAt: null } };
+    // 탈퇴(삭제 대기)한 사용자와 차단 관계인 사람(DEC-097)이 남긴 것은 세지 않는다
+    const alive = await this.visibleAuthors(viewerId, ownerId);
     const [reactions, comments] = await Promise.all([
       this.prisma.mealReaction.findMany({
         where: { mealRecordId: { in: recordIds }, ...alive },
@@ -66,6 +73,7 @@ export class SocialService {
       ...(
         await this.summaries(
           user.id,
+          user.id,
           records.map((r) => r.id),
         )
       ).values(),
@@ -89,7 +97,7 @@ export class SocialService {
       update: { emoji },
     });
     this.notify.reaction(viewer, record, emoji);
-    return this.one(viewer.id, record.id);
+    return this.one(viewer.id, record);
   }
 
   async clearReaction(viewer: User, ownerId: string, recordId: string): Promise<RecordSocialDto> {
@@ -99,7 +107,7 @@ export class SocialService {
     await this.prisma.mealReaction.deleteMany({
       where: { mealRecordId: record.id, userId: viewer.id },
     });
-    return this.one(viewer.id, record.id);
+    return this.one(viewer.id, record);
   }
 
   // ---------- 댓글: 볼 수 있는 친구와 기록 소유자 ----------
@@ -109,7 +117,7 @@ export class SocialService {
       allowOwner: true,
     });
     const rows = await this.prisma.mealComment.findMany({
-      where: { mealRecordId: record.id, user: { deletedAt: null } },
+      where: { mealRecordId: record.id, ...(await this.visibleAuthors(viewer.id, owner.id)) },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       include: {
         user: { select: { nickname: true } },
@@ -175,9 +183,20 @@ export class SocialService {
   async setLike(viewer: User, commentId: string, liked: boolean): Promise<CommentLikeDto> {
     const comment = await this.prisma.mealComment.findUnique({
       where: { id: commentId },
-      select: { id: true, mealRecordId: true, mealRecord: { select: { userId: true } } },
+      select: {
+        id: true,
+        userId: true,
+        mealRecordId: true,
+        mealRecord: { select: { userId: true } },
+      },
     });
     if (!comment) throw new NotFoundException();
+    // 숨은 댓글(나 또는 끼니 주인과 차단 관계인 사람의 것)은 없는 댓글과 같다 (DEC-097)
+    const [blockedWithMe, blockedWithOwner] = await Promise.all([
+      this.access.isBlocked(viewer.id, comment.userId),
+      this.access.isBlocked(comment.mealRecord.userId, comment.userId),
+    ]);
+    if (blockedWithMe || blockedWithOwner) throw new NotFoundException();
     // 댓글 id 만으로 들어오므로 기록의 소유자를 찾아 같은 판정을 다시 거친다
     await this.access.resolveRecord(viewer, comment.mealRecord.userId, comment.mealRecordId, {
       allowOwner: true,
@@ -196,7 +215,25 @@ export class SocialService {
     return { likeCount, likedByMe: liked };
   }
 
-  private async one(viewerId: string, recordId: string): Promise<RecordSocialDto> {
-    return (await this.summaries(viewerId, [recordId])).get(recordId)!;
+  /**
+   * owner 의 끼니에서 viewer 에게 보이는 반응·댓글의 작성자 조건 (DEC-097): 탈퇴하지 않았고,
+   * viewer 와 차단 관계가 아니며(같은 친구의 끼니에서도 서로 안 보임), 끼니 주인과도 차단 관계가 아니다
+   * (주인이 차단한 사람의 흔적은 그 끼니에서 모두에게 숨는다 — 주인이 보지도 지우지도 못하는 댓글이 남지 않게).
+   * 차단은 행을 지우지 않고 숨기기만 하므로 해제하면 다시 보인다.
+   */
+  private async visibleAuthors(viewerId: string, ownerId: string) {
+    const [mine, owners] = await Promise.all([
+      this.access.blockedWith(viewerId),
+      viewerId === ownerId ? Promise.resolve([]) : this.access.blockedWith(ownerId),
+    ]);
+    const blocked = [...new Set([...mine, ...owners])];
+    return {
+      user: { deletedAt: null },
+      ...(blocked.length > 0 ? { userId: { notIn: blocked } } : {}),
+    };
+  }
+
+  private async one(viewerId: string, record: MealRecord): Promise<RecordSocialDto> {
+    return (await this.summaries(viewerId, record.userId, [record.id])).get(record.id)!;
   }
 }

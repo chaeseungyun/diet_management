@@ -1007,6 +1007,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/friends/blocked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내가 차단한 사람 목록 */
+        get: operations["SharingController_listBlocked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 친구 차단(친구 끊기 + 다시 친구 맺기·서로의 반응·댓글·알림 막기) */
+        post: operations["SharingController_block"];
+        /** 차단 해제(친구로 돌아가지 않음) */
+        delete: operations["SharingController_unblock"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/friends/{userId}": {
         parameters: {
             query?: never;
@@ -2309,6 +2344,11 @@ export interface components {
             shared: boolean;
             /** @description 친구의 오늘(친구 시간대) 요약. 볼 수 없으면 null */
             today: components["schemas"]["FriendTodayDto"] | null;
+        };
+        BlockedUserDto: {
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
         };
         UpdateFriendDto: {
             /** @description 이 친구에게 내 끼니를 보일지 */
@@ -4145,6 +4185,63 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FriendDto"][];
                 };
+            };
+        };
+    };
+    SharingController_listBlocked: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlockedUserDto"][];
+                };
+            };
+        };
+    };
+    SharingController_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SharingController_unblock: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

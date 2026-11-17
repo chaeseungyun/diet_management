@@ -13,12 +13,12 @@ import { Dialog } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 
-/** S-80 친구 한 줄: 누르면 친구의 오늘(S-83), ⋮ 로 이 친구에게 숨기기·친구 끊기 */
+/** S-80 친구 한 줄: 누르면 친구의 오늘(S-83), ⋮ 로 이 친구에게 숨기기·친구 끊기·차단(DEC-097) */
 export function FriendRow({ friend }: { friend: Friend }) {
   const router = useRouter();
   const { status, run } = useStatus();
   const [open, setOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState<'unfriend' | 'block' | null>(null);
   const [busy, setBusy] = useState(false);
   const href = friendDayHref(friend);
 
@@ -59,7 +59,7 @@ export function FriendRow({ friend }: { friend: Friend }) {
         type="button"
         aria-label={`${friend.nickname} 관리`}
         onClick={() => {
-          setConfirming(false);
+          setConfirming(null);
           setOpen(true);
         }}
         className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -88,27 +88,46 @@ export function FriendRow({ friend }: { friend: Friend }) {
         {confirming ? (
           <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">
             <p className="text-sm">
-              {friend.nickname}님과 친구를 끊을까요? 서로의 끼니가 바로 보이지 않게 돼요.
+              {confirming === 'unfriend'
+                ? `${friend.nickname}님과 친구를 끊을까요? 서로의 끼니가 바로 보이지 않게 돼요.`
+                : `${friend.nickname}님을 차단할까요? 친구가 끊기고, 내 초대 링크로 다시 친구가 될 수 없어요. 같은 친구의 끼니에 남긴 반응·댓글도 서로 보이지 않고 알림도 오지 않아요. 상대에게는 알리지 않아요.`}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" disabled={busy} onClick={() => setConfirming(false)}>
+              <Button variant="outline" disabled={busy} onClick={() => setConfirming(null)}>
                 취소
               </Button>
-              <Button
-                variant="destructive"
-                disabled={busy}
-                onClick={() =>
-                  act(() => api('DELETE', `/friends/${friend.userId}`), '친구를 끊었어요', true)
-                }
-              >
-                친구 끊기
-              </Button>
+              {confirming === 'unfriend' ? (
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() =>
+                    act(() => api('DELETE', `/friends/${friend.userId}`), '친구를 끊었어요', true)
+                  }
+                >
+                  친구 끊기
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() =>
+                    act(() => api('POST', `/friends/${friend.userId}/block`), '차단했어요', true)
+                  }
+                >
+                  차단
+                </Button>
+              )}
             </div>
           </div>
         ) : (
-          <Button variant="outline" disabled={busy} onClick={() => setConfirming(true)}>
-            친구 끊기
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => setConfirming('unfriend')}>
+              친구 끊기
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={() => setConfirming('block')}>
+              차단
+            </Button>
+          </div>
         )}
       </Dialog>
     </Card>

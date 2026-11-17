@@ -149,6 +149,9 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 | `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `date`·`activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
 | `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 내 끼니 끄기·켜기 | 친구가 아니면 404 |
 | `DELETE /friends/{userId}` | 친구 끊기(양쪽 즉시) | |
+| `POST /friends/{userId}/block` | 차단(204): 친구가 끊기고 어느 쪽의 초대 링크도 404, 서로의 반응·댓글 숨김·알림 막기 | 지금 친구만. 그 밖(상대가 나를 차단함 포함)은 404, 이미 내가 차단했으면 204. DEC-097 |
+| `DELETE /friends/{userId}/block` | 차단 해제(204, 관계 행 삭제 — 친구로 돌아가지 않음) | 내가 차단한 사람만, 그 밖은 404 |
+| `GET /friends/blocked` | 내가 차단한 사람 `[{userId, nickname}]`(닉네임 순, 탈퇴 대기 포함) | 나를 차단한 사람은 없다 |
 | `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed` | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·체중·목표·재고는 없다 |
 | `GET /friends/{userId}/meal-photos/{photoId}?size=thumb` | 친구의 식사 사진(JPEG) | 기록에 붙은 사진만. 캐시 규칙은 §8-1 과 같다 |
 
@@ -168,7 +171,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 친구의 하루(`SharedMealDto`)에는 `social`(`RecordSocialDto`, 미기록 끼니는 null)이 실린다.
 
-친구 코드 요청(`/friends/requests`)·차단(`/friends/{userId}/block`)·`friend-code` 는 공유-1b, 반응·댓글은 공유-2 다.
+친구 코드 요청(`/friends/requests`)·`friend-code` 는 만들지 않는다(DEC-092). 차단 관계인 두 사람은 서로의 댓글·반응을 보지 못하고(같은 친구의 끼니에서도, 목록과 수 모두), 끼니 주인과 차단 관계인 사람의 댓글·반응은 그 끼니에서 모두에게 숨는다. 숨은 댓글의 좋아요는 404 다(DEC-097).
 
 반응·댓글·댓글 좋아요·친구 수락은 쓰기가 끝난 뒤 친구 소식 알림을 보낸다(§11, DEC-096). 응답은 발송을 기다리지 않는다.
 

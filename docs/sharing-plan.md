@@ -8,6 +8,8 @@
 >
 > 2026-11-17(DEC-095): **친구 캘린더(`GET /friends/{userId}/days`)는 잠정 보류**. 공유-2b 는 알림만 만든다.
 >
+> 2026-11-17 구현(DEC-097): **차단**. 친구만 차단하고, 차단하면 친구가 끊기며 어느 쪽의 초대 링크도 404. 서로 남긴 반응·댓글은 지우지 않고 서로에게 숨기며(같은 친구의 끼니 포함), 서로의 알림도 막는다. 해제는 행 삭제라 친구로 돌아가지 않는다. 친구 코드가 없으므로 §5·§9-4 의 '코드 요청 202' 는 해당 없음.
+>
 > 2026-11-17 구현(DEC-096): 알림은 반응·댓글·댓글 좋아요·친구 수락 4종, 스위치 하나(기본 켬), 요청에서 바로 발송. `friend_request`·`friend_day_completed` 는 만들지 않았고, 유니크는 새 열 없이 `target_key` 로 해결했다(§9-7 닫힘).
 
 ## 1. 목적과 범위
@@ -136,7 +138,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 | `POST /friends/requests` `{friendCode}` | 코드로 요청 | 항상 202(차단·없는 코드도 같은 응답, §9-4). 자기 코드·이미 친구는 422 |
 | `POST /friends/requests/{id}/accept` · `/decline` | 수락·거절(거절은 행 삭제) | |
 | `DELETE /friends/{userId}` | 친구 끊기(행 삭제, 양쪽 즉시) | |
-| `POST /friends/{userId}/block` · `DELETE /friends/{userId}/block` | 차단·해제 | |
+| `POST /friends/{userId}/block` · `DELETE /friends/{userId}/block` | 차단·해제 | 구현(DEC-097). 친구만 차단, 해제는 행 삭제(친구로 돌아가지 않음). `GET /friends/blocked` 로 내가 차단한 사람 |
 | `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 끄기/켜기 | 방향 플래그 |
 | `GET /friends/{userId}/days/{date}` | **친구의 하루** `SharedDayDto`: 닉네임, 날짜, 끼니[슬롯·상태·종류·품목(이름·실제량·단위)·식단 외 메뉴명·사진], 추가 간식, 영양 합계(기록된 합계, 미상 표시 포함), 완료, 끼니별 반응 집계·내 반응·댓글 수 | 접근 불가·미래·가입 전은 404. 가입일 이후 전부(§9-3). 미기록 자유 끼니 제외(D-18) |
 | `GET /friends/{userId}/days?from=&to=` | 캘린더용 요약(완료·기록 수) | 공유-2, 최대 31일. **보류(DEC-095)** |

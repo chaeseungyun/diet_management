@@ -18,6 +18,7 @@ import { SocialService } from './social.service';
 import { SocialNotifyService } from './social-notify.service';
 import type { RecordSocialDto } from './social.dto';
 import {
+  BlockedUserDto,
   FriendDto,
   FriendInviteDto,
   FriendInvitePreviewDto,
@@ -184,6 +185,49 @@ export class FriendsService {
     if (r.count === 0) throw new NotFoundException();
   }
 
+  // ---------- 차단 (DEC-097) ----------
+
+  /**
+   * 친구를 차단한다: 관계 행을 blocked 로 바꿔 친구가 끊기고, 상대는 내 초대 링크로 다시 친구가 될 수 없다.
+   * 차단할 수 있는 건 지금 친구인 사람뿐이다. 이미 내가 차단했으면 그대로 성공, 그 밖(친구 아님·상대가 나를 차단함)은 404.
+   * 상대에게 알리지 않으며, 상대 쪽에서는 친구 끊기와 똑같이 보인다.
+   */
+  async block(user: User, otherId: string, now: Date = new Date()): Promise<void> {
+    const pair = friendPair(user.id, otherId);
+    const r = await this.prisma.friendLink.updateMany({
+      where: { ...pair, status: 'accepted' },
+      data: { status: 'blocked', blockedBy: user.id, respondedAt: now },
+    });
+    if (r.count > 0) return;
+    const already = await this.prisma.friendLink.count({
+      where: { ...pair, status: 'blocked', blockedBy: user.id },
+    });
+    if (already === 0) throw new NotFoundException();
+  }
+
+  /** 차단 해제 = 관계 행 삭제. 친구로 돌아가지 않으며 다시 친구가 되려면 초대 링크가 필요하다 */
+  async unblock(user: User, otherId: string): Promise<void> {
+    const r = await this.prisma.friendLink.deleteMany({
+      where: { ...friendPair(user.id, otherId), status: 'blocked', blockedBy: user.id },
+    });
+    if (r.count === 0) throw new NotFoundException();
+  }
+
+  /**
+   * 내가 차단한 사람, 닉네임 순. 나를 차단한 사람은 싣지 않는다.
+   * 탈퇴 대기 중인 사람도 싣는다: 해제할 곳이 여기뿐이다(완전 삭제되면 행이 CASCADE 로 사라진다).
+   */
+  async listBlocked(user: User): Promise<BlockedUserDto[]> {
+    const links = await this.prisma.friendLink.findMany({
+      where: { status: 'blocked', blockedBy: user.id },
+      include: { userLow: true, userHigh: true },
+    });
+    return links
+      .map((l) => this.other(user, l))
+      .map((u) => ({ userId: u.id, nickname: u.nickname }))
+      .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ko'));
+  }
+
   /** 이 친구에게만 내 끼니를 끄거나 켠다(방향 플래그) */
   async setShareToFriend(user: User, otherId: string, share: boolean): Promise<FriendDto> {
     const pair = friendPair(user.id, otherId);
@@ -216,6 +260,7 @@ export class FriendsService {
       .map((s) => s.record);
     const social = await this.social.summaries(
       viewer.id,
+      owner.id,
       [...slots, ...day.extras]
         .filter((r) => r.id !== null && r.status !== 'unrecorded')
         .map((r) => r.id as string),

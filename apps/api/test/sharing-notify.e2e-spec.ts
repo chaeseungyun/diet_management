@@ -196,6 +196,17 @@ describe('phase 4: sharing-2b (social notifications)', () => {
     expect((await sent()).map((x) => x.to)).toEqual(['a']);
   });
 
+  it('sends nothing between people who blocked each other (DEC-097)', async () => {
+    // B 와 C 가 친구였다가 C 가 B 를 차단했다. 둘 다 A 의 친구라 A 의 끼니는 둘 다 본다
+    await befriend(b, c);
+    await c.post(`/friends/${bId}/block`).expect(204);
+    await b.post(`${rec()}/comments`).send({ body: '맛있겠다' }).expect(201);
+    await reset();
+    // C 의 댓글은 주인 A 에게만, 먼저 단 B 에게는 가지 않는다
+    await c.post(`${rec()}/comments`).send({ body: '나도' }).expect(201);
+    expect((await sent()).map((x) => x.to)).toEqual(['a']);
+  });
+
   it('tells a comment writer about a like once, and not about their own', async () => {
     await b.post(`${rec()}/comments`).send({ body: '맛있겠다' }).expect(201);
     const [comment] = (await a.get(`${rec()}/comments`).expect(200)).body as { id: string }[];

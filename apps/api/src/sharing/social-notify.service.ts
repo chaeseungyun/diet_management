@@ -25,7 +25,7 @@ function mealLabel(record: Pick<MealRecord, 'mealDate' | 'slot'>): string {
  * 친구 소식 알림 (공유-2b, DEC-096): 반응·댓글·댓글 좋아요·친구 수락.
  * 요청을 처리한 쪽(SocialService·FriendsService)이 쓰기를 끝낸 뒤 부른다. 발송은 기다리지 않고 뒤에서 하며,
  * 실패는 로그만 남기고 요청에 영향을 주지 않는다. 중복은 발송 기록의 유니크가 막는다.
- * 받는 사람은 지금 그 끼니를 볼 수 있는 사람만이고, 한 일을 한 본인은 받지 않는다.
+ * 받는 사람은 지금 그 끼니를 볼 수 있는 사람만이고, 한 일을 한 본인과 한 사람과 차단 관계인 사람은 받지 않는다.
  */
 @Injectable()
 export class SocialNotifyService {
@@ -78,7 +78,10 @@ export class SocialNotifyService {
         ...(actor.id === record.userId ? [] : [record.userId]),
         ...earlier.map((c) => c.userId),
       ];
+      const blocked = new Set(await this.access.blockedWith(actor.id));
       for (const userId of recipients) {
+        // 차단 관계인 사람에게는 보내지 않는다(DEC-097). 주인은 actor 가 볼 수 있으니 차단일 수 없다
+        if (blocked.has(userId)) continue;
         if (userId !== record.userId && !(await this.canView(userId, record.userId))) continue;
         await this.send(userId, {
           type: 'friend_comment',
@@ -106,6 +109,7 @@ export class SocialNotifyService {
         include: { mealRecord: true },
       });
       if (!comment || comment.userId === actor.id) return;
+      if (await this.access.isBlocked(actor.id, comment.userId)) return;
       const record = comment.mealRecord;
       if (
         comment.userId !== record.userId &&

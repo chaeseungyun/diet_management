@@ -2583,6 +2583,77 @@
         ]
       }
     },
+    "/api/v1/friends/blocked": {
+      "get": {
+        "operationId": "SharingController_listBlocked",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BlockedUserDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "내가 차단한 사람 목록",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/block": {
+      "post": {
+        "operationId": "SharingController_block",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "친구 차단(친구 끊기 + 다시 친구 맺기·서로의 반응·댓글·알림 막기)",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "delete": {
+        "operationId": "SharingController_unblock",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "차단 해제(친구로 돌아가지 않음)",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
     "/api/v1/friends/{userId}": {
       "patch": {
         "operationId": "SharingController_update",
@@ -6741,6 +6812,22 @@
           "shareToFriend",
           "shared",
           "today"
+        ]
+      },
+      "BlockedUserDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "nickname"
         ]
       },
       "UpdateFriendDto": {

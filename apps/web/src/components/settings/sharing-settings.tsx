@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { ShareVisibility } from '@diet/shared';
 import { api } from '@/lib/client';
+import type { Schemas } from '@/lib/api';
 import type { Friend } from '@/lib/friends';
 import { Section } from '@/components/shell/page';
 import { Button } from '@/components/ui/button';
@@ -13,23 +14,27 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 
 const LABELS: Record<ShareVisibility, string> = { private: '나만 보기', friends: '친구에게 공개' };
 
-/** S-84 공유 설정: 공개 범위(즉시 저장) + 친구별 스위치 */
+/** S-84 공유 설정: 공개 범위(즉시 저장) + 친구별 스위치 + 차단한 사람(해제) */
 export function SharingSettings({
   visibility: initial,
   friends,
+  blocked,
 }: {
   visibility: ShareVisibility;
   friends: Friend[];
+  blocked: Schemas['BlockedUserDto'][];
 }) {
   const router = useRouter();
   const { status, run } = useStatus();
+  // 차단 해제 결과는 그 칸에 띄운다(맨 위 배너는 스크롤 밖일 수 있다)
+  const unblockStatus = useStatus();
   const [visibility, setVisibility] = useState(initial);
   const [busy, setBusy] = useState(false);
 
-  async function save(work: () => Promise<unknown>, saved: string) {
+  async function save(work: () => Promise<unknown>, saved: string, runner = run) {
     setBusy(true);
     try {
-      await run(work, saved);
+      await runner(work, saved);
       router.refresh();
     } catch {
       // 배너가 표시한다
@@ -108,6 +113,38 @@ export function SharingSettings({
             지금은 &apos;나만 보기&apos; 라 위 스위치와 상관없이 아무에게도 보이지 않아요.
           </p>
         ) : null}
+      </Section>
+
+      <Section title="차단한 사람">
+        {blocked.length === 0 ? (
+          <EmptyState>차단한 사람이 없어요. 친구 화면의 ⋮ 에서 차단할 수 있어요.</EmptyState>
+        ) : (
+          <Card className="flex flex-col divide-y divide-border">
+            {blocked.map((u) => (
+              <div key={u.userId} className="flex items-center justify-between gap-2 p-3">
+                <span className="text-sm">{u.nickname}</span>
+                <Button
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                  disabled={busy}
+                  onClick={() =>
+                    save(
+                      () => api('DELETE', `/friends/${u.userId}/block`),
+                      `${u.nickname}님 차단을 풀었어요`,
+                      unblockStatus.run,
+                    )
+                  }
+                >
+                  차단 해제
+                </Button>
+              </div>
+            ))}
+          </Card>
+        )}
+        <StatusBanner status={unblockStatus.status} />
+        <p className="text-xs text-muted-foreground">
+          차단을 풀어도 친구로 돌아가지는 않아요. 다시 친구가 되려면 초대 링크를 보내 주세요.
+        </p>
       </Section>
     </>
   );
