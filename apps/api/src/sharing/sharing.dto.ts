@@ -15,6 +15,7 @@ import {
   type StockUnit,
 } from '@diet/shared';
 import { NutritionTotalsDto } from '../common/nutrition.dto';
+import { RecordSocialDto } from './social.dto';
 
 export class SharingSettingsDto {
   /** private = 나만 보기(기본), friends = 친구에게 공개 */
@@ -161,6 +162,10 @@ export class SharedMealDto {
 
   @ApiProperty({ type: SharedPhotoDto, isArray: true })
   photos!: SharedPhotoDto[];
+
+  /** 반응 집계·내 반응·댓글 수. 미기록 끼니는 null (반응·댓글을 달 수 없다) */
+  @ApiProperty({ type: RecordSocialDto, nullable: true })
+  social!: RecordSocialDto | null;
 }
 
 export class SharedDayOwnerDto {

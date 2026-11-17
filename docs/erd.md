@@ -327,6 +327,9 @@ erDiagram
 | MealPhoto | 식사 사진(단계 3, EXT-02a) | `user_id`, `meal_record_id`(null = 기록 저장 전 임시 사진, 기록 삭제 시 SET NULL), `path`·`thumb_path`(`PHOTOS_DIR` 기준), `bytes`, `width`·`height`, `expires_at`, `deleted_at`(사용자 삭제 → 파일·행 제거), `purged_at`(만료로 파일만 제거, 행은 자리 표시). 파일은 백업 밖 | DEC-069, DEC-086 |
 | FriendLink | 친구 관계(단계 4, 공유-1a) | 두 사용자 쌍에 1행: `user_low_id` < `user_high_id` 유니크. `status`(pending·accepted·blocked — 1a 는 accepted 만 만든다), `requested_by`, `blocked_by`, 방향별 친구별 끄기 `low_shares_to_high`·`high_shares_to_low`. 끊기는 행 삭제. 사용자 삭제 시 CASCADE | DEC-066, DEC-090 |
 | FriendInvite | 초대 링크(단계 4, 공유-1a) | `user_id`, `code`(유니크, 120비트 랜덤), `expires_at`(7일), `max_uses`(1)·`used_count`, `revoked_at`. `users.share_visibility`(private·friends, 기본 private)와 함께 쓴다 | DEC-066, DEC-090 |
+| MealReaction | 끼니 반응(단계 4, 공유-2a) | `meal_record_id`·`user_id`(반응한 친구) 유니크, `emoji`(허용 6개). 기록·사용자 삭제 시 cascade, 기록이 미기록으로 돌아가면 삭제 | DEC-092 |
+| MealComment | 끼니 댓글(공유-2a) | `meal_record_id`, `user_id`(친구 또는 소유자), `body`(1~500자). 평면, 지우면 행 삭제. 기록당 100개 | DEC-092 |
+| CommentLike | 댓글 좋아요(공유-2a) | PK (`comment_id`, `user_id`). 댓글 삭제 시 cascade | DEC-092 |
 | DayCompletion | 하루 완료 표시 | (user, on_date) 유니크. `nutrition_complete`는 완료 시점 계산값이며 통계 조회 시 재검증 | FR-06 |
 | WeightRecord | 날짜별 대표 체중 | (user, on_date) 유니크, 덮어쓰기 확인. 미측정일은 행 없음(0 아님) | FR-07 |
 | NotificationSetting | 알림 종류별 설정 | (user, kind) 유니크. 슬롯 5종 + 미기록 재알림 + 소진 알림(DEC-074) + 하루 완료(DEC-084). 행이 없을 때 끼니·재알림은 off, 하루 완료·소진은 on | FR-08, FR-09 |

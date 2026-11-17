@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { FriendLink, User } from '@prisma/client';
+import type { FriendLink, MealRecord, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** 두 사용자 id 를 (작은 쪽, 큰 쪽)으로 놓는다. friend_links 는 쌍마다 1행이다 */
@@ -37,5 +37,27 @@ export class SharingAccessService {
     const owner = link.userLowId === ownerId ? link.userLow : link.userHigh;
     if (!ownerShares(link, owner)) throw new NotFoundException();
     return owner;
+  }
+
+  /**
+   * 반응·댓글이 달리는 기록 (DEC-092). viewer 가 owner 의 끼니를 볼 수 있고, 그 기록이 owner 의 것이며
+   * 미기록이 아니어야 한다. allowOwner 면 소유자 본인도 통과한다(자기 끼니의 댓글 읽기·쓰기·지우기).
+   * 실패는 모두 같은 404.
+   */
+  async resolveRecord(
+    viewer: User,
+    ownerId: string,
+    recordId: string,
+    opts: { allowOwner: boolean },
+  ): Promise<{ owner: User; record: MealRecord }> {
+    const owner =
+      opts.allowOwner && viewer.id === ownerId
+        ? viewer
+        : await this.resolveViewable(viewer.id, ownerId);
+    const record = await this.prisma.mealRecord.findFirst({
+      where: { id: recordId, userId: owner.id, status: { not: 'unrecorded' } },
+    });
+    if (!record) throw new NotFoundException();
+    return { owner, record };
   }
 }

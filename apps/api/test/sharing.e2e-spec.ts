@@ -326,7 +326,7 @@ describe('phase 4: sharing-1a', () => {
     expect(body).toMatchObject({ date: TODAY, today: TODAY, firstDate: TODAY, completed: false });
     for (const meal of [...body.slots, ...body.extras]) {
       expect(Object.keys(meal).sort()).toEqual(
-        ['items', 'kind', 'outsideMenu', 'photos', 'recordId', 'slot', 'status'].sort(),
+        ['items', 'kind', 'outsideMenu', 'photos', 'recordId', 'slot', 'social', 'status'].sort(),
       );
     }
     // 미기록 자유 끼니(오후 간식)는 없다 (D-18). 미기록 식단 끼니(점심)는 상태만 보인다

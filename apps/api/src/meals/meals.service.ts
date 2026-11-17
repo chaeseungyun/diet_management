@@ -696,6 +696,12 @@ export class MealsService {
     if (eaten) await this.photos.attach(tx, user.id, record.id, dto.photoIds ?? []);
     else await this.photos.markRecordDeleted(tx, record.id);
 
+    // 미기록으로 돌아가면 친구가 남긴 반응·댓글(좋아요는 댓글을 따라 지워진다)을 함께 지운다 (DEC-092)
+    if (dto.status === 'unrecorded') {
+      await tx.mealReaction.deleteMany({ where: { mealRecordId: record.id } });
+      await tx.mealComment.deleteMany({ where: { mealRecordId: record.id } });
+    }
+
     // 5) 완료된 날이면 완료 해제 (D-04). 알림 skipped/pending 처리는 단계 2
     const cleared = await tx.dayCompletion.deleteMany({
       where: { userId: user.id, onDate: toDbDate(date) },

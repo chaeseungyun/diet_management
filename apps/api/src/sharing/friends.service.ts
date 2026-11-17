@@ -14,6 +14,8 @@ import { unprocessable } from '../common/errors';
 import { MealsService } from '../meals/meals.service';
 import type { MealRecordDto } from '../meals/meals.dto';
 import { friendPair, ownerShares, SharingAccessService } from './sharing-access.service';
+import { SocialService } from './social.service';
+import type { RecordSocialDto } from './social.dto';
 import {
   FriendDto,
   FriendInviteDto,
@@ -39,6 +41,7 @@ export class FriendsService {
     private readonly prisma: PrismaService,
     private readonly access: SharingAccessService,
     private readonly meals: MealsService,
+    private readonly social: SocialService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -203,16 +206,23 @@ export class FriendsService {
     const firstDate = todayIn(owner.timezone, owner.createdAt);
     if (date > today || date < firstDate) throw new NotFoundException();
     const day = await this.meals.getDayForSharing(owner, date);
+    // 미기록 자유 끼니는 숨긴다 (D-18)
+    const slots = day.slots
+      .filter((s) => !(s.record.status === 'unrecorded' && s.planType === 'none'))
+      .map((s) => s.record);
+    const social = await this.social.summaries(
+      viewer.id,
+      [...slots, ...day.extras]
+        .filter((r) => r.id !== null && r.status !== 'unrecorded')
+        .map((r) => r.id as string),
+    );
     return {
       owner: { userId: owner.id, nickname: owner.nickname },
       date,
       today,
       firstDate,
-      // 미기록 자유 끼니는 숨긴다 (D-18)
-      slots: day.slots
-        .filter((s) => !(s.record.status === 'unrecorded' && s.planType === 'none'))
-        .map((s) => sharedMeal(s.record)),
-      extras: day.extras.map(sharedMeal),
+      slots: slots.map((r) => sharedMeal(r, social)),
+      extras: day.extras.map((r) => sharedMeal(r, social)),
       nutrition: day.recorded,
       completed: day.completed,
     };
@@ -292,7 +302,7 @@ export class FriendsService {
 }
 
 /** 공유할 필드만 고른다. 먹었음이 아닌 끼니는 상태만 보이고 계획 품목은 싣지 않는다 */
-function sharedMeal(r: MealRecordDto): SharedMealDto {
+function sharedMeal(r: MealRecordDto, social: Map<string, RecordSocialDto>): SharedMealDto {
   const eaten = r.status === 'eaten';
   return {
     recordId: r.id,
@@ -311,5 +321,6 @@ function sharedMeal(r: MealRecordDto): SharedMealDto {
     photos: eaten
       ? r.photos.map((p) => ({ id: p.id, width: p.width, height: p.height, expired: p.expired }))
       : [],
+    social: (r.id ? social.get(r.id) : undefined) ?? null,
   };
 }

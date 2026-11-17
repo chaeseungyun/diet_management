@@ -152,6 +152,22 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 | `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed` | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·체중·목표·재고는 없다 |
 | `GET /friends/{userId}/meal-photos/{photoId}?size=thumb` | 친구의 식사 사진(JPEG) | 기록에 붙은 사진만. 캐시 규칙은 §8-1 과 같다 |
 
+### 8-3. 끼니 반응·댓글 (단계 4, 공유-2a) — DEC-092
+
+`userId` 는 기록의 소유자, `recordId` 는 `SharedMealDto.recordId`(내 기록은 `MealRecordDto.id`). 볼 수 없는 기록·미기록·남의 기록은 모두 404.
+
+| 메서드·경로 | 설명 | 비고 |
+| --- | --- | --- |
+| `GET /days/{date}/social` | 내 하루의 기록별 `RecordSocialDto[]`: `recordId`·`reactions[{emoji,count}]`·`myReaction`(늘 null)·`commentCount` | 미기록 끼니는 없다 |
+| `PUT /friends/{userId}/meal-records/{recordId}/reaction` `{emoji}` | 반응(한 사람 1개, 다시 보내면 교체) → `RecordSocialDto` | 친구만. 내 기록은 404. 허용 외 이모지 422 |
+| `DELETE /friends/{userId}/meal-records/{recordId}/reaction` | 내 반응 지우기 → `RecordSocialDto` | 없어도 200 |
+| `GET /friends/{userId}/meal-records/{recordId}/comments` | 댓글 `CommentDto[]`(오래된 순): `id`·`userId`·`nickname`·`body`·`createdAt`·`likeCount`·`likedByMe`·`mine`·`canDelete` | 소유자 본인도 자기 `userId` 로 부른다. 기록당 100개까지라 전부 준다 |
+| `POST /friends/{userId}/meal-records/{recordId}/comments` `{body}` | 댓글 쓰기(앞뒤 공백 뗀 1~500자) → 갱신된 `CommentDto[]` | 100개째 뒤는 `422 COMMENT_LIMIT` |
+| `DELETE /friends/{userId}/meal-records/{recordId}/comments/{commentId}` | 댓글 삭제(행 삭제) | 쓴 사람 또는 기록 소유자. 그 밖에는 404 |
+| `PUT /comments/{commentId}/like` · `DELETE …/like` | 댓글 좋아요·취소 → `{likeCount, likedByMe}` | 댓글이 달린 기록을 볼 수 있어야 한다. 다시 보내도 1개 |
+
+친구의 하루(`SharedMealDto`)에는 `social`(`RecordSocialDto`, 미기록 끼니는 null)이 실린다.
+
 친구 코드 요청(`/friends/requests`)·차단(`/friends/{userId}/block`)·`friend-code` 는 공유-1b, 반응·댓글은 공유-2 다.
 
 ## 9. 체중 (단계 1) — FR-07, S-50

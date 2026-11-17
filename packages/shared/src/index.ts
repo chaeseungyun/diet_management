@@ -31,6 +31,12 @@ export const FRIEND_INVITE_TTL_DAYS = 7;
 export const FRIEND_INVITE_MAX_ACTIVE = 5;
 /** 친구 수 상한 (친구 목록이 친구마다 오늘 요약을 계산한다) */
 export const FRIEND_MAX = 50;
+/** 끼니 반응 이모지 (DEC-092). 한 사람이 기록당 1개. 칭찬·응원만 두고 부정적 반응은 넣지 않는다 */
+export const REACTION_EMOJIS = ['👍', '🔥', '😋', '👏', '💪', '❤️'] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+/** 끼니 댓글: 500자, 기록 하나에 100개까지(목록을 나누지 않고 한 번에 준다) */
+export const COMMENT_MAX_LENGTH = 500;
+export const COMMENT_MAX_PER_RECORD = 100;
 
 /** 식사 슬롯 5종, 하루 순서대로 (api.md §0). 추가 간식은 EXTRA_SLOT (D-10) */
 /** 하루 끼니(extra 제외). 사용자가 설정에서 쓰는 끼니를 고른다 (D-18) */
@@ -183,6 +189,7 @@ export const ERROR_CODES = [
   'FRIEND_ALREADY',
   'FRIEND_INVITE_LIMIT',
   'FRIEND_LIMIT',
+  'COMMENT_LIMIT',
   // 체중
   'WEIGHT_EXISTS',
   // 알림

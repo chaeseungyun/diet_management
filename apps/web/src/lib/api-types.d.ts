@@ -1059,6 +1059,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/days/{date}/social": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 하루의 기록별 반응 집계·댓글 수 (미기록 끼니는 없음) */
+        get: operations["SocialController_myDay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/meal-records/{recordId}/reaction": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 친구의 끼니에 반응(한 사람 1개, 다시 보내면 교체). 내 기록·볼 수 없는 기록은 404 */
+        put: operations["SocialController_setReaction"];
+        post?: never;
+        /** 내 반응 지우기(없어도 200) */
+        delete: operations["SocialController_clearReaction"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/meal-records/{recordId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 끼니의 댓글(오래된 순, 좋아요 수·내 좋아요 포함). 기록당 100개까지라 전부 준다 */
+        get: operations["SocialController_comments"];
+        put?: never;
+        /** 댓글 쓰기(1~500자). 응답은 갱신된 댓글 목록 */
+        post: operations["SocialController_addComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/friends/{userId}/meal-records/{recordId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 댓글 삭제: 쓴 사람 또는 기록 소유자. 그 밖에는 404 */
+        delete: operations["SocialController_deleteComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comments/{commentId}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 댓글 좋아요(다시 보내도 1개). 댓글이 달린 기록을 볼 수 없으면 404 */
+        put: operations["SocialController_like"];
+        post?: never;
+        /** 댓글 좋아요 취소 */
+        delete: operations["SocialController_unlike"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2251,6 +2339,20 @@ export interface components {
             /** @description 보관 기간 지남. 파일 요청은 404 */
             expired: boolean;
         };
+        ReactionCountDto: {
+            /** @enum {string} */
+            emoji: "👍" | "🔥" | "😋" | "👏" | "💪" | "❤️";
+            count: number;
+        };
+        RecordSocialDto: {
+            /** Format: uuid */
+            recordId: string;
+            /** @description 눌린 이모지만, 허용 목록 순서 */
+            reactions: components["schemas"]["ReactionCountDto"][];
+            /** @description 내가 누른 이모지. 없으면 null (기록 소유자는 반응하지 않으므로 늘 null) */
+            myReaction: string | null;
+            commentCount: number;
+        };
         SharedMealDto: {
             /**
              * Format: uuid
@@ -2271,6 +2373,8 @@ export interface components {
             /** @description 먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다) */
             items: components["schemas"]["SharedMealItemDto"][];
             photos: components["schemas"]["SharedPhotoDto"][];
+            /** @description 반응 집계·내 반응·댓글 수. 미기록 끼니는 null (반응·댓글을 달 수 없다) */
+            social: components["schemas"]["RecordSocialDto"] | null;
         };
         SharedDayDto: {
             owner: components["schemas"]["SharedDayOwnerDto"];
@@ -2294,6 +2398,37 @@ export interface components {
             /** @description 하루 완료 여부 */
             completed: boolean;
         };
+        SetReactionDto: {
+            /**
+             * @description 허용 목록(`REACTION_EMOJIS`)의 이모지 하나
+             * @enum {string}
+             */
+            emoji: "👍" | "🔥" | "😋" | "👏" | "💪" | "❤️";
+        };
+        CommentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+            likeCount: number;
+            likedByMe: boolean;
+            /** @description 내가 쓴 댓글 */
+            mine: boolean;
+            /** @description 내가 지울 수 있는가: 내가 썼거나 내 기록에 달린 댓글 */
+            canDelete: boolean;
+        };
+        CreateCommentDto: {
+            /** @description 앞뒤 공백을 뗀 1~500자 */
+            body: string;
+        };
+        CommentLikeDto: {
+            likeCount: number;
+            likedByMe: boolean;
+        };
         ErrorFieldDto: {
             field: string;
             rule: string;
@@ -2301,7 +2436,7 @@ export interface components {
         ErrorDto: {
             statusCode: number;
             /** @enum {string} */
-            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "PHOTO_UNSUPPORTED" | "PHOTO_DAILY_LIMIT" | "PHOTO_RECORD_LIMIT" | "PHOTO_RECORD_NOT_EATEN" | "PHOTO_STORAGE_FULL" | "FRIEND_INVITE_OWN" | "FRIEND_ALREADY" | "FRIEND_INVITE_LIMIT" | "FRIEND_LIMIT" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
+            code: "BAD_REQUEST" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "VALIDATION_FAILED" | "PAYLOAD_TOO_LARGE" | "SERVICE_UNAVAILABLE" | "INTERNAL" | "CSRF_REJECTED" | "IDEMPOTENCY_KEY_REUSED" | "FUTURE_DATE" | "UNIT_LABEL_REQUIRED" | "UNIT_NOT_ALLOWED" | "STOCK_UNIT_LOCKED" | "UNIT_SETTINGS_IN_USE" | "PRODUCT_ARCHIVED" | "PRODUCT_IN_TEMPLATE" | "PRODUCT_NOT_STOCK_TRACKED" | "NUTRITION_MISSING" | "PURCHASE_NOT_ORDERED" | "TEMPLATE_REQUIRED" | "TEMPLATE_ARCHIVED" | "TEMPLATE_IN_PLAN" | "RECORD_CONFLICT" | "EMPTY_HOME_MEAL" | "OUTSIDE_MENU_REQUIRED" | "QUANTITY_REQUIRED" | "DAY_HAS_UNRECORDED" | "BEFORE_SIGNUP" | "PHOTO_UNSUPPORTED" | "PHOTO_DAILY_LIMIT" | "PHOTO_RECORD_LIMIT" | "PHOTO_RECORD_NOT_EATEN" | "PHOTO_STORAGE_FULL" | "FRIEND_INVITE_OWN" | "FRIEND_ALREADY" | "FRIEND_INVITE_LIMIT" | "FRIEND_LIMIT" | "COMMENT_LIMIT" | "WEIGHT_EXISTS" | "NOTIFY_TIME_REQUIRED" | "PUSH_ENDPOINT_INVALID" | "PUSH_NOT_CONFIGURED";
             message: string;
             fields?: components["schemas"]["ErrorFieldDto"][];
         };
@@ -4098,6 +4233,186 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    SocialController_myDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordSocialDto"][];
+                };
+            };
+        };
+    };
+    SocialController_setReaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetReactionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordSocialDto"];
+                };
+            };
+        };
+    };
+    SocialController_clearReaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordSocialDto"];
+                };
+            };
+        };
+    };
+    SocialController_comments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"][];
+                };
+            };
+        };
+    };
+    SocialController_addComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"][];
+                };
+            };
+        };
+    };
+    SocialController_deleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+                recordId: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    SocialController_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentLikeDto"];
+                };
+            };
+        };
+    };
+    SocialController_unlike: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentLikeDto"];
+                };
             };
         };
     };

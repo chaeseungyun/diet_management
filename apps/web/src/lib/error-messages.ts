@@ -55,6 +55,7 @@ export const ERROR_MESSAGES = {
   FRIEND_ALREADY: '이미 친구예요.',
   FRIEND_INVITE_LIMIT: '초대 링크는 5개까지 만들 수 있어요. 안 쓰는 링크를 지워 주세요.',
   FRIEND_LIMIT: '친구는 50명까지 맺을 수 있어요.',
+  COMMENT_LIMIT: '이 끼니에는 댓글을 더 달 수 없어요(100개까지).',
   WEIGHT_EXISTS: '이 날 체중이 이미 있어요. 덮어쓸까요?',
 
   NOTIFY_TIME_REQUIRED: '알림 시각을 정해 주세요.',

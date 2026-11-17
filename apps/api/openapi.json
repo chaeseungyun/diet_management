@@ -2728,6 +2728,318 @@
           "sharing"
         ]
       }
+    },
+    "/api/v1/days/{date}/social": {
+      "get": {
+        "operationId": "SocialController_myDay",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecordSocialDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "내 하루의 기록별 반응 집계·댓글 수 (미기록 끼니는 없음)",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/meal-records/{recordId}/reaction": {
+      "put": {
+        "operationId": "SocialController_setReaction",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetReactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordSocialDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "친구의 끼니에 반응(한 사람 1개, 다시 보내면 교체). 내 기록·볼 수 없는 기록은 404",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "delete": {
+        "operationId": "SocialController_clearReaction",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordSocialDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "내 반응 지우기(없어도 200)",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/meal-records/{recordId}/comments": {
+      "get": {
+        "operationId": "SocialController_comments",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommentDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "끼니의 댓글(오래된 순, 좋아요 수·내 좋아요 포함). 기록당 100개까지라 전부 준다",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "post": {
+        "operationId": "SocialController_addComment",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommentDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "댓글 쓰기(1~500자). 응답은 갱신된 댓글 목록",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/friends/{userId}/meal-records/{recordId}/comments/{commentId}": {
+      "delete": {
+        "operationId": "SocialController_deleteComment",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "recordId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "댓글 삭제: 쓴 사람 또는 기록 소유자. 그 밖에는 404",
+        "tags": [
+          "sharing"
+        ]
+      }
+    },
+    "/api/v1/comments/{commentId}/like": {
+      "put": {
+        "operationId": "SocialController_like",
+        "parameters": [
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentLikeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "댓글 좋아요(다시 보내도 1개). 댓글이 달린 기록을 볼 수 없으면 404",
+        "tags": [
+          "sharing"
+        ]
+      },
+      "delete": {
+        "operationId": "SocialController_unlike",
+        "parameters": [
+          {
+            "name": "commentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentLikeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "댓글 좋아요 취소",
+        "tags": [
+          "sharing"
+        ]
+      }
     }
   },
   "info": {
@@ -6511,6 +6823,59 @@
           "expired"
         ]
       },
+      "ReactionCountDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string",
+            "enum": [
+              "👍",
+              "🔥",
+              "😋",
+              "👏",
+              "💪",
+              "❤️"
+            ]
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "emoji",
+          "count"
+        ]
+      },
+      "RecordSocialDto": {
+        "type": "object",
+        "properties": {
+          "recordId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reactions": {
+            "description": "눌린 이모지만, 허용 목록 순서",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReactionCountDto"
+            }
+          },
+          "myReaction": {
+            "type": "string",
+            "nullable": true,
+            "description": "내가 누른 이모지. 없으면 null (기록 소유자는 반응하지 않으므로 늘 null)"
+          },
+          "commentCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "recordId",
+          "reactions",
+          "myReaction",
+          "commentCount"
+        ]
+      },
       "SharedMealDto": {
         "type": "object",
         "properties": {
@@ -6564,6 +6929,16 @@
             "items": {
               "$ref": "#/components/schemas/SharedPhotoDto"
             }
+          },
+          "social": {
+            "nullable": true,
+            "description": "반응 집계·내 반응·댓글 수. 미기록 끼니는 null (반응·댓글을 달 수 없다)",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RecordSocialDto"
+              }
+            ]
           }
         },
         "required": [
@@ -6573,7 +6948,8 @@
           "kind",
           "outsideMenu",
           "items",
-          "photos"
+          "photos",
+          "social"
         ]
       },
       "SharedDayDto": {
@@ -6631,6 +7007,103 @@
           "extras",
           "nutrition",
           "completed"
+        ]
+      },
+      "SetReactionDto": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string",
+            "description": "허용 목록(`REACTION_EMOJIS`)의 이모지 하나",
+            "enum": [
+              "👍",
+              "🔥",
+              "😋",
+              "👏",
+              "💪",
+              "❤️"
+            ]
+          }
+        },
+        "required": [
+          "emoji"
+        ]
+      },
+      "CommentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          },
+          "mine": {
+            "type": "boolean",
+            "description": "내가 쓴 댓글"
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "내가 지울 수 있는가: 내가 썼거나 내 기록에 달린 댓글"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "nickname",
+          "body",
+          "createdAt",
+          "likeCount",
+          "likedByMe",
+          "mine",
+          "canDelete"
+        ]
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "앞뒤 공백을 뗀 1~500자",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "CommentLikeDto": {
+        "type": "object",
+        "properties": {
+          "likeCount": {
+            "type": "number"
+          },
+          "likedByMe": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "likeCount",
+          "likedByMe"
         ]
       },
       "ErrorFieldDto": {
@@ -6696,6 +7169,7 @@
               "FRIEND_ALREADY",
               "FRIEND_INVITE_LIMIT",
               "FRIEND_LIMIT",
+              "COMMENT_LIMIT",
               "WEIGHT_EXISTS",
               "NOTIFY_TIME_REQUIRED",
               "PUSH_ENDPOINT_INVALID",

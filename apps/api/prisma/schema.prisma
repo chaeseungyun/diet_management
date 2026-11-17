@@ -115,6 +115,9 @@ model User {
   friendLinksLow         FriendLink[]           @relation("FriendLinkLow")
   friendLinksHigh        FriendLink[]           @relation("FriendLinkHigh")
   friendInvites          FriendInvite[]
+  mealReactions          MealReaction[]
+  mealComments           MealComment[]
+  commentLikes           CommentLike[]
 
   @@map("users")
 }
@@ -421,6 +424,8 @@ model MealRecord {
   items     MealItemSnapshot[]
   movements StockMovement[]
   photos    MealPhoto[]
+  reactions MealReaction[]
+  comments  MealComment[]
 
   @@unique([userId, mealDate, slot, seq])
   @@map("meal_records")
@@ -644,4 +649,53 @@ model NotificationDelivery {
   @@unique([userId, type, targetDate, targetKey, seq])
   @@index([status, scheduledAt])
   @@map("notification_deliveries")
+}
+
+/// 끼니 반응 (sharing-plan §4, DEC-092). 기록 1건에 사용자당 1개. 쓰는 사람은 기록 소유자가 아닌 친구다.
+/// 기록이 미기록으로 돌아가면 식사 기록 쓰기 트랜잭션이 지우고, 기록·사용자 행이 지워지면 함께 지워진다.
+model MealReaction {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mealRecordId String   @map("meal_record_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  emoji        String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  mealRecord MealRecord @relation(fields: [mealRecordId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mealRecordId, userId])
+  @@index([userId])
+  @@map("meal_reactions")
+}
+
+/// 끼니 댓글 (DEC-092). 평면(답글 없음), 지우면 행을 없앤다. 쓰는 사람은 볼 수 있는 친구 또는 기록 소유자.
+model MealComment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mealRecordId String   @map("meal_record_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  mealRecord MealRecord    @relation(fields: [mealRecordId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes      CommentLike[]
+
+  @@index([mealRecordId, createdAt])
+  @@index([userId])
+  @@map("meal_comments")
+}
+
+/// 댓글 좋아요 (DEC-092). 댓글 1건에 사용자당 1개
+model CommentLike {
+  commentId String   @map("comment_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  comment MealComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId])
+  @@map("comment_likes")
 }
