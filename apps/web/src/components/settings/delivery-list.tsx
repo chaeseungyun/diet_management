@@ -25,6 +25,14 @@ function reasonLabel(reason: string | null): string | null {
 }
 
 /** S-71 최근 알림. 시각은 사용자 시간대로 보인다 */
+/** 친구 소식 알림 (DEC-096) */
+const SOCIAL_LABELS: Partial<Record<Delivery['type'], string>> = {
+  friend_reaction: '친구 반응',
+  friend_comment: '댓글',
+  comment_like: '댓글 좋아요',
+  friend_accepted: '친구 수락',
+};
+
 export function DeliveryList({
   deliveries,
   timezone,
@@ -44,11 +52,13 @@ export function DeliveryList({
       {deliveries.map((d) => {
         const [label, variant] = STATUS[d.status];
         const what =
-          d.type === 'stock_depletion'
-            ? '곧 떨어질 식품'
-            : d.type === 'day_complete'
-              ? '하루 완료'
-              : `${d.slot ? SLOT_LABELS[d.slot] : ''} ${d.seq === 0 ? '알림' : `재알림 ${d.seq}`}`;
+          d.type in SOCIAL_LABELS
+            ? SOCIAL_LABELS[d.type]!
+            : d.type === 'stock_depletion'
+              ? '곧 떨어질 식품'
+              : d.type === 'day_complete'
+                ? '하루 완료'
+                : `${d.slot ? SLOT_LABELS[d.slot] : ''} ${d.seq === 0 ? '알림' : `재알림 ${d.seq}`}`;
         const reason = reasonLabel(d.failureReason);
         return (
           <li key={d.id} className="flex items-center justify-between gap-2 px-3 py-2">

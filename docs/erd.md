@@ -217,7 +217,7 @@ erDiagram
     NotificationSetting {
         uuid id PK
         uuid user_id FK
-        enum kind "5슬롯 + unrecorded_remind + stock_depletion + day_complete, UK(user_id, kind) (DEC-074·084)"
+        enum kind "5슬롯 + unrecorded_remind + stock_depletion + day_complete + social, UK(user_id, kind) (DEC-074·084·096)"
         bool enabled "default false"
         int notify_minute "nullable, 슬롯 알림 시각 0~1439(사용자 시간대)"
         int remind_after_minutes "unrecorded_remind 행, default 60"
@@ -238,7 +238,7 @@ erDiagram
     NotificationDelivery {
         uuid id PK
         uuid user_id FK
-        enum type "meal_check|unrecorded_remind|stock_depletion|day_complete (outside_pre 는 D-19 로 폐기)"
+        enum type "meal_check|unrecorded_remind|stock_depletion|day_complete|friend_reaction|friend_comment|comment_like|friend_accepted (outside_pre 는 D-19 로 폐기, 친구 소식은 DEC-096)"
         date target_date "UK(user_id, type, target_date, target_key, seq) (DEC-074)"
         string target_key "끼니 이름 또는 제품 ID, 유니크 전용"
         int seq "0=첫 알림, 1~3=재알림 회차"
@@ -332,7 +332,7 @@ erDiagram
 | CommentLike | 댓글 좋아요(공유-2a) | PK (`comment_id`, `user_id`). 댓글 삭제 시 cascade | DEC-092 |
 | DayCompletion | 하루 완료 표시 | (user, on_date) 유니크. `nutrition_complete`는 완료 시점 계산값이며 통계 조회 시 재검증 | FR-06 |
 | WeightRecord | 날짜별 대표 체중 | (user, on_date) 유니크, 덮어쓰기 확인. 미측정일은 행 없음(0 아님) | FR-07 |
-| NotificationSetting | 알림 종류별 설정 | (user, kind) 유니크. 슬롯 5종 + 미기록 재알림 + 소진 알림(DEC-074) + 하루 완료(DEC-084). 행이 없을 때 끼니·재알림은 off, 하루 완료·소진은 on | FR-08, FR-09 |
+| NotificationSetting | 알림 종류별 설정 | (user, kind) 유니크. 슬롯 5종 + 미기록 재알림 + 소진 알림(DEC-074) + 하루 완료(DEC-084) + 친구 소식(DEC-096). 행이 없을 때 끼니·재알림은 off, 하루 완료·소진·친구 소식은 on | FR-08, FR-09 |
 | PushSubscription | Web Push 구독 | `endpoint` 유니크. 실패 누적·권한 철회 시 `revoked_at` | FR-09, NFR-05 |
 | NotificationDelivery | 알림 발송 이력·중복 방지 | 발송 시점에 판정해 보낼 때만 생성(DEC-074). (user, type, target_date, target_key, seq) 유니크 선점으로 재시도·재시작·동시 틱 중복 차단. 예약 시각 15분 초과는 `skipped(expired)` | FR-08, FR-09, NFR-05, D-12 |
 | IdempotencyKey | 쓰기 요청 멱등성 | (user, key) 유니크. 같은 키 재전송은 저장된 응답 반환. 만료 후 정리 | NFR-02 |

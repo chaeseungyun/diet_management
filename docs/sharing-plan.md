@@ -5,6 +5,10 @@
 > 2026-11-16 구현(DEC-090): 공유-1 을 **1a**(초대 링크·공개 범위·친구별 끄기·끊기·친구의 하루)와 **1b**(친구 코드 요청·차단·QR)로 나눴고 1a 의 스키마·API·e2e 가 끝났다. 실제 경로·필드는 [`api.md`](api.md) §8-2 가 기준이다. 이 문서 §4·§6 과 다른 점: 수락 API 는 공개 범위를 바꾸지 않는다, 친구의 사진은 `/friends/{userId}/meal-photos/{photoId}`, `SharedDayDto` 에 계획 품목·끼니별 영양이 없다, 초대 링크 옵션(`expiresInDays`·`maxUses`)은 받지 않는다.
 >
 > 2026-11-17 구현(DEC-092): **친구 코드 요청·QR 은 만들지 않고** 1b 는 차단만 남겨 공유-2 뒤로 미뤘다. 공유-2 를 **2a**(반응·댓글·댓글 좋아요)와 **2b**(알림·친구 캘린더)로 나눴고 2a 의 스키마·API·e2e 가 끝났다. 이 문서와 다른 점: 이모지는 6개(👍 🔥 😋 👏 💪 ❤️), 지운 댓글은 행 삭제(`deleted_at` 없음), 댓글 목록은 `cursor` 없이 기록당 100개, 반응·댓글 수는 `SharedMealDto.social` 과 `GET /days/{date}/social` 로 준다. 실제 경로는 [`api.md`](api.md) §8-3.
+>
+> 2026-11-17(DEC-095): **친구 캘린더(`GET /friends/{userId}/days`)는 잠정 보류**. 공유-2b 는 알림만 만든다.
+>
+> 2026-11-17 구현(DEC-096): 알림은 반응·댓글·댓글 좋아요·친구 수락 4종, 스위치 하나(기본 켬), 요청에서 바로 발송. `friend_request`·`friend_day_completed` 는 만들지 않았고, 유니크는 새 열 없이 `target_key` 로 해결했다(§9-7 닫힘).
 
 ## 1. 목적과 범위
 
@@ -135,7 +139,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 | `POST /friends/{userId}/block` · `DELETE /friends/{userId}/block` | 차단·해제 | |
 | `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 끄기/켜기 | 방향 플래그 |
 | `GET /friends/{userId}/days/{date}` | **친구의 하루** `SharedDayDto`: 닉네임, 날짜, 끼니[슬롯·상태·종류·품목(이름·실제량·단위)·식단 외 메뉴명·사진], 추가 간식, 영양 합계(기록된 합계, 미상 표시 포함), 완료, 끼니별 반응 집계·내 반응·댓글 수 | 접근 불가·미래·가입 전은 404. 가입일 이후 전부(§9-3). 미기록 자유 끼니 제외(D-18) |
-| `GET /friends/{userId}/days?from=&to=` | 캘린더용 요약(완료·기록 수) | 공유-2, 최대 31일 |
+| `GET /friends/{userId}/days?from=&to=` | 캘린더용 요약(완료·기록 수) | 공유-2, 최대 31일. **보류(DEC-095)** |
 | `PUT /friends/{userId}/meal-records/{recordId}/reaction` `{emoji}` · `DELETE` | 반응(사용자당 1개, 바꾸면 교체) | 공유-2. 허용 이모지 외 422 |
 | `GET /friends/{userId}/meal-records/{recordId}/comments?cursor=` | 댓글 목록(오래된 순, 좋아요 수·내 좋아요 여부 포함) | 공유-2. 소유자 본인은 `/me` 경로 대신 같은 경로를 자기 `userId` 로 호출 |
 | `POST /friends/{userId}/meal-records/{recordId}/comments` `{body}` | 댓글 쓰기(1~500자) | 공유-2. Origin 검사·길이 422 |
@@ -183,7 +187,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 4. **차단 노출**: 차단당한 쪽의 코드 요청은 **202**(정상 요청과 같은 응답, `pending` 미생성). 초대 링크 수락은 404.
 5. **반응 + 댓글 도입**. 반응은 이모지 1개/사용자, 댓글은 평면(답글 없음) 텍스트, **댓글에 좋아요**. 허용 이모지 목록은 구현 시 `packages/shared` 상수로 정한다.
 6. **배치**: 단계 2 완료 → **단계 3 식사 사진 업로드·보관(EXT-02a)** → **단계 4 끼니 공유** 공유-1 → 공유-2 → 공유-3 → 단계 5 OCR → 단계 6 사진 AI 분석(EXT-02b). EXT-02 분할은 DEC-071(§8).
-7. **알림 유니크 확장**(`counterpart_user_id` 열)은 알림 구현 시 D-12·D-22 센티널 설계와 함께 확정. 지금은 §6 안을 기본값으로 둔다.
+7. ~~**알림 유니크 확장**(`counterpart_user_id` 열)~~ → 새 열 없이 `target_key` 에 상대·대상 id 를 담기로 확정(DEC-096).
 
 남은 미정(§F): 없음(반응 이모지 목록·삭제된 댓글은 DEC-092 로 닫힘). (사진 보관 정책·용량은 DEC-069, 순서는 DEC-071 로 닫힘.)
 

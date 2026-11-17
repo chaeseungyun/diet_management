@@ -170,6 +170,8 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 친구 코드 요청(`/friends/requests`)·차단(`/friends/{userId}/block`)·`friend-code` 는 공유-1b, 반응·댓글은 공유-2 다.
 
+반응·댓글·댓글 좋아요·친구 수락은 쓰기가 끝난 뒤 친구 소식 알림을 보낸다(§11, DEC-096). 응답은 발송을 기다리지 않는다.
+
 ## 9. 체중 (단계 1) — FR-07, S-50
 
 | 메서드·경로 | 역할 | 비고 |
@@ -189,7 +191,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 하루 완료 + 소진 알림 설정(8종). 행이 없으면 기본값: 끼니·재알림 off, **하루 완료·소진 on**(소진 시각 540 = 09:00, 3일 전). `available` 필드 없음 | DEC-074, DEC-084 |
+| `GET /notification-settings` | 슬롯 5종 + 미기록 재알림 + 하루 완료 + 소진 알림 + 친구 소식(`social`) 설정(9종). 행이 없으면 기본값: 끼니·재알림 off, **하루 완료·소진·친구 소식 on**(소진 시각 540 = 09:00, 3일 전). `available` 필드 없음 | DEC-074, DEC-084, DEC-096 |
 | `PUT /notification-settings/{kind}` | 종류별 on/off·시각(`notifyMinute`)·재알림 횟수(0~3)·간격·소진 N일 | 발송 시점 판정이라 재예약 없음(DEC-074) |
 | `POST /notification-settings/enable-meals` | '알림 켜기' 직후. 켜진 끼니 알림이 없으면 쓰는 끼니를 모두 켬(저장된 시각, 없으면 제안 시각). `{ applied, enabledKinds, settings }` | **구현(DEC-077)**. 하나라도 켜져 있으면 변경 없음, 재알림·소진은 건드리지 않음 |
 | `GET /push/public-key` | VAPID 공개키 | |
@@ -206,6 +208,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 - 유형 ④ 소진: 설정·유형 자리만 두고 판정은 재고 화면·소진 예측 단계에서 추가.
 - 예약 시각 15분 초과(재시작 등)는 보내지 않고, 선점했던 `pending` 만 `skipped`(`expired`)로 바꾼다(DEC-075).
 - **구현(2026-11-09, DEC-075)**: `@nestjs/schedule` `@Cron(매분)` → `NotificationScheduler.tick` = 만료 → 재시도(임대 50초, 최대 3회, 저장된 `payload`) → 판정(`src/domain/notifications.ts`)·선점·발송. `web-push` `TTL=900`·`urgency=high`. 전달은 최소 한 번(같은 `tag` 로 폰에서 덮어씀).
+- **친구 소식(DEC-096)**: 매분 판정이 아니라 반응·댓글·좋아요·친구 수락 요청이 쓰기를 끝낸 뒤 `NotificationScheduler.sendNow` 로 바로 선점·발송한다. 유형 `friend_reaction|friend_comment|comment_like|friend_accepted`, `target_key` 는 `기록id:보낸사람id`·`댓글id`·`댓글id:보낸사람id`·`보낸사람id`. 일시 실패는 위 재시도가 이어받는다.
 - 매일 04:00 Asia/Seoul 정리 작업: 만료된 `IdempotencyKey`, 90일 지난 발송 기록 삭제, 식사 사진 정리(§8-1, DEC-087)(`src/maintenance/`).
 
 ## 12. 미정·결정 필요

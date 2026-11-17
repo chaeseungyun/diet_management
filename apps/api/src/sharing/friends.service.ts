@@ -15,6 +15,7 @@ import { MealsService } from '../meals/meals.service';
 import type { MealRecordDto } from '../meals/meals.dto';
 import { friendPair, ownerShares, SharingAccessService } from './sharing-access.service';
 import { SocialService } from './social.service';
+import { SocialNotifyService } from './social-notify.service';
 import type { RecordSocialDto } from './social.dto';
 import {
   FriendDto,
@@ -42,6 +43,7 @@ export class FriendsService {
     private readonly access: SharingAccessService,
     private readonly meals: MealsService,
     private readonly social: SocialService,
+    private readonly notify: SocialNotifyService,
     @Inject(ENV) private readonly env: Env,
   ) {}
 
@@ -154,6 +156,8 @@ export class FriendsService {
       }
       throw e;
     }
+    // 초대 링크를 만든 사람에게 알린다 (DEC-096)
+    this.notify.friendAccepted(user, link.requestedBy);
     return this.toFriend(user, link);
   }
 

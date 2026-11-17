@@ -49,6 +49,16 @@ export function MealSocial({
   // 화면을 새로 고쳐 서버 값이 바뀌면 따라간다
   useEffect(() => setSocial(initial), [initial]);
 
+  // 댓글 알림을 누르고 들어오면(?comments=기록id) 그 끼니의 댓글 창을 연다 (DEC-096).
+  // 연 뒤에는 주소에서 지워 새로 고침해도 다시 열리지 않게 한다
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('comments') !== initial.recordId) return;
+    setOpen(true);
+    url.searchParams.delete('comments');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search);
+  }, [initial.recordId]);
+
   async function react(emoji: string) {
     setBusy(true);
     try {

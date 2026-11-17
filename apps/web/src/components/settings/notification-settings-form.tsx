@@ -74,6 +74,7 @@ export function NotificationSettingsForm({
   const remind = get('unrecorded_remind');
   const dayComplete = get('day_complete');
   const stock = get('stock_depletion');
+  const social = get('social');
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -260,6 +261,20 @@ export function NotificationSettingsForm({
             식품마다 한 번, 같은 날 여러 개면 한 통으로 묶어 알립니다. 다시 채운 뒤 또 떨어져 가면
             다시 알립니다. 배송 중인 식품은 알리지 않습니다. 며칠 전 기준은 식품 화면의 &apos;곧
             떨어짐&apos; 표시에도 쓰입니다.
+          </p>
+        </Card>
+      </Section>
+
+      <Section title="친구 소식 알림">
+        <Card className="flex flex-col gap-3 p-4">
+          <Checkbox
+            label="친구 소식 알림"
+            checked={social.enabled}
+            onChange={(e) => patch('social', { enabled: e.target.checked })}
+          />
+          <p className="text-xs text-muted-foreground">
+            친구가 내 끼니에 반응하거나 댓글을 달 때, 내 댓글에 좋아요를 누르거나 답글이 달릴 때,
+            초대 링크로 친구가 됐을 때 바로 알립니다. 반응과 좋아요는 친구마다 한 번만 알립니다.
           </p>
         </Card>
       </Section>

@@ -35,7 +35,7 @@ describe('phase 2: notification settings & push subscriptions', () => {
     await app.close();
   });
 
-  it('returns all 8 kinds; meals and repeat off, day-complete and stock on by default (DEC-084)', async () => {
+  it('returns all 9 kinds; meals and repeat off, day-complete, stock and social on by default (DEC-084·096)', async () => {
     const res = await a.get('/notification-settings').expect(200);
     expect(res.body.map((s: { kind: string }) => s.kind)).toEqual([
       'breakfast',
@@ -46,10 +46,11 @@ describe('phase 2: notification settings & push subscriptions', () => {
       'unrecorded_remind',
       'day_complete',
       'stock_depletion',
+      'social',
     ]);
     expect(
       res.body.filter((s: { enabled: boolean }) => s.enabled).map((s: { kind: string }) => s.kind),
-    ).toEqual(['day_complete', 'stock_depletion']);
+    ).toEqual(['day_complete', 'stock_depletion', 'social']);
     const remind = res.body.find((s: { kind: string }) => s.kind === 'unrecorded_remind');
     expect(remind).toMatchObject({ remindAfterMinutes: 60, remindMaxCount: 1 });
     const stock = res.body.find((s: { kind: string }) => s.kind === 'stock_depletion');

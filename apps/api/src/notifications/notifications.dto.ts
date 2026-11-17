@@ -23,7 +23,7 @@ import {
 import { fromDbDate } from '../domain/dates';
 import { DEFAULT_DAYS_BEFORE, DEFAULT_STOCK_NOTIFY_MINUTE } from '../domain/notifications';
 
-/** 화면 순서 = 5끼니 → 미기록 재알림 → 하루 완료 → 소진 알림 (S-71) */
+/** 화면 순서 = 5끼니 → 미기록 재알림 → 하루 완료 → 소진 알림 → 친구 소식 (S-71, DEC-096) */
 export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'breakfast',
   'lunch',
@@ -33,6 +33,7 @@ export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'unrecorded_remind',
   'day_complete',
   'stock_depletion',
+  'social',
 ];
 
 export const SLOT_KINDS: readonly NotificationKind[] = NOTIFICATION_KINDS.slice(0, 5);
@@ -40,6 +41,7 @@ export const SLOT_KINDS: readonly NotificationKind[] = NOTIFICATION_KINDS.slice(
 /**
  * 설정 행이 없을 때의 켜짐 여부 (DEC-084). 하루 완료·소진 알림은 기본 켜짐이라
  * 이미 알림을 켠 계정도 따로 손대지 않고 받는다. 끼니·재알림은 기본 꺼짐.
+ * 친구 소식도 기본 켜짐: 공유를 쓰고 푸시까지 허용한 사람에게만 가기 때문이다 (DEC-096).
  */
 export const DEFAULT_ENABLED: Record<NotificationKind, boolean> = {
   breakfast: false,
@@ -50,6 +52,7 @@ export const DEFAULT_ENABLED: Record<NotificationKind, boolean> = {
   unrecorded_remind: false,
   day_complete: true,
   stock_depletion: true,
+  social: true,
 };
 
 export const DEFAULTS = {

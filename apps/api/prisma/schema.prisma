@@ -556,6 +556,8 @@ enum NotificationKind {
   stock_depletion
   /// 식단 끼니를 모두 기록했는데 하루 완료를 누르지 않았을 때 (DEC-084)
   day_complete
+  /// 친구 소식: 반응·댓글·댓글 좋아요·친구 수락 (공유-2b, DEC-096). 스위치 하나로 켜고 끈다
+  social
 }
 
 /// 발송 유형 (state-transitions §5 ①③④. ② 외부 사전은 D-19 로 폐기)
@@ -564,6 +566,11 @@ enum NotificationType {
   unrecorded_remind
   stock_depletion
   day_complete
+  /// 친구 소식 (공유-2b, DEC-096). 일이 생긴 요청에서 바로 보낸다(매분 판정 아님)
+  friend_reaction
+  friend_comment
+  comment_like
+  friend_accepted
 }
 
 /// pending = 선점·발송 중, skipped = 만료(예약 시각 15분 초과) (DEC-074)
@@ -624,7 +631,8 @@ model NotificationDelivery {
   type          NotificationType
   /// 사용자 시간대 기준 대상 날짜
   targetDate    DateTime         @map("target_date") @db.Date
-  /// 유니크 전용 키: 끼니 이름, 소진 알림 묶음은 'bundle', 하루 완료는 'day' (DEC-074·084)
+  /// 유니크 전용 키: 끼니 이름, 소진 알림 묶음은 'bundle', 하루 완료는 'day' (DEC-074·084).
+  /// 친구 소식은 '기록id:보낸사람id'(반응), 댓글id(댓글), '댓글id:보낸사람id'(좋아요), 보낸사람id(친구 수락) (DEC-096)
   targetKey     String           @map("target_key")
   /// 0 = 첫 알림, 1~3 = 미기록 재알림 회차
   seq           Int              @default(0)

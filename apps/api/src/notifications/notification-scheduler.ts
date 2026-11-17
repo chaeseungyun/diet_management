@@ -31,7 +31,7 @@ import { PUSH_SENDER, type PushPayload, type PushSender, type SendResult } from 
 const LEASE_MS = 50_000;
 
 /** 보내기로 한 알림 하나. 유니크 (user, type, targetDate, targetKey, seq) 로 선점한다 */
-interface Claim {
+export interface Claim {
   type: NotificationType;
   targetDate: DateString;
   targetKey: string;
@@ -42,6 +42,14 @@ interface Claim {
   /** 소진 알림 묶음에 든 제품. 발송 기록에 남기고, 나간 뒤 제품에 '알렸음' 을 적는 데 쓴다 (DEC-084) */
   productIds?: string[];
 }
+
+/** 매분 판정이 보내는 종류. 나머지(친구 소식)는 sendNow 로 보낸다 */
+const SCHEDULED_TYPES = [
+  'meal_check',
+  'unrecorded_remind',
+  'stock_depletion',
+  'day_complete',
+] as const satisfies readonly NotificationType[];
 
 /** 하루 완료·소진 알림 묶음의 유니크 키 */
 const DAY_KEY = 'day';
@@ -179,7 +187,10 @@ export class NotificationScheduler {
     const on = (kind: NotificationKind): boolean =>
       settings.get(kind)?.enabled ?? DEFAULT_ENABLED[kind];
     // 재알림은 끼니 알림에 딸린 것이라 혼자서는 보낼 것이 없다. 전부 꺼져 있으면 조회하지 않는다
-    if (!NOTIFICATION_KINDS.some((k) => k !== 'unrecorded_remind' && on(k))) return [];
+    // 친구 소식은 매분 판정이 아니라 일이 생긴 요청에서 보낸다 (sendNow)
+    if (!NOTIFICATION_KINDS.some((k) => k !== 'unrecorded_remind' && k !== 'social' && on(k))) {
+      return [];
+    }
 
     const [resolver, records, deliveries, completions] = await Promise.all([
       this.plans.loadResolver(this.prisma, user.id, from, to),
@@ -192,8 +203,13 @@ export class NotificationScheduler {
         },
         select: { mealDate: true, slot: true, status: true, updatedAt: true },
       }),
+      // 친구 소식 발송 기록은 이 판정과 무관하다 (DEC-096)
       this.prisma.notificationDelivery.findMany({
-        where: { userId: user.id, targetDate: { gte: toDbDate(from), lte: toDbDate(to) } },
+        where: {
+          userId: user.id,
+          targetDate: { gte: toDbDate(from), lte: toDbDate(to) },
+          type: { in: [...SCHEDULED_TYPES] },
+        },
       }),
       this.prisma.dayCompletion.findMany({
         where: { userId: user.id, onDate: { gte: toDbDate(from), lte: toDbDate(to) } },
@@ -220,7 +236,8 @@ export class NotificationScheduler {
       plan: (date, slot) => resolver.resolve(date, slot),
       status: (date, slot) => recordOf.get(`${date}:${slot}`)?.status ?? null,
       deliveries: deliveries.map((d) => ({
-        type: d.type,
+        // 위 조회가 SCHEDULED_TYPES 만 고른다
+        type: d.type as (typeof SCHEDULED_TYPES)[number],
         targetDate: fromDbDate(d.targetDate),
         targetKey: d.targetKey,
         seq: d.seq,
@@ -355,6 +372,30 @@ export class NotificationScheduler {
       payload: stockPayload(fresh, today),
       productIds: fresh.map((c) => c.productId),
     };
+  }
+
+  /**
+   * 일이 생긴 순간 보내는 알림 (친구 소식, DEC-096). 매분 판정과 같은 발송 기록·유니크·재시도를 쓴다.
+   * 푸시를 쓸 수 없거나(VAPID 없음), 받는 사람이 탈퇴했거나, 그 종류를 껐거나, 활성 구독이 없으면 행을 만들지 않는다.
+   * 같은 키로 이미 보냈으면(유니크 충돌) 보내지 않는다. 일시 실패는 pending 으로 남아 스케줄러가 15분 안에 다시 보낸다.
+   * @returns 행을 새로 만들었으면 그 행의 발송 성공 여부, 만들지 않았으면 null
+   */
+  async sendNow(
+    userId: string,
+    kind: NotificationKind,
+    d: Claim,
+    now: Date = new Date(),
+  ): Promise<boolean | null> {
+    if (!this.env.pushEnabled) return null;
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deletedAt: null, pushSubscriptions: { some: { revokedAt: null } } },
+      include: { notificationSettings: { where: { kind } } },
+    });
+    if (!user) return null;
+    if (!(user.notificationSettings[0]?.enabled ?? DEFAULT_ENABLED[kind])) return null;
+    const row = await this.claim(userId, d, now);
+    if (!row) return null;
+    return this.dispatch(row, now);
   }
 
   /** 행을 먼저 만든다. 유니크 충돌이면 다른 실행이 이미 처리한 것 → null */

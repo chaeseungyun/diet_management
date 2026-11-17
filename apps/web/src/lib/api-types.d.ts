@@ -2167,7 +2167,7 @@ export interface components {
             days: components["schemas"]["StatsDayDto"][];
         };
         /** @enum {string} */
-        NotificationKind: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "unrecorded_remind" | "stock_depletion" | "day_complete";
+        NotificationKind: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "unrecorded_remind" | "stock_depletion" | "day_complete" | "social";
         NotificationSettingDto: {
             kind: components["schemas"]["NotificationKind"];
             enabled: boolean;
@@ -2243,7 +2243,7 @@ export interface components {
             reason: string | null;
         };
         /** @enum {string} */
-        NotificationType: "meal_check" | "unrecorded_remind" | "stock_depletion" | "day_complete";
+        NotificationType: "meal_check" | "unrecorded_remind" | "stock_depletion" | "day_complete" | "friend_reaction" | "friend_comment" | "comment_like" | "friend_accepted";
         /** @enum {string} */
         MealSlot: "breakfast" | "lunch" | "afternoon_snack" | "dinner" | "evening_snack" | "extra";
         /** @enum {string} */

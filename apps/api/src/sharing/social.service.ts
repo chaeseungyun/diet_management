@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { unprocessable } from '../common/errors';
 import { toDbDate } from '../domain/dates';
 import { SharingAccessService } from './sharing-access.service';
+import { SocialNotifyService } from './social-notify.service';
 import { CommentDto, CommentLikeDto, RecordSocialDto } from './social.dto';
 
 /**
@@ -17,6 +18,7 @@ export class SocialService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: SharingAccessService,
+    private readonly notify: SocialNotifyService,
   ) {}
 
   /** 기록들의 반응 집계·내 반응·댓글 수. 접근 판정은 부르는 쪽이 끝낸 기록 id 만 넘긴다 */
@@ -86,6 +88,7 @@ export class SocialService {
       create: { mealRecordId: record.id, userId: viewer.id, emoji },
       update: { emoji },
     });
+    this.notify.reaction(viewer, record, emoji);
     return this.one(viewer.id, record.id);
   }
 
@@ -140,9 +143,10 @@ export class SocialService {
     if (count >= COMMENT_MAX_PER_RECORD) {
       throw unprocessable('COMMENT_LIMIT', `at most ${COMMENT_MAX_PER_RECORD} comments per record`);
     }
-    await this.prisma.mealComment.create({
+    const comment = await this.prisma.mealComment.create({
       data: { mealRecordId: record.id, userId: viewer.id, body },
     });
+    this.notify.comment(viewer, record, comment);
     return this.listComments(viewer, ownerId, recordId);
   }
 
@@ -184,6 +188,7 @@ export class SocialService {
         data: [{ commentId, userId: viewer.id }],
         skipDuplicates: true,
       });
+      this.notify.commentLike(viewer, commentId);
     } else {
       await this.prisma.commentLike.deleteMany({ where: { commentId, userId: viewer.id } });
     }

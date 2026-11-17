@@ -6300,7 +6300,8 @@
           "evening_snack",
           "unrecorded_remind",
           "stock_depletion",
-          "day_complete"
+          "day_complete",
+          "social"
         ]
       },
       "NotificationSettingDto": {
@@ -6530,7 +6531,11 @@
           "meal_check",
           "unrecorded_remind",
           "stock_depletion",
-          "day_complete"
+          "day_complete",
+          "friend_reaction",
+          "friend_comment",
+          "comment_like",
+          "friend_accepted"
         ]
       },
       "MealSlot": {

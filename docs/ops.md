@@ -238,7 +238,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 완료(공유-2a 1/2, DEC-092, 2026-11-17): `sharing_social` 마이그레이션(`meal_reactions`, `meal_comments`, `comment_likes`), 반응·댓글·댓글 좋아요 API, e2e 10건. 세 테이블은 `users`·`meal_records` 에 `ON DELETE CASCADE` 라 계정 하드 삭제 절차(§8)는 그대로다.
 - 완료(공유-2a 2/2, DEC-093): 친구의 하루 끼니 카드의 반응 줄·댓글 시트, 내 끼니 카드의 받은 반응·댓글.
 - 보완(DEC-094): 친구에게 공개 중이면 내 기록한 끼니마다 카드 맨 아래에 반응·댓글 줄.
-- 다음: 공유-2b(알림·친구 캘린더) → 차단. 친구 코드 요청·QR 은 만들지 않는다(DEC-092).
+- 완료(공유-2b, DEC-096): `sharing_notifications` 마이그레이션(알림 enum 값 추가만), 친구 소식 알림(반응·댓글·댓글 좋아요·친구 수락)을 요청에서 바로 발송, 설정 '친구 소식 알림'(기본 켬). 새 환경 변수 없음. VAPID 키가 있으면 `NOTIFICATIONS_ENABLED` 와 관계없이 보내지만, 일시 실패 재시도는 스케줄러가 켜져 있어야 한다.
+- 다음: 차단. 친구 캘린더는 보류(DEC-095). 친구 코드 요청·QR 은 만들지 않는다(DEC-092).
 
 ## 11. 단계 0 상태 (2026-11-05)
 
