@@ -32,7 +32,7 @@ export function SlotCard({
   date: string;
   highlight: boolean;
   meId: string;
-  /** 친구가 남긴 반응·댓글이 있을 때만 온다 (DEC-092) */
+  /** 기록한 끼니이고 공개 중이거나 받은 반응·댓글이 있을 때만 온다 (DEC-092·094) */
   social?: RecordSocial;
 }) {
   const router = useRouter();
@@ -151,8 +151,8 @@ export function SlotCard({
         </div>
       </div>
       <MealPhotos photos={record.photos} compact />
-      {social ? <MealSocial ownerId={meId} social={social} canReact={false} /> : null}
       <StatusBanner status={status} />
+      {social ? <MealSocial ownerId={meId} social={social} canReact={false} /> : null}
     </Card>
   );
 }

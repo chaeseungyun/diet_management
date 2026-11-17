@@ -50,7 +50,7 @@ export function ExtrasPanel({
   socials,
 }: {
   meId: string;
-  /** 반응·댓글이 달린 기록만 (DEC-092) */
+  /** 반응·댓글 줄을 둘 기록만 (DEC-092·094) */
   socials: RecordSocial[];
   date: string;
   /** 이 날의 오늘 화면 경로. 시트를 닫을 때 ?extra=1 을 지우는 데 쓴다 */

@@ -33,14 +33,20 @@ export async function DayScreen({
   openExtra?: boolean;
 }) {
   // ⑨ 친구 오늘 줄은 오늘 화면에서만 (sharing-plan §7)
-  const [day, socials, friends] = await Promise.all([
+  const [day, socials, sharing, friends] = await Promise.all([
     apiGet<Schemas['DayDto']>(`/days/${date}`),
-    // 친구가 남긴 반응·댓글 수 (DEC-092). 있는 끼니에만 줄이 보인다
+    // 친구가 남긴 반응·댓글 수 (DEC-092)
     apiGet<Schemas['RecordSocialDto'][]>(`/days/${date}/social`),
+    apiGet<Schemas['SharingSettingsDto']>('/me/sharing'),
     date === today ? apiGet<Friend[]>('/friends') : Promise.resolve<Friend[]>([]),
   ]);
+  // 친구에게 공개 중이면 기록한 끼니마다 맨 아래에 반응·댓글 줄을 둔다(SNS 게시물처럼).
+  // 나만 보기면 볼 사람이 없으니 이미 받은 반응·댓글이 있는 끼니에만 (DEC-094)
+  const isPublic = sharing.visibility === 'friends';
   const social = new Map(
-    socials.filter((s) => s.reactions.length > 0 || s.commentCount > 0).map((s) => [s.recordId, s]),
+    socials
+      .filter((s) => isPublic || s.reactions.length > 0 || s.commentCount > 0)
+      .map((s) => [s.recordId, s]),
   );
   const socialOf = (id: string | null) => ({ meId, social: id ? social.get(id) : undefined });
   const link = (d: string) => (d === today ? '/' : `/day/${d}`);

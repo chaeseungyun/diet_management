@@ -26,6 +26,7 @@ function timeLabel(iso: string): string {
 /**
  * 끼니 카드 아래의 반응 줄과 댓글 (S-83·S-86, DEC-092).
  * canReact(친구의 끼니)면 이모지 6개를 눌러 반응하고, 내 끼니면 받은 반응만 보인다. 댓글은 양쪽 다 쓴다.
+ * 카드 맨 아래에 구분선을 두고 붙인다(기록 버튼과 떨어뜨림, DEC-094).
  */
 export function MealSocial({
   ownerId,
@@ -68,7 +69,7 @@ export function MealSocial({
   const chip = 'inline-flex h-8 items-center gap-1 rounded-full border px-2.5 text-sm';
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-2 border-t border-border pt-2', className)}>
       <div className="flex flex-wrap items-center gap-1.5">
         {canReact
           ? REACTION_EMOJIS.map((emoji) => {
