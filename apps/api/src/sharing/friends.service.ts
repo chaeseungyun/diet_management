@@ -239,6 +239,7 @@ export class FriendsService {
       const [summary] = await this.meals.getDays(friend, date, date);
       if (summary) {
         today = {
+          date,
           activeSlots: summary.activeSlots,
           recordedSlots: summary.recordedSlots,
           completed: summary.completed,

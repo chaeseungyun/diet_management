@@ -234,7 +234,8 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 
 - 단계 3 뒤 고친 것: Caddy 본문 제한(사진 올리기만 11MB), 올리기 전 브라우저에서 줄이기(DEC-088), 하루 올리기 30번 상한(DEC-089).
 - 완료(공유-1a 1/2, DEC-090): `sharing_friends` 마이그레이션(`users.share_visibility`, `friend_links`, `friend_invites`), API `me/sharing`·`friend-invites`·`friends`·친구의 하루·친구 사진, e2e 10건. 새 환경 변수는 없다(초대 주소는 `WEB_ORIGIN` 으로 만든다).
-- 다음: 공유-1a 웹 화면(S-80~S-84, S-10 ⑨) → 공유-1b(친구 코드 요청·차단).
+- 완료(공유-1a 2/2, DEC-091): 웹 화면 S-80 친구·S-81 친구 추가·S-82 초대 수락(`/invite/[code]`, 로그인 영역 밖)·S-83 친구의 하루·S-84 공유 설정·S-10 ⑨ 친구 오늘 줄. 배포 뒤 확인할 것: 실제 카카오 로그인을 거친 초대 수락, 카카오톡 인앱 브라우저에서 링크 열기.
+- 다음: 공유-1b(친구 코드 요청·차단).
 
 ## 11. 단계 0 상태 (2026-11-05)
 

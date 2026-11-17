@@ -2196,6 +2196,11 @@ export interface components {
             nickname: string;
         };
         FriendTodayDto: {
+            /**
+             * @description 친구 시간대의 오늘. 친구의 하루로 가는 링크에 쓴다
+             * @example 2026-11-16
+             */
+            date: string;
             /** @description 집계 대상 끼니 수 (DaySummaryDto.activeSlots 와 같은 계산) */
             activeSlots: number;
             recordedSlots: number;

@@ -15,6 +15,8 @@ import { DayComplete } from './day-complete';
 import { InstallBanner } from '@/components/pwa/install-banner';
 import { PushBanner } from '@/components/pwa/push-banner';
 import { StockRow } from '@/components/stock/stock-row';
+import { FriendsToday } from '@/components/friends/friends-today';
+import type { Friend } from '@/lib/friends';
 
 /** 오늘 홈 (S-10 ①~⑧). ⑦ 곧 떨어질 식품은 소진 임박만 보이고 없으면 숨긴다 (DEC-080 13) */
 export async function DayScreen({
@@ -27,7 +29,11 @@ export async function DayScreen({
   /** '+ 식사 추가 → 추가 간식' 으로 들어왔을 때 간식 시트를 열어 둔다 */
   openExtra?: boolean;
 }) {
-  const day = await apiGet<Schemas['DayDto']>(`/days/${date}`);
+  // ⑨ 친구 오늘 줄은 오늘 화면에서만 (sharing-plan §7)
+  const [day, friends] = await Promise.all([
+    apiGet<Schemas['DayDto']>(`/days/${date}`),
+    date === today ? apiGet<Friend[]>('/friends') : Promise.resolve<Friend[]>([]),
+  ]);
   const link = (d: string) => (d === today ? '/' : `/day/${d}`);
   const dayHref = link(date);
   // 식단·기록 있는 끼니를 먼저, 미기록 자유 끼니는 뒤에 흐리게 (D-18·D-20)
@@ -84,6 +90,8 @@ export async function DayScreen({
           <PushBanner />
         </>
       ) : null}
+
+      <FriendsToday friends={friends} />
 
       <SetupGuide />
 

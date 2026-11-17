@@ -112,7 +112,12 @@ describe('phase 4: sharing-1a', () => {
     await day(a, bId).expect(404);
     const friendA = (await b.get('/friends').expect(200)).body[0];
     expect(friendA.shared).toBe(true);
-    expect(friendA.today).toEqual({ activeSlots: 0, recordedSlots: 0, completed: false });
+    expect(friendA.today).toEqual({
+      date: TODAY,
+      activeSlots: 0,
+      recordedSlots: 0,
+      completed: false,
+    });
     expect((await a.get('/friends').expect(200)).body[0]).toMatchObject({
       userId: bId,
       shared: false,
@@ -365,6 +370,7 @@ describe('phase 4: sharing-1a', () => {
     await a.put(`/days/${TODAY}/completion`).send({}).expect(200);
     expect((await day(b, aId).expect(200)).body.completed).toBe(true);
     expect((await b.get('/friends').expect(200)).body[0].today).toEqual({
+      date: TODAY,
       activeSlots: 4,
       recordedSlots: 4,
       completed: true,

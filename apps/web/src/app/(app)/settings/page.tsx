@@ -13,6 +13,8 @@ export default async function SettingsPage() {
   const me = await getMe();
   if (!me) redirect('/login');
   const links: [string, string, string][] = [
+    ['/friends', '친구', '초대 링크로 친구 맺기·친구의 하루 보기'],
+    ['/settings/sharing', '공유 설정', '내 끼니 공개 범위·친구별로 보이기'],
     ['/settings/goals', '목표', '체중·열량·단백질 목표와 이력'],
     ['/weight', '체중', '추이·평균·목표까지'],
     ['/settings/notifications', '알림', '끼니별 알림 시각·재알림·이 기기 알림 켜기'],

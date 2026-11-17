@@ -36,7 +36,8 @@ const items = [
     href: '/settings',
     label: '더보기',
     icon: MoreHorizontal,
-    match: (p: string) => p.startsWith('/settings') || p.startsWith('/weight'),
+    match: (p: string) =>
+      p.startsWith('/settings') || p.startsWith('/weight') || p.startsWith('/friends'),
   },
 ];
 
@@ -116,6 +117,7 @@ export function Sidebar() {
               {it.href === '/settings' ? (
                 <SubLinks
                   links={[
+                    ['/friends', '친구'],
                     ['/weight', '체중'],
                     ['/settings/goals', '목표'],
                     ['/settings/notifications', '알림'],

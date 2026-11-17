@@ -146,7 +146,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 | `GET /friend-invites/{code}` | 미리보기 `{nickname}` | **로그인 불필요**. 만료·소진·철회·초대자 탈퇴는 404 |
 | `POST /friend-invites/{code}/accept` | 수락 → 즉시 친구, `FriendDto` | 내 링크 `422 FRIEND_INVITE_OWN`, 이미 친구 `422 FRIEND_ALREADY`, 친구 50명 `422 FRIEND_LIMIT`, 쓸 수 없는 링크 404. 공개 범위는 바꾸지 않는다 |
 | `DELETE /friend-invites/{id}` | 철회 | 남의 링크 404 |
-| `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
+| `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `date`·`activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
 | `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 내 끼니 끄기·켜기 | 친구가 아니면 404 |
 | `DELETE /friends/{userId}` | 친구 끊기(양쪽 즉시) | |
 | `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed` | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·체중·목표·재고는 없다 |
