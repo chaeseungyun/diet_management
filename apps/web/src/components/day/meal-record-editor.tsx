@@ -145,6 +145,8 @@ export function MealRecordEditor({
   const [busy, setBusy] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [planDialog, setPlanDialog] = useState(false);
+  // 기록 취소(미기록으로 되돌림)는 한 번 더 묻는다
+  const [confirmUndo, setConfirmUndo] = useState(false);
 
   const eaten = record.status === 'eaten';
   const skipped = record.status === 'skipped';
@@ -277,6 +279,7 @@ export function MealRecordEditor({
       if (e instanceof Error && 'status' in e && (e as { status: number }).status === 409)
         setConflict(true);
     } finally {
+      setConfirmUndo(false);
       setBusy(false);
     }
   }
@@ -424,7 +427,7 @@ export function MealRecordEditor({
             <button
               type="button"
               disabled={busy}
-              onClick={() => save('unrecorded')}
+              onClick={() => setConfirmUndo(true)}
               className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
             >
               <Undo2 className="size-3" />
@@ -432,6 +435,22 @@ export function MealRecordEditor({
             </button>
           ) : null}
         </div>
+        {recorded && confirmUndo ? (
+          <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">
+            <p className="text-sm">
+              이 끼니의 기록을 취소하고 기록 전으로 되돌리시겠습니까?
+              {eaten ? ' 뺐던 양은 다시 채워집니다.' : ''}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" disabled={busy} onClick={() => setConfirmUndo(false)}>
+                취소
+              </Button>
+              <Button variant="destructive" disabled={busy} onClick={() => save('unrecorded')}>
+                되돌리기
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <StatusBanner status={status} />

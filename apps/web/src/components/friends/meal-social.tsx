@@ -143,6 +143,8 @@ function Comments({ base, onCount }: { base: string; onCount: (n: number) => voi
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
+  // 삭제는 한 번 더 묻는다: 확인 중인 댓글 id
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const apply = (next: Comment[]) => {
     setComments(next);
@@ -187,6 +189,7 @@ function Comments({ base, onCount }: { base: string; onCount: (n: number) => voi
     } catch (e) {
       fail(e);
     } finally {
+      setConfirmId(null);
       setBusy(false);
     }
   }
@@ -216,7 +219,7 @@ function Comments({ base, onCount }: { base: string; onCount: (n: number) => voi
       ) : (
         <ul className="flex flex-col gap-3">
           {comments.map((c) => (
-            <li key={c.id} className="flex items-start gap-2">
+            <li key={c.id} className="flex flex-wrap items-start gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{c.nickname}</span>
@@ -240,12 +243,25 @@ function Comments({ base, onCount }: { base: string; onCount: (n: number) => voi
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => remove(c)}
+                  onClick={() => setConfirmId(c.id)}
                   aria-label="댓글 삭제"
                   className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-accent/50 disabled:opacity-50"
                 >
                   <Trash2 className="size-4" />
                 </button>
+              ) : null}
+              {confirmId === c.id ? (
+                <div className="flex w-full flex-col gap-2 rounded-lg bg-muted p-3">
+                  <p className="text-sm">댓글을 삭제하시겠습니까?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" disabled={busy} onClick={() => setConfirmId(null)}>
+                      취소
+                    </Button>
+                    <Button variant="destructive" disabled={busy} onClick={() => remove(c)}>
+                      삭제
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </li>
           ))}
