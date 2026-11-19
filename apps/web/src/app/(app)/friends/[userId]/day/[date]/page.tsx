@@ -94,8 +94,6 @@ export default async function FriendDayPage({
         </CardContent>
       </Card>
 
-      {day.weight ? <WeightCard weight={day.weight} /> : null}
-
       <Section title="식사">
         {day.slots.length === 0 ? (
           <EmptyState>이 날 보이는 끼니가 없어요.</EmptyState>
@@ -111,6 +109,8 @@ export default async function FriendDayPage({
           ))}
         </Section>
       ) : null}
+
+      {day.weight ? <WeightCard weight={day.weight} /> : null}
     </Page>
   );
 }
