@@ -2393,7 +2393,7 @@ export interface components {
         };
         ReactionCountDto: {
             /** @enum {string} */
-            emoji: "👍" | "🔥" | "😋" | "👏" | "💪" | "❤️";
+            emoji: "👍" | "👎" | "🔥" | "😋" | "👏" | "💪" | "❤️";
             count: number;
         };
         RecordSocialDto: {
@@ -2469,7 +2469,7 @@ export interface components {
              * @description 허용 목록(`REACTION_EMOJIS`)의 이모지 하나
              * @enum {string}
              */
-            emoji: "👍" | "🔥" | "😋" | "👏" | "💪" | "❤️";
+            emoji: "👍" | "👎" | "🔥" | "😋" | "👏" | "💪" | "❤️";
         };
         CommentDto: {
             /** Format: uuid */

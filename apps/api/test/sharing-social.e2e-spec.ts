@@ -110,7 +110,10 @@ describe('phase 4: sharing-2a (reactions, comments, likes)', () => {
   });
 
   it('rejects reactions that are not allowed', async () => {
-    await react(b, '👎').expect(422);
+    await react(b, '😡').expect(422);
+    // 👎 는 허용 목록에 있다 (DEC-102)
+    await react(b, '👎').expect(200);
+    await b.delete(`${rec(aId, lunch)}/reaction`).expect(200);
     await react(b, '').expect(422);
     // 기록 소유자는 자기 끼니에 반응하지 않는다
     await react(a, '👍').expect(404);

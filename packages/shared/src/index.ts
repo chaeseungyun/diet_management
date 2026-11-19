@@ -31,8 +31,8 @@ export const FRIEND_INVITE_TTL_DAYS = 7;
 export const FRIEND_INVITE_MAX_ACTIVE = 5;
 /** 친구 수 상한 (친구 목록이 친구마다 오늘 요약을 계산한다) */
 export const FRIEND_MAX = 50;
-/** 끼니 반응 이모지 (DEC-092). 한 사람이 기록당 1개. 칭찬·응원만 두고 부정적 반응은 넣지 않는다 */
-export const REACTION_EMOJIS = ['👍', '🔥', '😋', '👏', '💪', '❤️'] as const;
+/** 끼니 반응 이모지 (DEC-092, 👎 는 DEC-102). 한 사람이 기록당 1개. 배열 순서가 화면 순서다 */
+export const REACTION_EMOJIS = ['👍', '👎', '🔥', '😋', '👏', '💪', '❤️'] as const;
 export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 /** 끼니 댓글: 500자, 기록 하나에 100개까지(목록을 나누지 않고 한 번에 준다) */
 export const COMMENT_MAX_LENGTH = 500;
