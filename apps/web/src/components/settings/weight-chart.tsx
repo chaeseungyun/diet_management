@@ -5,10 +5,13 @@ import { EmptyState } from '@/components/ui/card';
 export function WeightChart({
   items,
   target,
+  range,
 }: {
   /** S-50 의 WeightDto 와 S-60 의 일별 체중을 같이 받는다 */
   items: Pick<Schemas['WeightDto'], 'date' | 'weightKg'>[];
   target: number | null;
+  /** 가로축을 이 기간으로 고정한다(친구의 7일 추이). 없으면 측정값의 처음~끝 */
+  range?: { from: string; to: string };
 }) {
   if (items.length === 0) return <EmptyState>측정 데이터 없음</EmptyState>;
   const pts = [...items].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -18,8 +21,10 @@ export function WeightChart({
   const xs = pts.map((p) => Date.parse(p.date));
   const ys = pts.map((p) => p.weightKg);
   const allY = target !== null ? [...ys, target] : ys;
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs, minX + 86_400_000);
+  const first = range?.from ?? pts[0]!.date;
+  const last = range?.to ?? pts.at(-1)!.date;
+  const minX = range ? Date.parse(range.from) : Math.min(...xs);
+  const maxX = Math.max(range ? Date.parse(range.to) : Math.max(...xs), minX + 86_400_000);
   const minY = Math.floor(Math.min(...allY) - 1);
   const maxY = Math.ceil(Math.max(...allY) + 1);
   const x = (v: number) => pad.l + ((v - minX) / (maxX - minX)) * (w - pad.l - pad.r);
@@ -83,10 +88,10 @@ export function WeightChart({
         </circle>
       ))}
       <text x={pad.l} y={h - 6} fontSize="9" fill="var(--muted-foreground)">
-        {pts[0]!.date}
+        {first}
       </text>
       <text x={w - pad.r} y={h - 6} fontSize="9" textAnchor="end" fill="var(--muted-foreground)">
-        {pts.at(-1)!.date}
+        {last}
       </text>
     </svg>
   );

@@ -10,6 +10,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, EmptyState } from '@/components/ui/card';
 import { SharedPhotos } from '@/components/friends/shared-photos';
 import { MealSocial } from '@/components/friends/meal-social';
+import { WeightChart } from '@/components/settings/weight-chart';
 import { cn } from '@/lib/utils';
 
 type Meal = Schemas['SharedMealDto'];
@@ -93,6 +94,8 @@ export default async function FriendDayPage({
         </CardContent>
       </Card>
 
+      {day.weight ? <WeightCard weight={day.weight} /> : null}
+
       <Section title="식사">
         {day.slots.length === 0 ? (
           <EmptyState>이 날 보이는 끼니가 없어요.</EmptyState>
@@ -109,6 +112,38 @@ export default async function FriendDayPage({
         </Section>
       ) : null}
     </Page>
+  );
+}
+
+/** 친구가 나에게 몸무게를 켰을 때만 온다 (DEC-101): 그날 값 + 그날까지 7일. 목표·변화량은 없다 */
+function WeightCard({ weight }: { weight: NonNullable<Schemas['SharedDayDto']['weight']> }) {
+  const measured = weight.recent.flatMap((p) =>
+    p.weightKg === null ? [] : [{ date: p.date, weightKg: p.weightKg }],
+  );
+  return (
+    <Section title="몸무게">
+      <Card>
+        <CardContent className="flex flex-col gap-3 pt-4">
+          {weight.weightKg === null ? (
+            <p className="text-sm text-muted-foreground">이 날은 기록이 없어요.</p>
+          ) : (
+            <p className="text-2xl font-semibold">
+              {formatQuantity(weight.weightKg, 1)}{' '}
+              <span className="text-sm font-normal text-muted-foreground">kg</span>
+            </p>
+          )}
+          {measured.length > 0 ? (
+            <WeightChart
+              items={measured}
+              target={null}
+              range={{ from: weight.recent[0]!.date, to: weight.recent.at(-1)!.date }}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">최근 7일 동안 기록이 없어요.</p>
+          )}
+        </CardContent>
+      </Card>
+    </Section>
   );
 }
 

@@ -140,19 +140,19 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /me/sharing` · `PUT /me/sharing` `{visibility}` | 내 끼니 공개 범위 `private`(기본)·`friends` | `private` 로 바꾸면 모든 친구에게 즉시 404 |
+| `GET /me/sharing` · `PUT /me/sharing` `{visibility?, shareWeight?}` | 내 끼니 공개 범위 `private`(기본)·`friends`, 몸무게 공개 `shareWeight`(기본 false, DEC-101) | `private` 로 바꾸면 모든 친구에게 즉시 404. 둘 중 하나는 필수, 보내지 않은 쪽은 그대로(둘 다 없으면 422) |
 | `POST /friend-invites` | 초대 링크 만들기 → `{id, code, url, expiresAt}` | 1회용·7일. 쓸 수 있는 링크 5개까지 `422 FRIEND_INVITE_LIMIT` |
 | `GET /friend-invites` | 아직 쓸 수 있는 내 링크 | |
 | `GET /friend-invites/{code}` | 미리보기 `{nickname}` | **로그인 불필요**. 만료·소진·철회·초대자 탈퇴는 404 |
 | `POST /friend-invites/{code}/accept` | 수락 → 즉시 친구, `FriendDto` | 내 링크 `422 FRIEND_INVITE_OWN`, 이미 친구 `422 FRIEND_ALREADY`, 친구 50명 `422 FRIEND_LIMIT`, 쓸 수 없는 링크 404. 공개 범위는 바꾸지 않는다 |
 | `DELETE /friend-invites/{id}` | 철회 | 남의 링크 404 |
 | `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `date`·`activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
-| `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 내 끼니 끄기·켜기 | 친구가 아니면 404 |
+| `PATCH /friends/{userId}` `{shareToFriend?, shareWeightToFriend?}` | 이 친구에게만 내 끼니 끄기·켜기, 내 몸무게 켜기·끄기(기본 꺼짐, DEC-101) | 친구가 아니면 404. 둘 다 없으면 422. 끼니를 끄면 몸무게 스위치도 꺼진다 |
 | `DELETE /friends/{userId}` | 친구 끊기(양쪽 즉시) | |
 | `POST /friends/{userId}/block` | 차단(204): 친구가 끊기고 어느 쪽의 초대 링크도 404, 서로의 반응·댓글 숨김·알림 막기 | 지금 친구만. 그 밖(상대가 나를 차단함 포함)은 404, 이미 내가 차단했으면 204. DEC-097 |
 | `DELETE /friends/{userId}/block` | 차단 해제(204, 관계 행 삭제 — 친구로 돌아가지 않음) | 내가 차단한 사람만, 그 밖은 404 |
 | `GET /friends/blocked` | 내가 차단한 사람 `[{userId, nickname}]`(닉네임 순, 탈퇴 대기 포함) | 나를 차단한 사람은 없다 |
-| `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed` | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·체중·목표·재고는 없다 |
+| `GET /friends/{userId}/days/{date}` | 친구의 하루 `SharedDayDto`: `owner`, `date`·`today`·`firstDate`, `slots[]`·`extras[]`(`recordId`·`slot`·`status`·`kind`·`outsideMenu`·`items[{name, quantity, unit, displayUnit}]`·`photos[{id, width, height, expired}]`), `nutrition`(기록된 합계), `completed`, `weight`(`{weightKg, recent[{date, weightKg}]}` 또는 null) | 미래·가입 전 404. 미기록 자유 끼니는 빠지고(D-18) 미기록 식단 끼니는 상태만. 계획·식단 이름·목표·재고는 없다. `weight` 는 친구가 몸무게 공개와 나에 대한 친구별 스위치를 둘 다 켰을 때만 값이고 아니면 null, `recent` 는 그날까지 7일(가입일에서 자름, 기록 없는 날 null), 목표 체중은 없다(DEC-101) |
 | `GET /friends/{userId}/meal-photos/{photoId}?size=thumb` | 친구의 식사 사진(JPEG) | 기록에 붙은 사진만. 캐시 규칙은 §8-1 과 같다 |
 
 ### 8-3. 끼니 반응·댓글 (단계 4, 공유-2a) — DEC-092

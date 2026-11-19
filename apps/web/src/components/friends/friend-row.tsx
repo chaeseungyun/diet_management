@@ -84,6 +84,25 @@ export function FriendRow({ friend }: { friend: Friend }) {
           꺼도 친구는 유지돼요. 공유 설정이 &apos;나만 보기&apos; 면 이 스위치와 상관없이 아무에게도
           보이지 않아요.
         </p>
+        <Checkbox
+          label="이 친구에게 내 몸무게 보이기"
+          checked={friend.shareWeightToFriend}
+          disabled={busy}
+          onChange={(e) =>
+            act(
+              () =>
+                api('PATCH', `/friends/${friend.userId}`, {
+                  shareWeightToFriend: e.target.checked,
+                }),
+              e.target.checked ? '이 친구에게 몸무게를 보여요' : '이 친구에게 몸무게를 숨겼어요',
+              false,
+            )
+          }
+        />
+        <p className="-mt-2 text-xs text-muted-foreground">
+          공유 설정에서 &apos;몸무게도 공개&apos;를 켜야 보이고, 끼니를 숨긴 친구에게는 보이지
+          않아요.
+        </p>
         <StatusBanner status={status} />
         {confirming ? (
           <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">

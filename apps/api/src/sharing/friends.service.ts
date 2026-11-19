@@ -6,11 +6,11 @@ import {
   FRIEND_INVITE_TTL_DAYS,
   FRIEND_MAX,
   todayIn,
-  type ShareVisibility,
 } from '@diet/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENV, type Env } from '../config/env';
 import { unprocessable } from '../common/errors';
+import { addDays, fromDbDate, toDbDate } from '../domain/dates';
 import { MealsService } from '../meals/meals.service';
 import type { MealRecordDto } from '../meals/meals.dto';
 import { friendPair, ownerShares, SharingAccessService } from './sharing-access.service';
@@ -24,7 +24,10 @@ import {
   FriendInvitePreviewDto,
   SharedDayDto,
   SharedMealDto,
+  SharedWeightDto,
   SharingSettingsDto,
+  UpdateFriendDto,
+  UpdateSharingSettingsDto,
 } from './sharing.dto';
 
 type Db = Prisma.TransactionClient | PrismaService;
@@ -51,15 +54,15 @@ export class FriendsService {
   // ---------- 공개 범위 ----------
 
   getSharing(user: User): SharingSettingsDto {
-    return { visibility: user.shareVisibility };
+    return { visibility: user.shareVisibility, shareWeight: user.shareWeight };
   }
 
-  async setSharing(user: User, visibility: ShareVisibility): Promise<SharingSettingsDto> {
+  async setSharing(user: User, dto: UpdateSharingSettingsDto): Promise<SharingSettingsDto> {
     const updated = await this.prisma.user.update({
       where: { id: user.id },
-      data: { shareVisibility: visibility },
+      data: { shareVisibility: dto.visibility, shareWeight: dto.shareWeight },
     });
-    return { visibility: updated.shareVisibility };
+    return this.getSharing(updated);
   }
 
   // ---------- 초대 링크 ----------
@@ -138,7 +141,14 @@ export class FriendsService {
           data: { usedCount: { increment: 1 } },
         });
         if (claimed.count === 0) throw new NotFoundException();
-        const data = { status: 'accepted' as const, requestedBy: invite.userId, respondedAt: now };
+        // 몸무게 스위치는 친구가 될 때마다 꺼진 채로 시작한다 (DEC-101)
+        const data = {
+          status: 'accepted' as const,
+          requestedBy: invite.userId,
+          respondedAt: now,
+          lowSharesWeightToHigh: false,
+          highSharesWeightToLow: false,
+        };
         return existing
           ? tx.friendLink.update({
               where: { id: existing.id },
@@ -228,13 +238,17 @@ export class FriendsService {
       .sort((a, b) => a.nickname.localeCompare(b.nickname, 'ko'));
   }
 
-  /** 이 친구에게만 내 끼니를 끄거나 켠다(방향 플래그) */
-  async setShareToFriend(user: User, otherId: string, share: boolean): Promise<FriendDto> {
+  /** 이 친구에게만 내 끼니를 끄거나 켜고, 내 몸무게를 켜거나 끈다(방향 플래그). 보내지 않은 쪽은 그대로 */
+  async updateFriend(user: User, otherId: string, dto: UpdateFriendDto): Promise<FriendDto> {
     const pair = friendPair(user.id, otherId);
     const iAmLow = pair.userLowId === user.id;
+    // 끼니를 끄면 몸무게도 끈다: 나중에 끼니만 다시 켰을 때 몸무게가 따라 켜지지 않게 (DEC-101)
+    const weight = dto.shareToFriend === false ? false : dto.shareWeightToFriend;
     const r = await this.prisma.friendLink.updateMany({
       where: { ...pair, status: 'accepted' },
-      data: iAmLow ? { lowSharesToHigh: share } : { highSharesToLow: share },
+      data: iAmLow
+        ? { lowSharesToHigh: dto.shareToFriend, lowSharesWeightToHigh: weight }
+        : { highSharesToLow: dto.shareToFriend, highSharesWeightToLow: weight },
     });
     if (r.count === 0) throw new NotFoundException();
     const link = await this.prisma.friendLink.findUnique({
@@ -249,7 +263,7 @@ export class FriendsService {
 
   /** 접근 불가·미래·가입 전은 모두 404. 가입일부터 오늘(친구 시간대)까지는 어느 날이든 본다 (§9-3) */
   async sharedDay(viewer: User, ownerId: string, date: string): Promise<SharedDayDto> {
-    const owner = await this.access.resolveViewable(viewer.id, ownerId);
+    const { owner, weight } = await this.access.resolveViewableWithScope(viewer.id, ownerId);
     const today = todayIn(owner.timezone);
     const firstDate = todayIn(owner.timezone, owner.createdAt);
     if (date > today || date < firstDate) throw new NotFoundException();
@@ -274,7 +288,30 @@ export class FriendsService {
       extras: day.extras.map((r) => sharedMeal(r, social)),
       nutrition: day.recorded,
       completed: day.completed,
+      weight: weight ? await this.sharedWeight(owner, date, firstDate) : null,
     };
+  }
+
+  /**
+   * 친구에게 보이는 몸무게 (DEC-101): 그날 값 + 그날을 끝으로 하는 7일. 가입일 앞은 자른다.
+   * 접근 판정이 몸무게 공개를 확인한 owner 로만 부른다. 목표 체중·변화량은 읽지 않는다.
+   */
+  private async sharedWeight(
+    owner: User,
+    date: string,
+    firstDate: string,
+  ): Promise<SharedWeightDto> {
+    const weekAgo = addDays(date, -6);
+    const from = weekAgo < firstDate ? firstDate : weekAgo;
+    const rows = await this.prisma.weightRecord.findMany({
+      where: { userId: owner.id, onDate: { gte: toDbDate(from), lte: toDbDate(date) } },
+    });
+    const byDate = new Map(rows.map((r) => [fromDbDate(r.onDate), r.weightKg.toNumber()]));
+    const recent: SharedWeightDto['recent'] = [];
+    for (let d = from; d <= date; d = addDays(d, 1)) {
+      recent.push({ date: d, weightKg: byDate.get(d) ?? null });
+    }
+    return { weightKg: byDate.get(date) ?? null, recent };
   }
 
   /** 친구의 사진을 열 수 있는 owner. 사진 자체의 조건(기록에 붙음·삭제·만료)은 PhotosService 가 본다 */
@@ -310,6 +347,7 @@ export class FriendsService {
       nickname: friend.nickname,
       since: (link.respondedAt ?? link.createdAt).toISOString(),
       shareToFriend: iAmLow ? link.lowSharesToHigh : link.highSharesToLow,
+      shareWeightToFriend: iAmLow ? link.lowSharesWeightToHigh : link.highSharesWeightToLow,
       shared,
       today,
     };

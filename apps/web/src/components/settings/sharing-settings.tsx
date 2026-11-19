@@ -14,13 +14,15 @@ import { StatusBanner, useStatus } from '@/components/ui/status';
 
 const LABELS: Record<ShareVisibility, string> = { private: '나만 보기', friends: '친구에게 공개' };
 
-/** S-84 공유 설정: 공개 범위(즉시 저장) + 친구별 스위치 + 차단한 사람(해제) */
+/** S-84 공유 설정: 공개 범위(즉시 저장) + 친구별 스위치 + 몸무게 공개(전체·친구별, DEC-101) + 차단한 사람(해제) */
 export function SharingSettings({
   visibility: initial,
+  shareWeight: initialShareWeight,
   friends,
   blocked,
 }: {
   visibility: ShareVisibility;
+  shareWeight: boolean;
   friends: Friend[];
   blocked: Schemas['BlockedUserDto'][];
 }) {
@@ -28,7 +30,10 @@ export function SharingSettings({
   const { status, run } = useStatus();
   // 차단 해제 결과는 그 칸에 띄운다(맨 위 배너는 스크롤 밖일 수 있다)
   const unblockStatus = useStatus();
+  // 몸무게 칸의 결과는 그 칸에 띄운다
+  const weightStatus = useStatus();
   const [visibility, setVisibility] = useState(initial);
+  const [shareWeight, setShareWeight] = useState(initialShareWeight);
   const [busy, setBusy] = useState(false);
 
   async function save(work: () => Promise<unknown>, saved: string, runner = run) {
@@ -51,6 +56,17 @@ export function SharingSettings({
         setVisibility(v);
       },
       v === 'friends' ? '친구에게 공개해요' : '나만 볼 수 있어요',
+    );
+  }
+
+  function pickWeight(on: boolean) {
+    void save(
+      async () => {
+        await api('PUT', '/me/sharing', { shareWeight: on });
+        setShareWeight(on);
+      },
+      on ? '고른 친구에게 몸무게를 보여요' : '몸무게를 숨겼어요',
+      weightStatus.run,
     );
   }
 
@@ -79,7 +95,8 @@ export function SharingSettings({
           </p>
           <p className="mt-1 font-medium">보이지 않는 것</p>
           <p className="text-muted-foreground">
-            체중, 목표, 남은 양·장보기, 식단 이름과 아직 먹지 않은 끼니의 계획.
+            목표(목표 체중 포함), 남은 양·장보기, 식단 이름과 아직 먹지 않은 끼니의 계획. 몸무게는
+            아래에서 따로 켠 친구에게만 보여요.
           </p>
         </Card>
       </Section>
@@ -113,6 +130,60 @@ export function SharingSettings({
             지금은 &apos;나만 보기&apos; 라 위 스위치와 상관없이 아무에게도 보이지 않아요.
           </p>
         ) : null}
+      </Section>
+
+      <Section title="몸무게 공개">
+        <Card className="flex flex-col divide-y divide-border">
+          <Checkbox
+            className="justify-between p-3 flex-row-reverse font-medium"
+            label="몸무게도 공개"
+            checked={shareWeight}
+            disabled={busy}
+            onChange={(e) => pickWeight(e.target.checked)}
+          />
+          {friends.map((f) => (
+            <Checkbox
+              key={f.userId}
+              className="justify-between p-3 flex-row-reverse"
+              label={
+                <span className="flex flex-col">
+                  {f.nickname}
+                  {!f.shareToFriend ? (
+                    <span className="text-xs text-muted-foreground">
+                      끼니를 숨긴 친구라 몸무게도 보이지 않아요
+                    </span>
+                  ) : null}
+                </span>
+              }
+              checked={f.shareWeightToFriend}
+              disabled={busy}
+              onChange={(e) =>
+                save(
+                  () =>
+                    api('PATCH', `/friends/${f.userId}`, {
+                      shareWeightToFriend: e.target.checked,
+                    }),
+                  e.target.checked
+                    ? `${f.nickname}님에게 몸무게를 보여요`
+                    : `${f.nickname}님에게 몸무게를 숨겼어요`,
+                  weightStatus.run,
+                )
+              }
+            />
+          ))}
+        </Card>
+        <StatusBanner status={weightStatus.status} />
+        <p className="text-xs text-muted-foreground">
+          &apos;몸무게도 공개&apos;를 켜고 친구를 고르면, 그 친구가 내 하루를 볼 때 그날 몸무게와
+          7일 추이가 보여요. 지난 날의 기록도 보이고, 목표 체중은 보이지 않아요. 새 친구는 꺼진 채로
+          시작해요.
+          {shareWeight && visibility === 'private'
+            ? " 지금은 '나만 보기' 라 몸무게도 아무에게도 보이지 않아요."
+            : null}
+          {!shareWeight && friends.some((f) => f.shareWeightToFriend)
+            ? " 지금은 '몸무게도 공개'가 꺼져 있어 고른 친구에게도 보이지 않아요."
+            : null}
+        </p>
       </Section>
 
       <Section title="차단한 사람">

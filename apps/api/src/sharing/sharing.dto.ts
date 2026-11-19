@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsIn } from 'class-validator';
+import { IsBoolean, IsIn, ValidateIf } from 'class-validator';
 import type { FriendInvite } from '@prisma/client';
 import {
   EXTRA_SLOT,
@@ -20,8 +20,27 @@ import { RecordSocialDto } from './social.dto';
 export class SharingSettingsDto {
   /** private = 나만 보기(기본), friends = 친구에게 공개 */
   @ApiProperty({ enum: SHARE_VISIBILITIES })
-  @IsIn(SHARE_VISIBILITIES)
   visibility!: ShareVisibility;
+
+  /** 몸무게도 공개하는가(기본 false). 친구별 몸무게 스위치를 켠 친구에게만, 끼니가 보일 때만 보인다 (DEC-101) */
+  @ApiProperty()
+  shareWeight!: boolean;
+}
+
+/** 둘 중 하나는 있어야 한다. 보내지 않은 쪽은 그대로 둔다(null 은 422) */
+export class UpdateSharingSettingsDto {
+  @ApiProperty({ enum: SHARE_VISIBILITIES, required: false })
+  @ValidateIf(
+    (o: UpdateSharingSettingsDto) => o.visibility !== undefined || o.shareWeight === undefined,
+  )
+  @IsIn(SHARE_VISIBILITIES)
+  visibility?: ShareVisibility;
+
+  /** 몸무게도 공개할지 (DEC-101) */
+  @ApiProperty({ required: false })
+  @ValidateIf((_o, v) => v !== undefined)
+  @IsBoolean()
+  shareWeight?: boolean;
 }
 
 export class FriendInviteDto {
@@ -85,6 +104,10 @@ export class FriendDto {
   @ApiProperty()
   shareToFriend!: boolean;
 
+  /** 내가 이 친구에게 몸무게를 켰는가(기본 false). 내 몸무게 공개가 꺼져 있거나 끼니가 안 보이면 이 값과 무관하게 안 보인다 */
+  @ApiProperty()
+  shareWeightToFriend!: boolean;
+
   /** 이 친구의 끼니를 내가 볼 수 있는가. false 면 today 는 null 이고 친구의 하루는 404 */
   @ApiProperty()
   shared!: boolean;
@@ -103,16 +126,27 @@ export class BlockedUserDto {
   nickname!: string;
 }
 
+/** 둘 중 하나는 있어야 한다. 보내지 않은 쪽은 그대로 둔다(null 은 422). 끼니를 끄면 몸무게도 꺼진다 */
 export class UpdateFriendDto {
   /** 이 친구에게 내 끼니를 보일지 */
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @ValidateIf(
+    (o: UpdateFriendDto) => o.shareToFriend !== undefined || o.shareWeightToFriend === undefined,
+  )
   @IsBoolean()
-  shareToFriend!: boolean;
+  shareToFriend?: boolean;
+
+  /** 이 친구에게 내 몸무게를 보일지 (DEC-101) */
+  @ApiProperty({ required: false })
+  @ValidateIf((_o, v) => v !== undefined)
+  @IsBoolean()
+  shareWeightToFriend?: boolean;
 }
 
 // ---------- 친구의 하루 ----------
 // DayDto 를 재사용하지 않는다: 보낼 필드를 여기서 하나씩 고른다(화이트리스트).
-// 계획·식단 이름·재고·체중·목표·영양 출처는 넣지 않는다 (sharing-plan §3·§9-2).
+// 계획·식단 이름·재고·목표(목표 체중 포함)·영양 출처는 넣지 않는다 (sharing-plan §3·§9-2).
+// 몸무게는 owner 가 이 친구에게 켰을 때만 값과 7일 추이를 싣는다 (DEC-101).
 
 export class SharedMealItemDto {
   @ApiProperty()
@@ -177,6 +211,26 @@ export class SharedMealDto {
   social!: RecordSocialDto | null;
 }
 
+export class SharedWeightPointDto {
+  @ApiProperty({ example: '2026-11-16' })
+  date!: string;
+
+  /** 그날 기록이 없으면 null(미상). 0 이나 앞 값으로 채우지 않는다 */
+  @ApiProperty({ type: Number, nullable: true })
+  weightKg!: number | null;
+}
+
+/** 친구에게 보이는 몸무게 (DEC-101). 목표 체중·변화량은 싣지 않는다 */
+export class SharedWeightDto {
+  /** 보는 날짜의 몸무게. 기록이 없으면 null */
+  @ApiProperty({ type: Number, nullable: true })
+  weightKg!: number | null;
+
+  /** 보는 날짜를 끝으로 하는 7일(그날 포함, 날짜 오름차순). 가입일 앞은 잘라 7개보다 적을 수 있다 */
+  @ApiProperty({ type: SharedWeightPointDto, isArray: true })
+  recent!: SharedWeightPointDto[];
+}
+
 export class SharedDayOwnerDto {
   @ApiProperty({ format: 'uuid' })
   userId!: string;
@@ -214,4 +268,8 @@ export class SharedDayDto {
   /** 하루 완료 여부 */
   @ApiProperty()
   completed!: boolean;
+
+  /** 몸무게. 친구가 나에게 몸무게를 공개하지 않으면 null (기록이 없는 것과 다르다) */
+  @ApiProperty({ type: SharedWeightDto, nullable: true })
+  weight!: SharedWeightDto | null;
 }

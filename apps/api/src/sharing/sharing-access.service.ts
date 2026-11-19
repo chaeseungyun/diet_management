@@ -19,6 +19,16 @@ export function ownerShares(link: FriendLink, owner: User): boolean {
 }
 
 /**
+ * owner 가 이 관계의 상대에게 자기 몸무게도 보이는가 (DEC-101).
+ * 끼니를 볼 수 있음 + owner 가 몸무게 공개를 켬 + 이 친구에게 몸무게를 켬, 셋 다여야 한다(둘 다 기본 꺼짐).
+ */
+export function ownerSharesWeight(link: FriendLink, owner: User): boolean {
+  if (!ownerShares(link, owner)) return false;
+  if (!owner.shareWeight) return false;
+  return link.userLowId === owner.id ? link.lowSharesWeightToHigh : link.highSharesWeightToLow;
+}
+
+/**
  * 끼니 공유의 접근 판정 (sharing-plan §3, DEC-066·090).
  * 사용자 격리(NFR-04)의 유일한 예외다: 남의 데이터를 읽는 코드는 반드시 여기서 owner 를 받아서만 읽는다.
  * 판정 실패는 이유(없는 사용자·친구 아님·비공개·친구별 끄기·탈퇴·차단)와 무관하게 같은 404 다 (D-06).
@@ -28,6 +38,14 @@ export class SharingAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
   async resolveViewable(viewerId: string, ownerId: string): Promise<User> {
+    return (await this.resolveViewableWithScope(viewerId, ownerId)).owner;
+  }
+
+  /** resolveViewable 과 같은 판정에 더해, 이 viewer 에게 몸무게도 보이는지 함께 돌려준다 (DEC-101) */
+  async resolveViewableWithScope(
+    viewerId: string,
+    ownerId: string,
+  ): Promise<{ owner: User; weight: boolean }> {
     if (viewerId === ownerId) throw new NotFoundException();
     const link = await this.prisma.friendLink.findUnique({
       where: { userLowId_userHighId: friendPair(viewerId, ownerId) },
@@ -36,7 +54,7 @@ export class SharingAccessService {
     if (!link) throw new NotFoundException();
     const owner = link.userLowId === ownerId ? link.userLow : link.userHigh;
     if (!ownerShares(link, owner)) throw new NotFoundException();
-    return owner;
+    return { owner, weight: ownerSharesWeight(link, owner) };
   }
 
   /**

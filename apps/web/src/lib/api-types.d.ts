@@ -910,9 +910,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 내 끼니 공개 범위 */
+        /** 내 끼니 공개 범위와 몸무게 공개 여부 */
         get: operations["SharingController_sharing"];
-        /** 공개 범위 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다 */
+        /** 공개 범위·몸무게 공개 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다. shareWeight 는 보내지 않으면 그대로 */
         put: operations["SharingController_setSharing"];
         post?: never;
         delete?: never;
@@ -1056,7 +1056,7 @@ export interface paths {
         delete: operations["SharingController_unfriend"];
         options?: never;
         head?: never;
-        /** 이 친구에게만 내 끼니 끄기·켜기 */
+        /** 이 친구에게만 내 끼니 끄기·켜기, 내 몸무게 켜기·끄기(둘 중 하나는 필수) */
         patch: operations["SharingController_update"];
         trace?: never;
     };
@@ -1067,7 +1067,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료. 볼 수 없으면 404 */
+        /** 친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료, 친구가 켰으면 몸무게. 볼 수 없으면 404 */
         get: operations["SharingController_day"];
         put?: never;
         post?: never;
@@ -2305,6 +2305,14 @@ export interface components {
              * @enum {string}
              */
             visibility: "private" | "friends";
+            /** @description 몸무게도 공개하는가(기본 false). 친구별 몸무게 스위치를 켠 친구에게만, 끼니가 보일 때만 보인다 (DEC-101) */
+            shareWeight: boolean;
+        };
+        UpdateSharingSettingsDto: {
+            /** @enum {string} */
+            visibility?: "private" | "friends";
+            /** @description 몸무게도 공개할지 (DEC-101) */
+            shareWeight?: boolean;
         };
         FriendInviteDto: {
             /** Format: uuid */
@@ -2340,6 +2348,8 @@ export interface components {
             since: string;
             /** @description 내가 이 친구에게 끄지 않았는가(친구별 스위치). 내 공개 범위가 private 이면 이 값과 무관하게 안 보인다 */
             shareToFriend: boolean;
+            /** @description 내가 이 친구에게 몸무게를 켰는가(기본 false). 내 몸무게 공개가 꺼져 있거나 끼니가 안 보이면 이 값과 무관하게 안 보인다 */
+            shareWeightToFriend: boolean;
             /** @description 이 친구의 끼니를 내가 볼 수 있는가. false 면 today 는 null 이고 친구의 하루는 404 */
             shared: boolean;
             /** @description 친구의 오늘(친구 시간대) 요약. 볼 수 없으면 null */
@@ -2352,7 +2362,9 @@ export interface components {
         };
         UpdateFriendDto: {
             /** @description 이 친구에게 내 끼니를 보일지 */
-            shareToFriend: boolean;
+            shareToFriend?: boolean;
+            /** @description 이 친구에게 내 몸무게를 보일지 (DEC-101) */
+            shareWeightToFriend?: boolean;
         };
         SharedDayOwnerDto: {
             /** Format: uuid */
@@ -2416,6 +2428,18 @@ export interface components {
             /** @description 반응 집계·내 반응·댓글 수. 미기록 끼니는 null (반응·댓글을 달 수 없다) */
             social: components["schemas"]["RecordSocialDto"] | null;
         };
+        SharedWeightPointDto: {
+            /** @example 2026-11-16 */
+            date: string;
+            /** @description 그날 기록이 없으면 null(미상). 0 이나 앞 값으로 채우지 않는다 */
+            weightKg: number | null;
+        };
+        SharedWeightDto: {
+            /** @description 보는 날짜의 몸무게. 기록이 없으면 null */
+            weightKg: number | null;
+            /** @description 보는 날짜를 끝으로 하는 7일(그날 포함, 날짜 오름차순). 가입일 앞은 잘라 7개보다 적을 수 있다 */
+            recent: components["schemas"]["SharedWeightPointDto"][];
+        };
         SharedDayDto: {
             owner: components["schemas"]["SharedDayOwnerDto"];
             /** @example 2026-11-16 */
@@ -2437,6 +2461,8 @@ export interface components {
             nutrition: components["schemas"]["NutritionTotalsDto"];
             /** @description 하루 완료 여부 */
             completed: boolean;
+            /** @description 몸무게. 친구가 나에게 몸무게를 공개하지 않으면 null (기록이 없는 것과 다르다) */
+            weight: components["schemas"]["SharedWeightDto"] | null;
         };
         SetReactionDto: {
             /**
@@ -4056,7 +4082,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SharingSettingsDto"];
+                "application/json": components["schemas"]["UpdateSharingSettingsDto"];
             };
         };
         responses: {

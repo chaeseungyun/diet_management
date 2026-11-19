@@ -95,6 +95,8 @@ model User {
   deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz(6)
   /// 내 끼니 공개 범위 (DEC-066 §9-1). 기본 비공개. friends 여도 친구별 끄기(FriendLink)와 AND
   shareVisibility ShareVisibility @default(private) @map("share_visibility")
+  /// 몸무게도 친구에게 보이는가 (DEC-101). 기본 꺼짐. 끼니 공개 + 친구별 몸무게 스위치(FriendLink)와 AND
+  shareWeight     Boolean         @default(false) @map("share_weight")
 
   goals                  GoalHistory[]
   products               Product[]
@@ -137,20 +139,23 @@ enum FriendLinkStatus {
 
 /// 친구 관계 (sharing-plan §4, DEC-066·090). 두 사용자 쌍에 1행(대칭). 끊기는 행 삭제
 model FriendLink {
-  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// 두 사용자 id 중 작은 쪽 (같은 쌍이 두 행이 되지 않게)
-  userLowId       String           @map("user_low_id") @db.Uuid
-  userHighId      String           @map("user_high_id") @db.Uuid
+  userLowId             String           @map("user_low_id") @db.Uuid
+  userHighId            String           @map("user_high_id") @db.Uuid
   /// 초대·요청한 쪽
-  requestedBy     String           @map("requested_by") @db.Uuid
-  status          FriendLinkStatus
+  requestedBy           String           @map("requested_by") @db.Uuid
+  status                FriendLinkStatus
   /// status=blocked 일 때 차단한 쪽
-  blockedBy       String?          @map("blocked_by") @db.Uuid
+  blockedBy             String?          @map("blocked_by") @db.Uuid
   /// 친구별 끄기. low 가 high 에게 자기 끼니를 보이는가 (사용자 기본값 shareVisibility 와 AND)
-  lowSharesToHigh Boolean          @default(true) @map("low_shares_to_high")
-  highSharesToLow Boolean          @default(true) @map("high_shares_to_low")
-  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  respondedAt     DateTime?        @map("responded_at") @db.Timestamptz(6)
+  lowSharesToHigh       Boolean          @default(true) @map("low_shares_to_high")
+  highSharesToLow       Boolean          @default(true) @map("high_shares_to_low")
+  /// 친구별 몸무게 보이기 (DEC-101). 기본 꺼짐: 보여줄 친구를 하나씩 고른다. low 가 high 에게 자기 몸무게를 보이는가
+  lowSharesWeightToHigh Boolean          @default(false) @map("low_shares_weight_to_high")
+  highSharesWeightToLow Boolean          @default(false) @map("high_shares_weight_to_low")
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  respondedAt           DateTime?        @map("responded_at") @db.Timestamptz(6)
 
   userLow  User @relation("FriendLinkLow", fields: [userLowId], references: [id], onDelete: Cascade)
   userHigh User @relation("FriendLinkHigh", fields: [userHighId], references: [id], onDelete: Cascade)

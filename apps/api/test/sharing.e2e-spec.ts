@@ -26,6 +26,8 @@ describe('phase 4: sharing-1a', () => {
   let aId: string;
   let bId: string;
   let cId: string;
+  /** 가입일을 당기는 테스트가 다음 테스트로 새지 않게 되돌린다 */
+  let aCreatedAt: Date;
 
   const me = async (who: ReturnType<typeof api>) => (await who.get('/me').expect(200)).body.id;
   const invite = async (who: ReturnType<typeof api>) =>
@@ -55,6 +57,7 @@ describe('phase 4: sharing-1a', () => {
     b = api(server, await login(server, 'share-b', '비'));
     c = api(server, await login(server, 'share-c', '씨'));
     [aId, bId, cId] = [await me(a), await me(b), await me(c)];
+    aCreatedAt = (await prisma.user.findUniqueOrThrow({ where: { id: aId } })).createdAt;
   });
 
   afterAll(async () => {
@@ -69,11 +72,18 @@ describe('phase 4: sharing-1a', () => {
     await prisma.friendInvite.deleteMany({});
     await prisma.mealPhoto.deleteMany({});
     await prisma.mealRecord.deleteMany({});
-    await prisma.user.updateMany({ data: { shareVisibility: 'private', deletedAt: null } });
+    await prisma.weightRecord.deleteMany({});
+    await prisma.user.updateMany({
+      data: { shareVisibility: 'private', shareWeight: false, deletedAt: null },
+    });
+    await prisma.user.update({ where: { id: aId }, data: { createdAt: aCreatedAt } });
   });
 
   it('is private by default and hides non-friends behind the same 404', async () => {
-    expect((await a.get('/me/sharing').expect(200)).body).toEqual({ visibility: 'private' });
+    expect((await a.get('/me/sharing').expect(200)).body).toEqual({
+      visibility: 'private',
+      shareWeight: false,
+    });
     // 친구가 아님, 없는 사용자, 자기 자신, UUID 가 아닌 값: 모두 같은 404
     const bodies = [
       (await day(b, aId).expect(404)).body,
@@ -313,6 +323,7 @@ describe('phase 4: sharing-1a', () => {
       .post(`/meal-records/${TODAY}/extra`)
       .send({ status: 'eaten', kind: 'outside', outsideMenu: '붕어빵', outsideKcal: 200 })
       .expect(201);
+    await a.put(`/weights/${TODAY}`).send({ weightKg: 71.35 }).expect(200);
 
     await befriend(a, b);
     await share(a, 'friends');
@@ -320,8 +331,20 @@ describe('phase 4: sharing-1a', () => {
     const body = res.body;
 
     expect(Object.keys(body).sort()).toEqual(
-      ['completed', 'date', 'extras', 'firstDate', 'nutrition', 'owner', 'slots', 'today'].sort(),
+      [
+        'completed',
+        'date',
+        'extras',
+        'firstDate',
+        'nutrition',
+        'owner',
+        'slots',
+        'today',
+        'weight',
+      ].sort(),
     );
+    // 몸무게는 켜지 않으면 null 이다 (DEC-101)
+    expect(body.weight).toBeNull();
     expect(body.owner).toEqual({ userId: aId, nickname: '에이' });
     expect(body).toMatchObject({ date: TODAY, today: TODAY, firstDate: TODAY, completed: false });
     for (const meal of [...body.slots, ...body.extras]) {
@@ -358,10 +381,19 @@ describe('phase 4: sharing-1a', () => {
 
     // 응답 어디에도 식단 이름·재고·체중·목표·카카오 ID·제품 id 가 없다
     const text = JSON.stringify(body);
-    for (const leaked of ['비밀 식단 이름', 'share-a', chicken, template]) {
+    for (const leaked of ['비밀 식단 이름', 'share-a', chicken, template, '71.35']) {
       expect(text).not.toContain(leaked);
     }
-    for (const key of ['weight', 'goal', 'stock', 'kakao', 'template', 'plan', 'version']) {
+    for (const key of [
+      'weightkg',
+      'goal',
+      'target',
+      'stock',
+      'kakao',
+      'template',
+      'plan',
+      'version',
+    ]) {
       expect(text.toLowerCase()).not.toContain(key);
     }
 
@@ -393,6 +425,101 @@ describe('phase 4: sharing-1a', () => {
     const past = await day(b, aId, addDays(TODAY, -3)).expect(200);
     expect(past.body.firstDate).toBe(addDays(TODAY, -3));
     await day(b, aId, addDays(TODAY, -4)).expect(404);
+  });
+
+  it('shares weight only when both the global and the per-friend switch are on', async () => {
+    const shareWeight = (who: ReturnType<typeof api>, on: boolean) =>
+      who.put('/me/sharing').send({ visibility: 'friends', shareWeight: on }).expect(200);
+    const toFriend = (who: ReturnType<typeof api>, id: string, on: boolean) =>
+      who.patch(`/friends/${id}`).send({ shareWeightToFriend: on }).expect(200);
+    const weight = async (who: ReturnType<typeof api>, date = TODAY) =>
+      (await day(who, aId, date).expect(200)).body.weight;
+
+    // A 는 6일 전 가입, 목표 체중도 있다(새면 안 된다)
+    await prisma.user.update({
+      where: { id: aId },
+      data: { createdAt: new Date(Date.now() - 6 * 86_400_000) },
+    });
+    await a
+      .put(`/weights/${addDays(TODAY, -2)}`)
+      .send({ weightKg: 72.4 })
+      .expect(200);
+    await a.put(`/weights/${TODAY}`).send({ weightKg: 71.9 }).expect(200);
+    await befriend(a, b);
+    await befriend(a, c);
+    await share(a, 'friends');
+
+    // 새 친구는 꺼진 채로 시작한다. visibility 만 보내면 shareWeight 는 그대로다
+    expect((await a.get('/friends').expect(200)).body[0].shareWeightToFriend).toBe(false);
+    expect(await weight(b)).toBeNull();
+    // 전체만 켬 → null
+    expect((await shareWeight(a, true)).body).toEqual({ visibility: 'friends', shareWeight: true });
+    expect((await share(a, 'friends')).body.shareWeight).toBe(true);
+    expect(await weight(b)).toBeNull();
+    // 친구별만 켬 → null
+    await shareWeight(a, false);
+    const on = await toFriend(a, bId, true);
+    expect(on.body).toMatchObject({ userId: bId, shareToFriend: true, shareWeightToFriend: true });
+    expect(await weight(b)).toBeNull();
+
+    // 둘 다 켬 → B 에게만 보인다. 7일(그날 포함), 기록 없는 날은 null
+    await shareWeight(a, true);
+    const w = await weight(b);
+    expect(Object.keys(w).sort()).toEqual(['recent', 'weightKg']);
+    expect(w.weightKg).toBe(71.9);
+    expect(w.recent).toHaveLength(7);
+    expect(w.recent[0]).toEqual({ date: addDays(TODAY, -6), weightKg: null });
+    expect(w.recent[4]).toEqual({ date: addDays(TODAY, -2), weightKg: 72.4 });
+    expect(w.recent[6]).toEqual({ date: TODAY, weightKg: 71.9 });
+    expect(await weight(c)).toBeNull();
+    // 목표 체중은 어디에도 없다
+    const text = JSON.stringify((await day(b, aId).expect(200)).body).toLowerCase();
+    expect(text).not.toContain('target');
+    expect(text).not.toContain('goal');
+
+    // 기록 없는 날: 값은 null, 창은 가입일에서 잘린다
+    const past = await weight(b, addDays(TODAY, -3));
+    expect(past.weightKg).toBeNull();
+    expect(past.recent.map((p: { date: string }) => p.date)).toEqual([
+      addDays(TODAY, -6),
+      addDays(TODAY, -5),
+      addDays(TODAY, -4),
+      addDays(TODAY, -3),
+    ]);
+    expect(past.recent.every((p: { weightKg: number | null }) => p.weightKg === null)).toBe(true);
+
+    // 상대 쪽 스위치는 따로다: B 가 A 에게 켠 것이 아니다
+    expect((await b.get('/friends').expect(200)).body[0]).toMatchObject({
+      userId: aId,
+      shareWeightToFriend: false,
+    });
+    // 끼니를 끄면 하루 자체가 404
+    await a.patch(`/friends/${bId}`).send({ shareToFriend: false }).expect(200);
+    await day(b, aId).expect(404);
+    // 끼니를 끄면 몸무게 스위치도 꺼진다: 끼니만 다시 켜도 몸무게는 따라 켜지지 않는다
+    const back = await a.patch(`/friends/${bId}`).send({ shareToFriend: true }).expect(200);
+    expect(back.body.shareWeightToFriend).toBe(false);
+    expect(await weight(b)).toBeNull();
+    await toFriend(a, bId, true);
+    expect((await weight(b)).weightKg).toBe(71.9);
+    // 몸무게만 따로 바꿀 수 있고 공개 범위는 그대로다
+    expect((await a.put('/me/sharing').send({ shareWeight: true }).expect(200)).body).toEqual({
+      visibility: 'friends',
+      shareWeight: true,
+    });
+    // null 은 '그대로' 가 아니라 잘못된 값이다
+    await a.patch(`/friends/${bId}`).send({ shareWeightToFriend: null }).expect(422);
+    await a.put('/me/sharing').send({ shareWeight: null }).expect(422);
+    await a.put('/me/sharing').send({ visibility: 'friends', shareWeight: null }).expect(422);
+
+    // 친구를 끊고 다시 맺으면 꺼진 채로 돌아온다
+    await a.delete(`/friends/${bId}`).expect(204);
+    await befriend(a, b);
+    expect(await weight(b)).toBeNull();
+    // 친구가 아닌 상대, 잘못된 값
+    await b.patch(`/friends/${cId}`).send({ shareWeightToFriend: true }).expect(404);
+    await a.patch(`/friends/${bId}`).send({ shareWeightToFriend: 'yes' }).expect(422);
+    await a.put('/me/sharing').send({ visibility: 'friends', shareWeight: 'yes' }).expect(422);
   });
 
   it('serves a friend only photos attached to a record, and only while viewable', async () => {

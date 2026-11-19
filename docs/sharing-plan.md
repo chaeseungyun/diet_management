@@ -10,6 +10,8 @@
 >
 > 2026-11-17(DEC-098): **공유-3(공유 카드·카카오 피드·그룹)은 보류**. 끼니 공유는 공유-1·2·차단으로 끝낸다.
 >
+> 2026-11-19 구현(DEC-101): **몸무게를 따로 켠 친구에게 공개**한다. 전체 스위치(`users.share_weight`)와 친구별 스위치(`friend_links.*_shares_weight_to_*`) 둘 다 기본 꺼짐이고, 끼니를 볼 수 있는 친구에게만 그날 값과 7일 추이(`SharedDayDto.weight`)가 보인다. 목표 체중은 계속 비공유다. 아래 본문의 "체중 비공유" 는 이 결정으로 일부 대체됐다.
+>
 > 2026-11-17 구현(DEC-097): **차단**. 친구만 차단하고, 차단하면 친구가 끊기며 어느 쪽의 초대 링크도 404. 서로 남긴 반응·댓글은 지우지 않고 서로에게 숨기며(같은 친구의 끼니 포함), 서로의 알림도 막는다. 해제는 행 삭제라 친구로 돌아가지 않는다. 친구 코드가 없으므로 §5·§9-4 의 '코드 요청 202' 는 해당 없음.
 >
 > 2026-11-17 구현(DEC-096): 알림은 반응·댓글·댓글 좋아요·친구 수락 4종, 스위치 하나(기본 켬), 요청에서 바로 발송. `friend_request`·`friend_day_completed` 는 만들지 않았고, 유니크는 새 열 없이 `target_key` 로 해결했다(§9-7 닫힘).
@@ -20,7 +22,7 @@
 
 공유하는 것(확정, §9-2): 날짜별 식사 기록 — 끼니 상태(먹었음·안 먹음·기록 전), 품목명·실제량·단위, 식단 외 식사 메뉴명, **하루 영양 합계**(kcal·탄·단·지, 미상은 미상 그대로), 하루 완료 여부, 식사 사진(사진 업로드 기능이 생긴 뒤). 항목별 끄기 토글은 두지 않고 공개 범위(나만 보기 / 친구 공개)와 친구별 끄기만 둔다.
 
-공유하지 않는 것(DTO 에 아예 넣지 않는다): 재고·구매·가격·입고, **체중·목표 체중**(확정, 1차 비공유), 목표 kcal, 식단표·날짜 예외, 알림 설정, 카카오 ID.
+공유하지 않는 것(DTO 에 아예 넣지 않는다): 재고·구매·가격·입고, **목표 체중**(확정, 비공유), 체중(기본 비공유 — 소유자가 전체·친구별 스위치를 둘 다 켠 친구에게만 그날 값과 7일 추이, DEC-101), 목표 kcal, 식단표·날짜 예외, 알림 설정, 카카오 ID.
 
 하지 않는 것:
 
@@ -61,6 +63,7 @@ users (추가 컬럼)
   friend_code        text UK      -- 8자, base32(혼동 글자 제외), node:crypto. 재발급 가능
   share_visibility   enum default private  -- private | friends  (public 은 enum 에 두지 않고 필요 시 추가, §9-1)
   -- 항목별 공개 플래그는 두지 않는다(§9-2). 공유 묶음은 코드(SharedDayDto)가 정한다
+  share_weight       bool default false    -- 예외: 몸무게 전체 스위치 (DEC-101)
 
 friend_links                          -- 대칭 관계 1행. (user_low_id, user_high_id) 유니크
   id            uuid PK
@@ -71,6 +74,8 @@ friend_links                          -- 대칭 관계 1행. (user_low_id, user_
   blocked_by    uuid null -- status=blocked 일 때 차단한 쪽
   low_shares_to_high  bool default true   -- 친구별 끄기 (사용자 기본값 share_visibility 와 AND)
   high_shares_to_low  bool default true
+  low_shares_weight_to_high  bool default false  -- 친구별 몸무게 보이기 (DEC-101). 끼니 접근 판정 + share_weight 와 AND
+  high_shares_weight_to_low  bool default false
   created_at, responded_at timestamptz
 
 friend_invites                        -- 초대 링크 (셋로그 방식: 수락 즉시 accepted)
@@ -107,7 +112,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 ```
 
 - `friend_links` 의 `user_id` 두 개는 "사용자 데이터 테이블에 `user_id`" 규칙의 변형이다. 조회는 항상 `WHERE user_low_id = :me OR user_high_id = :me` 로 시작한다. [`erd.md`](erd.md) §3 에 이 예외를 적는다.
-- 접근 판정 = `status=accepted` AND 소유자 `share_visibility=friends` AND 소유자→뷰어 방향 플래그 true AND 두 사용자 모두 `deleted_at IS NULL`.
+- 접근 판정 = `status=accepted` AND 소유자 `share_visibility=friends` AND 소유자→뷰어 방향 플래그 true AND 두 사용자 모두 `deleted_at IS NULL`. 몸무게는 여기에 더해 소유자 `share_weight` AND 소유자→뷰어 방향 몸무게 플래그가 true 일 때만 싣는다(DEC-101).
 - `meal_reactions`·`meal_comments`·`comment_likes` 는 소유자가 아닌 사용자가 쓰는 **유일한 테이블**이다. 쓰기 전에 같은 접근 판정을 통과해야 하고, 댓글·좋아요 조회도 그 기록을 볼 수 있는 사람에게만 열린다. 기록이 `unrecorded` 로 되돌아가면 셋을 함께 삭제한다(식사 기록 쓰기 트랜잭션 안에서). 사용자 탈퇴 시 그 사용자가 쓴 반응·댓글·좋아요는 하드 삭제한다(계정 삭제 절차, [`ops.md`](ops.md)).
 - 사진: `MealPhoto`(DEC-069, 기록당 여러 장, `expires_at`)가 있으면 `SharedDayDto` 에 썸네일·보기용 URL 을 싣는다. URL 은 API 경로(`GET /friends/{userId}/photos/{photoId}`)이며 같은 접근 판정을 거쳐 스트리밍한다. 서명 URL 은 쓰지 않는다. 만료·삭제된 사진은 `expired: true` 자리만 준다.
 - 그룹은 1차에 만들지 않는다. 뒤에 `share_groups`·`share_group_members` 를 추가하면 접근 판정에 "같은 그룹 멤버" 조건만 OR 로 붙인다(§8).
@@ -129,7 +134,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 
 | 메서드·경로 | 역할 | 비고 |
 | --- | --- | --- |
-| `GET /me/sharing` · `PUT /me/sharing` | 공개 범위 `visibility`(`private|friends`)·내 친구 코드 | S-84. 항목별 플래그 없음(§9-2) |
+| `GET /me/sharing` · `PUT /me/sharing` | 공개 범위 `visibility`(`private|friends`)·내 친구 코드, 몸무게 공개 `shareWeight`(DEC-101) | S-84. 항목별 플래그는 몸무게 하나뿐(§9-2, DEC-101) |
 | `POST /me/friend-code/rotate` | 친구 코드 재발급 | 기존 코드 즉시 무효 |
 | `POST /friend-invites` | 초대 링크 생성 `{expiresInDays?, maxUses?}` → `{code, url, expiresAt}` | 활성 링크 사용자당 최대 5개 |
 | `GET /friend-invites/{code}` | 미리보기: 초대자 닉네임, 만료 여부 | `@Public()`. 만료·소진·철회는 모두 404 |
@@ -142,7 +147,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 | `DELETE /friends/{userId}` | 친구 끊기(행 삭제, 양쪽 즉시) | |
 | `POST /friends/{userId}/block` · `DELETE /friends/{userId}/block` | 차단·해제 | 구현(DEC-097). 친구만 차단, 해제는 행 삭제(친구로 돌아가지 않음). `GET /friends/blocked` 로 내가 차단한 사람 |
 | `PATCH /friends/{userId}` `{shareToFriend}` | 이 친구에게만 끄기/켜기 | 방향 플래그 |
-| `GET /friends/{userId}/days/{date}` | **친구의 하루** `SharedDayDto`: 닉네임, 날짜, 끼니[슬롯·상태·종류·품목(이름·실제량·단위)·식단 외 메뉴명·사진], 추가 간식, 영양 합계(기록된 합계, 미상 표시 포함), 완료, 끼니별 반응 집계·내 반응·댓글 수 | 접근 불가·미래·가입 전은 404. 가입일 이후 전부(§9-3). 미기록 자유 끼니 제외(D-18) |
+| `GET /friends/{userId}/days/{date}` | **친구의 하루** `SharedDayDto`: 닉네임, 날짜, 끼니[슬롯·상태·종류·품목(이름·실제량·단위)·식단 외 메뉴명·사진], 추가 간식, 영양 합계(기록된 합계, 미상 표시 포함), 완료, 끼니별 반응 집계·내 반응·댓글 수, 몸무게(친구가 켰을 때만: 그날 값 + 7일, DEC-101) | 접근 불가·미래·가입 전은 404. 가입일 이후 전부(§9-3). 미기록 자유 끼니 제외(D-18) |
 | `GET /friends/{userId}/days?from=&to=` | 캘린더용 요약(완료·기록 수) | 공유-2, 최대 31일. **보류(DEC-095)** |
 | `PUT /friends/{userId}/meal-records/{recordId}/reaction` `{emoji}` · `DELETE` | 반응(사용자당 1개, 바꾸면 교체) | 공유-2. 허용 이모지 외 422 |
 | `GET /friends/{userId}/meal-records/{recordId}/comments?cursor=` | 댓글 목록(오래된 순, 좋아요 수·내 좋아요 여부 포함) | 공유-2. 소유자 본인은 `/me` 경로 대신 같은 경로를 자기 `userId` 로 호출 |
@@ -162,8 +167,8 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 | S-80 | 친구 | `/friends` | 받은 요청 카드(수락/거절), 친구 목록: 닉네임, 오늘 요약("3/5 끼니 · 완료" / "비공개" / "기록 전"), 내 공개 상태 한 줄 | 친구 → S-83 / 친구 추가 → S-81 / 공유 설정 → S-84 / 길게 눌러 끊기·차단·이 친구에게 숨기기 | `GET /friends`, `GET /friends/requests` |
 | S-81 | 친구 추가 | `/friends/add` | ① 초대 링크 만들기(링크 복사, '카카오톡으로 보내기' = `navigator.share`, 미지원이면 복사) ② 내 친구 코드(복사·QR 표시·재발급) ③ 코드로 요청 입력 | 링크 생성 / 요청 | `POST /friend-invites`, `GET /me/sharing`, `POST /friends/requests` |
 | S-82 | 초대 수락 | `/invite/[code]` | 초대자 닉네임, "친구가 되면 서로의 끼니를 볼 수 있어요", **내 끼니 공개** 토글(기본 켬, 켜면 `visibility=friends` 저장), 수락 버튼. 비로그인은 로그인 뒤 돌아옴 | 수락 → S-83(오늘) | `GET /friend-invites/{code}`, `POST .../accept`, `PUT /me/sharing` |
-| S-83 | 친구의 하루 | `/friends/[userId]/day/[date]` | S-10 의 **읽기 전용 축소판**: 날짜 이동(어제·내일·캘린더, 미래 비활성, 가입일 이전 비활성), 끼니 카드(상태 아이콘+문구, 품목·수량, 식단 외 메뉴명, 사진), 추가 간식, 영양 합계(미상은 '미상'), 완료 배지. 기록 버튼 없음. 공유-2: 끼니 카드 하단에 반응 줄(이모지 집계, 내 반응 강조)과 '댓글 N' → S-86 | 날짜 이동 / 반응 / 댓글 | `GET /friends/{userId}/days/{date}` |
-| S-84 | 공유 설정 | `/settings/sharing` | 기본 공개 범위(나만 보기 / 친구 공개)와 "친구 공개 시 보이는 것" 안내(끼니·품목·메뉴명·영양 합계·완료·사진 / 체중·목표·재고는 안 보임), 친구별 공개 스위치 목록, 차단 목록, 내 친구 코드 재발급 | 저장(즉시) | `PUT /me/sharing`, `PATCH /friends/{userId}` |
+| S-83 | 친구의 하루 | `/friends/[userId]/day/[date]` | S-10 의 **읽기 전용 축소판**: 날짜 이동(어제·내일·캘린더, 미래 비활성, 가입일 이전 비활성), 끼니 카드(상태 아이콘+문구, 품목·수량, 식단 외 메뉴명, 사진), 추가 간식, 영양 합계(미상은 '미상'), 완료 배지, 몸무게 카드(친구가 나에게 켰을 때만: 그날 값 + 그날까지 7일 그래프, DEC-101). 기록 버튼 없음. 공유-2: 끼니 카드 하단에 반응 줄(이모지 집계, 내 반응 강조)과 '댓글 N' → S-86 | 날짜 이동 / 반응 / 댓글 | `GET /friends/{userId}/days/{date}` |
+| S-84 | 공유 설정 | `/settings/sharing` | 기본 공개 범위(나만 보기 / 친구 공개)와 "친구 공개 시 보이는 것" 안내(끼니·품목·메뉴명·영양 합계·완료·사진 / 목표·재고는 안 보임), 친구별 공개 스위치 목록, 몸무게 공개(전체 스위치 + 친구별 스위치, 둘 다 기본 꺼짐, DEC-101), 차단 목록, 내 친구 코드 재발급 | 저장(즉시) | `PUT /me/sharing`, `PATCH /friends/{userId}` |
 | S-86 | 끼니 댓글 | 바텀 시트(S-83 끼니 카드에서) | 댓글 목록(닉네임·시각·본문·좋아요 수·하트 토글), 입력란(500자), 내 댓글·내 기록의 댓글에 삭제. 소유자도 자기 끼니(S-11)에서 같은 시트를 연다 | 쓰기 / 삭제 / 좋아요 | 댓글·좋아요 API(§6) |
 | S-10 ⑨ | 친구 오늘 줄 | `/` 상단 | 친구 아바타(이니셜) 가로 줄 + 아래 작은 글씨 "3/5 · 완료". 비공개 친구는 회색 | 탭 → S-83 | `GET /friends` |
 | S-85 | 공유 카드 | 바텀 시트(S-10 ⑧ 완료 뒤 또는 더보기) | 오늘 끼니 요약 텍스트("11/8 아침 오트밀·계란 ✓ 점심 닭가슴살 ✓ …") → OS 공유 시트. 공유-3 에서 이미지 카드·카카오 피드 템플릿 | 공유 | `POST /days/{date}/share-card` |
@@ -186,7 +191,7 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 ## 9. 결정 사항 (2026-11-08 사용자 확정, DEC-066)
 
 1. **기본 공개 범위**: `private`. 초대·수락 화면(S-81·S-82)에서 "내 끼니 공개" 토글을 기본 켬으로 보여 한 탭으로 `friends` 가 되게 한다.
-2. **공유 항목**: 먹은 식사(끼니 상태)·품목·식단 외 메뉴명·**하루 영양 합계**를 공유한다. 항목별 끄기 토글은 두지 않는다. **체중·목표 체중은 1차 비공유**. 사진은 선행 기능이 생기면 포함.
+2. **공유 항목**: 먹은 식사(끼니 상태)·품목·식단 외 메뉴명·**하루 영양 합계**를 공유한다. 항목별 끄기 토글은 두지 않는다. **체중·목표 체중은 1차 비공유**(2026-11-19 일부 대체, DEC-101: 몸무게 값은 따로 켠 친구에게 공개, 목표 체중은 계속 비공유). 사진은 선행 기능이 생기면 포함.
 3. **과거 기간**: 가입일 이후 **전부**. 기간 제한 설정 없음.
 4. **차단 노출**: 차단당한 쪽의 코드 요청은 **202**(정상 요청과 같은 응답, `pending` 미생성). 초대 링크 수락은 404.
 5. **반응 + 댓글 도입**. 반응은 이모지 1개/사용자, 댓글은 평면(답글 없음) 텍스트, **댓글에 좋아요**. 허용 이모지 목록은 구현 시 `packages/shared` 상수로 정한다.
@@ -199,7 +204,8 @@ comment_likes                         -- 공유-2. 댓글 1건에 사용자당 1
 
 - 친구가 아닌 사용자의 `GET /friends/{userId}/days/{date}` → 404. 존재하지 않는 userId 도 404(같은 응답).
 - `accepted` 이지만 소유자 `visibility=private` → 404. 소유자가 `friends` 로 바꾸면 즉시 200. 친구별 끄기 → 그 친구만 404.
-- `SharedDayDto` 키 목록 스냅샷: 재고·구매·체중·목표·카카오 ID 키가 없다. 영양 합계·식단 외 메뉴명·완료는 항상 들어 있다(§9-2).
+- 몸무게(DEC-101): 전체만 켬·친구별만 켬은 `weight=null`, 둘 다 켠 친구에게만 값, 다른 친구는 null, 창은 가입일에서 잘림, 기록 없는 날 null, 다시 친구가 되면 꺼짐.
+- `SharedDayDto` 키 목록 스냅샷: 재고·구매·목표·카카오 ID 키가 없고 `weight` 는 기본 null 이다. 영양 합계·식단 외 메뉴명·완료는 항상 들어 있다(§9-2).
 - 초대 링크: 1회 사용 뒤 두 번째 수락 404, 만료 뒤 404, 자기 링크 422, 철회 뒤 404. 코드 열거 방어(12자 이상 랜덤).
 - 친구 끊기 뒤 양쪽 모두 404. 차단 뒤 코드 요청은 **202 이면서 `pending` 행이 없고**, 응답 본문이 정상 요청과 같다(§9-4). 탈퇴(`deletedAt`) 사용자는 목록·조회에서 빠진다.
 - 미래 날짜 404, 가입 전 날짜 404, 가입일 당일부터 오늘까지는 어느 날이든 200(§9-3). 미기록 자유 끼니가 응답에 없다(D-18). 영양 미상은 null 그대로.

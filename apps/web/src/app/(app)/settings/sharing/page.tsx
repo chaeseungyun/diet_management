@@ -16,6 +16,7 @@ export default async function SharingSettingsPage() {
         // 다른 화면에서 바뀐 값으로 돌아왔을 때 서버 값으로 다시 그린다
         key={sharing.visibility}
         visibility={sharing.visibility}
+        shareWeight={sharing.shareWeight}
         friends={friends}
         blocked={blocked}
       />

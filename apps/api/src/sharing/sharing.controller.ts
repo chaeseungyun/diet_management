@@ -37,6 +37,7 @@ import {
   SharedDayDto,
   SharingSettingsDto,
   UpdateFriendDto,
+  UpdateSharingSettingsDto,
 } from './sharing.dto';
 
 /** 끼니 공유 (sharing-plan §6, DEC-066·090, S-80~S-84). 공유-1a: 초대 링크·공개 범위·친구의 하루 */
@@ -49,7 +50,7 @@ export class SharingController {
   ) {}
 
   @Get('me/sharing')
-  @ApiOperation({ summary: '내 끼니 공개 범위' })
+  @ApiOperation({ summary: '내 끼니 공개 범위와 몸무게 공개 여부' })
   @ApiOkResponse({ type: SharingSettingsDto })
   sharing(@CurrentUser() user: User): SharingSettingsDto {
     return this.friends.getSharing(user);
@@ -57,14 +58,15 @@ export class SharingController {
 
   @Put('me/sharing')
   @ApiOperation({
-    summary: '공개 범위 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다',
+    summary:
+      '공개 범위·몸무게 공개 바꾸기. private 로 바꾸면 모든 친구에게 즉시 안 보인다. shareWeight 는 보내지 않으면 그대로',
   })
   @ApiOkResponse({ type: SharingSettingsDto })
   setSharing(
     @CurrentUser() user: User,
-    @Body() body: SharingSettingsDto,
+    @Body() body: UpdateSharingSettingsDto,
   ): Promise<SharingSettingsDto> {
-    return this.friends.setSharing(user, body.visibility);
+    return this.friends.setSharing(user, body);
   }
 
   @Post('friend-invites')
@@ -144,14 +146,16 @@ export class SharingController {
   }
 
   @Patch('friends/:userId')
-  @ApiOperation({ summary: '이 친구에게만 내 끼니 끄기·켜기' })
+  @ApiOperation({
+    summary: '이 친구에게만 내 끼니 끄기·켜기, 내 몸무게 켜기·끄기(둘 중 하나는 필수)',
+  })
   @ApiOkResponse({ type: FriendDto })
   update(
     @CurrentUser() user: User,
     @Param('userId', UuidParamPipe) userId: string,
     @Body() body: UpdateFriendDto,
   ): Promise<FriendDto> {
-    return this.friends.setShareToFriend(user, userId, body.shareToFriend);
+    return this.friends.updateFriend(user, userId, body);
   }
 
   @Delete('friends/:userId')
@@ -168,7 +172,7 @@ export class SharingController {
   @Get('friends/:userId/days/:date')
   @ApiOperation({
     summary:
-      '친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료. 볼 수 없으면 404',
+      '친구의 하루(읽기 전용): 끼니 상태·먹은 품목·식단 외 메뉴명·사진·영양 합계·완료, 친구가 켰으면 몸무게. 볼 수 없으면 404',
   })
   @ApiOkResponse({ type: SharedDayDto })
   day(
