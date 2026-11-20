@@ -4,7 +4,6 @@ import { BottomTabs, Sidebar } from '@/components/shell/nav';
 import { ResumeRefresh } from '@/components/pwa/resume-refresh';
 import { PushSync } from '@/components/pwa/push-sync';
 import { InviteResume } from '@/components/friends/invite-accept';
-import { CheerSurprise } from '@/components/cheer/cheer-surprise';
 
 /** 로그인 사용자 전용 영역. 비로그인은 S-01 로 (screens.md §1) */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +17,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ResumeRefresh />
       <PushSync />
       <InviteResume />
-      <CheerSurprise auto={!me.nickname.includes('승윤')} />
     </div>
   );
 }
