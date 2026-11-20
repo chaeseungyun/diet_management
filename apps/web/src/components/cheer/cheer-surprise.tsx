@@ -14,31 +14,65 @@ const EMOJI = ['🎉', '🌸', '⭐', '💖', '🍀', '🐱'];
 type Particle = {
   x: number;
   y: number;
-  vx: number;
+  vx: number; // px/s
   vy: number;
   size: number;
   rot: number;
-  vr: number;
+  vr: number; // rad/s
   color: string;
-  emoji: string | null;
-  life: number;
+  sprite: HTMLCanvasElement | null;
+  age: number; // s
+  ttl: number;
 };
 
-function burst(list: Particle[], x: number, y: number, angle: number, count: number) {
-  for (let i = 0; i < count; i++) {
+const MAX_PARTICLES = 320;
+const GRAVITY = 1150; // px/s²
+const DRAG = 0.9; // 1/s
+const SPRITE_PX = 64;
+
+/** 이모지를 매 프레임 글자로 그리면 느리다(특히 아이폰). 한 번만 그려 두고 이미지로 찍는다 */
+function makeSprites(): HTMLCanvasElement[] {
+  return EMOJI.map((e) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = SPRITE_PX;
+    const g = c.getContext('2d');
+    if (g) {
+      g.font = `${SPRITE_PX * 0.8}px serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(e, SPRITE_PX / 2, SPRITE_PX / 2 + 2);
+    }
+    return c;
+  });
+}
+
+function burst(
+  list: Particle[],
+  sprites: HTMLCanvasElement[],
+  x: number,
+  y: number,
+  angle: number,
+  count: number,
+) {
+  const room = Math.min(count, MAX_PARTICLES - list.length);
+  for (let i = 0; i < room; i++) {
     const a = angle + (Math.random() - 0.5) * 1.1;
-    const speed = 9 + Math.random() * 12;
+    const speed = 560 + Math.random() * 720;
     list.push({
       x,
       y,
       vx: Math.cos(a) * speed,
       vy: Math.sin(a) * speed,
-      size: 6 + Math.random() * 7,
+      size: 7 + Math.random() * 7,
       rot: Math.random() * Math.PI * 2,
-      vr: (Math.random() - 0.5) * 0.4,
+      vr: (Math.random() - 0.5) * 12,
       color: COLORS[Math.floor(Math.random() * COLORS.length)]!,
-      emoji: Math.random() < 0.12 ? EMOJI[Math.floor(Math.random() * EMOJI.length)]! : null,
-      life: 1,
+      sprite:
+        sprites.length && Math.random() < 0.1
+          ? sprites[Math.floor(Math.random() * sprites.length)]!
+          : null,
+      age: 0,
+      ttl: 2.4 + Math.random() * 1.2,
     });
   }
 }
@@ -70,72 +104,101 @@ export function CheerSurprise({ auto }: { auto: boolean }) {
     setOpen(false);
   }, []);
 
+  const sprites = useRef<HTMLCanvasElement[]>([]);
+  const dprRef = useRef(1);
+  const raf = useRef(0);
+  const last = useRef(0);
+
+  /** 시간 기준으로 움직인다: 프레임이 떨어져도 느려지지 않고 같은 속도로 보인다 */
+  const tick = useCallback((now: number) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) {
+      raf.current = 0;
+      return;
+    }
+    const dt = Math.min((now - (last.current || now)) / 1000, 0.05);
+    last.current = now;
+    const dpr = dprRef.current;
+    const h = window.innerHeight;
+    const drag = Math.exp(-DRAG * dt);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const list = particles.current;
+    let alive = 0;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i]!;
+      p.age += dt;
+      p.vy += GRAVITY * dt;
+      p.vx *= drag;
+      p.vy *= drag;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+      if (p.age >= p.ttl || p.y > h + 60) continue;
+      list[alive++] = p;
+
+      const left = p.ttl - p.age;
+      ctx.globalAlpha = left < 0.5 ? left * 2 : 1;
+      const cos = Math.cos(p.rot) * dpr;
+      const sin = Math.sin(p.rot) * dpr;
+      ctx.setTransform(cos, sin, -sin, cos, p.x * dpr, p.y * dpr);
+      if (p.sprite) {
+        const s = p.size * 2.2;
+        ctx.drawImage(p.sprite, -s / 2, -s / 2, s, s);
+      } else {
+        // 회전하며 뒤집히는 종이 느낌
+        const flip = p.size * 0.6 * Math.cos(p.rot * 1.7);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -flip / 2, p.size, flip);
+      }
+    }
+    list.length = alive;
+    ctx.globalAlpha = 1;
+
+    // 남은 조각이 없으면 루프를 멈춘다. 다음 fire 가 다시 돌린다
+    raf.current = alive ? requestAnimationFrame(tickRef.current) : 0;
+  }, []);
+  const tickRef = useRef(tick);
+
   const fire = useCallback(() => {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const n = w < 640 ? 70 : 110;
-    burst(particles.current, 0, h, -Math.PI / 3, n);
-    burst(particles.current, w, h, (-Math.PI * 2) / 3, n);
-    burst(particles.current, w / 2, h * 0.45, -Math.PI / 2, Math.round(n / 2));
+    const n = w < 640 ? 45 : 70;
+    const list = particles.current;
+    burst(list, sprites.current, 0, h, -Math.PI / 3, n);
+    burst(list, sprites.current, w, h, (-Math.PI * 2) / 3, n);
+    burst(list, sprites.current, w / 2, h * 0.45, -Math.PI / 2, Math.round(n / 2));
+    if (!raf.current) {
+      last.current = 0;
+      raf.current = requestAnimationFrame(tickRef.current);
+    }
   }, []);
 
   useEffect(() => {
     if (!open) return;
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    if (!canvas) return;
+    sprites.current = makeSprites();
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // 해상도는 1.5배까지만: 채울 픽셀이 줄어 저사양 폰에서도 프레임이 유지된다
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      dprRef.current = dpr;
+      canvas.width = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
     };
     resize();
     window.addEventListener('resize', resize);
 
     fire();
-    const timers = [700, 1500, 2400].map((ms) => window.setTimeout(fire, ms));
-
-    let raf = 0;
-    const tick = () => {
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      const list = particles.current;
-      for (const p of list) {
-        p.vy += 0.32;
-        p.vx *= 0.985;
-        p.vy *= 0.985;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.rot += p.vr;
-        p.life -= 0.006;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2));
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot);
-        if (p.emoji) {
-          ctx.font = `${p.size * 2.4}px serif`;
-          ctx.textAlign = 'center';
-          ctx.fillText(p.emoji, 0, 0);
-        } else {
-          ctx.fillStyle = p.color;
-          // 회전하며 뒤집히는 종이 느낌
-          ctx.fillRect(
-            -p.size / 2,
-            (-p.size * 0.6 * Math.cos(p.rot * 3)) / 2,
-            p.size,
-            p.size * 0.6 * Math.cos(p.rot * 3),
-          );
-        }
-        ctx.restore();
-      }
-      particles.current = list.filter((p) => p.life > 0 && p.y < window.innerHeight + 60);
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
+    const timers = [900, 1900].map((ms) => window.setTimeout(fire, ms));
 
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf.current);
+      raf.current = 0;
       timers.forEach((t) => window.clearTimeout(t));
       window.removeEventListener('resize', resize);
       particles.current = [];
