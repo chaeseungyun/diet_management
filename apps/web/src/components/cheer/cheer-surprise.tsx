@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 
 const COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff8fd8', '#b388ff', '#ffa94d'];
+const SEEN_KEY = 'cheer-seen-2026-11-20';
 const EMOJI = ['🎉', '🌸', '⭐', '💖', '🍀', '🐱'];
 
 type Particle = {
@@ -49,8 +50,25 @@ export function CheerSurprise({ auto }: { auto: boolean }) {
 
   useEffect(() => {
     // 본인 확인용 미리보기: 주소 뒤에 ?cheer=1
-    if (auto || new URLSearchParams(window.location.search).has('cheer')) setOpen(true);
+    if (new URLSearchParams(window.location.search).has('cheer')) return setOpen(true);
+    if (!auto) return;
+    try {
+      if (localStorage.getItem(SEEN_KEY)) return;
+    } catch {
+      // 저장소를 못 쓰는 환경이면 그냥 보여 준다
+    }
+    setOpen(true);
   }, [auto]);
+
+  /** 닫을 때 기록한다. 띄우자마자 기록하면 보기도 전에 새로고침한 경우 놓친다 */
+  const close = useCallback(() => {
+    try {
+      localStorage.setItem(SEEN_KEY, '1');
+    } catch {
+      // 무시
+    }
+    setOpen(false);
+  }, []);
 
   const fire = useCallback(() => {
     const w = window.innerWidth;
@@ -164,7 +182,7 @@ export function CheerSurprise({ auto }: { auto: boolean }) {
             </button>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={close}
               className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground"
             >
               고마워요 💖
