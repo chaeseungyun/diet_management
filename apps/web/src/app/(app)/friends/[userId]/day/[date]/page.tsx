@@ -173,18 +173,18 @@ function DayLink({
 
 function MealCard({ meal, ownerId }: { meal: Meal; ownerId: string }) {
   const eaten = meal.status === 'eaten';
+  const itemsText = meal.items
+    .map((i) =>
+      i.quantity === null ? i.name : `${i.name} ${formatQuantity(i.quantity)}${i.displayUnit}`,
+    )
+    .join(', ');
+  // 식단 외 식사에 곁들인 식품도 메뉴명 뒤에 잇는다
   const summary = !eaten
     ? null
     : meal.kind === 'outside'
-      ? `식단 외 · ${meal.outsideMenu ?? ''}`
+      ? `식단 외 · ${[meal.outsideMenu ?? '', itemsText].filter(Boolean).join(', ')}`
       : meal.items.length > 0
-        ? meal.items
-            .map((i) =>
-              i.quantity === null
-                ? i.name
-                : `${i.name} ${formatQuantity(i.quantity)}${i.displayUnit}`,
-            )
-            .join(', ')
+        ? itemsText
         : '품목 없음';
   return (
     <Card className={cn('flex flex-col gap-2 p-3', meal.status === 'unrecorded' && 'bg-card/60')}>

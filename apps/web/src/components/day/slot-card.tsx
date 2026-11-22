@@ -86,16 +86,18 @@ export function SlotCard({
       </Badge>
     );
 
+  const itemsText = record.items
+    .map(
+      (i) =>
+        `${i.productName} ${formatQuantity(i.actualQuantity ?? i.plannedQuantity)}${i.displayUnit}`,
+    )
+    .join(', ');
+  // 식단 외 식사에 곁들인 내 식품도 메뉴명 뒤에 잇는다
   const summary =
     record.status === 'eaten' && record.kind === 'outside'
-      ? `식단 외 · ${record.outsideMenu ?? ''}`
+      ? `식단 외 · ${[record.outsideMenu ?? '', itemsText].filter(Boolean).join(', ')}`
       : record.items.length > 0
-        ? record.items
-            .map(
-              (i) =>
-                `${i.productName} ${formatQuantity(i.actualQuantity ?? i.plannedQuantity)}${i.displayUnit}`,
-            )
-            .join(', ')
+        ? itemsText
         : freeUnrecorded
           ? '식단표에 없는 끼니. 먹었으면 기록'
           : '품목 없음';
