@@ -13,6 +13,8 @@ coverage/
 .env.*
 !.env.example
 deploy/.env
+# 영양성분표 평가 사진·정답·결과 (단계 5, 커밋하지 않음)
+apps/api/eval/
 
 # 로컬 개발 DB(embedded-postgres)와 백업, 식사 사진(DEC-086)
 .local/
