@@ -38,7 +38,12 @@ describe('phase 4: sharing block', () => {
     (
       await who
         .put(`/meal-records/${TODAY}/lunch`)
-        .send({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개', version: null })
+        .send({
+          status: 'eaten',
+          kind: 'outside',
+          outsideItems: [{ name: '김치찌개' }],
+          version: null,
+        })
         .expect(200)
     ).body.id as string;
   const rec = (ownerId: string, recordId: string) => `/friends/${ownerId}/meal-records/${recordId}`;

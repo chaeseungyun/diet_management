@@ -95,7 +95,7 @@ export function SlotCard({
   // 식단 외 식사에 곁들인 내 식품도 메뉴명 뒤에 잇는다
   const summary =
     record.status === 'eaten' && record.kind === 'outside'
-      ? `식단 외 · ${[record.outsideMenu ?? '', itemsText].filter(Boolean).join(', ')}`
+      ? `식단 외 · ${[...record.outsideItems.map((o) => o.name), itemsText].filter(Boolean).join(', ')}`
       : record.items.length > 0
         ? itemsText
         : freeUnrecorded

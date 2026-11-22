@@ -182,7 +182,7 @@ function MealCard({ meal, ownerId }: { meal: Meal; ownerId: string }) {
   const summary = !eaten
     ? null
     : meal.kind === 'outside'
-      ? `식단 외 · ${[meal.outsideMenu ?? '', itemsText].filter(Boolean).join(', ')}`
+      ? `식단 외 · ${[...meal.outsideMenus, itemsText].filter(Boolean).join(', ')}`
       : meal.items.length > 0
         ? itemsText
         : '품목 없음';

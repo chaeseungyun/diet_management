@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 현재 상태
 
-단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077; 2026-11-12~14: 소진 예측 DEC-080, 남은 양은 식품 화면에 합침 DEC-081, 소진 알림·하루 완료 알림 DEC-084), 단계 3 착수(2026-11-15: 식사 사진 API·웹 화면 DEC-086, 매일 정리 작업 DEC-087; 아이폰 실기기 확인은 배포 뒤), 단계 4 착수(2026-11-16: 끼니 공유-1a API·웹 화면 DEC-090·091; 2026-11-17: 공유-2a 반응·댓글·좋아요 API·웹 화면 DEC-092·093; 공유-2b 친구 소식 알림 DEC-096; 차단 DEC-097; 친구 코드·QR 은 만들지 않고 친구 캘린더는 보류 DEC-095, 공유-3 보류 DEC-098; 2026-11-19: 몸무게 친구 공개 DEC-101; 다음은 단계 5 LLM 영양성분표 읽기 DEC-099). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험 완료(2026-11-15, DEC-085, `docs/ops.md` §13). 외부 저장소 보관은 아직 없다.
+단계 1 코드가 있고(2026-11-06; 단계 0 은 2026-11-05) 단계 2 진행 중(2026-11-08: 하루 완료 DEC-065, 통계 DEC-068, PWA-1 DEC-073, 알림 DEC-074~077; 2026-11-12~14: 소진 예측 DEC-080, 남은 양은 식품 화면에 합침 DEC-081, 소진 알림·하루 완료 알림 DEC-084), 단계 3 착수(2026-11-15: 식사 사진 API·웹 화면 DEC-086, 매일 정리 작업 DEC-087; 아이폰 실기기 확인은 배포 뒤), 단계 4 착수(2026-11-16: 끼니 공유-1a API·웹 화면 DEC-090·091; 2026-11-17: 공유-2a 반응·댓글·좋아요 API·웹 화면 DEC-092·093; 공유-2b 친구 소식 알림 DEC-096; 차단 DEC-097; 친구 코드·QR 은 만들지 않고 친구 캘린더는 보류 DEC-095, 공유-3 보류 DEC-098; 2026-11-19: 몸무게 친구 공개 DEC-101; 2026-11-22: 식단 외 식사 메뉴 여러 줄 DEC-103; 다음은 단계 5 LLM 영양성분표 읽기 DEC-099). pnpm 모노레포: `apps/web`(Next.js 16, Tailwind v4 + 디자인 토큰), `apps/api`(NestJS 11 **CommonJS**, Prisma 6, PostgreSQL 18), `packages/shared`(상수·순수 함수, CJS 빌드). 운영 문서는 `docs/ops.md`. `kkinilog.com` 에 자동 배포 중(DEC-062). 백업·복원 시험 완료(2026-11-15, DEC-085, `docs/ops.md` §13). 외부 저장소 보관은 아직 없다.
 
 명령(저장소 루트에서):
 
@@ -74,6 +74,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **소스(sauce)는 `Product.is_stock_tracked=false`** 플래그로 재고 차감 제외 (D-09). 선택적 `default_serving_amount`로 계산한 영양의 출처는 `manual_estimate`.
 - **'계획 없음'(`none`)은 자유 끼니 (D-18).** 화면 문구는 '자유 끼니'. 미기록 자유 끼니만 완료·통계·예상에서 제외하고, 먹었음·안 먹음으로 기록하면 포함한다. `User.activeSlots`에 없는 끼니는 오늘 화면·격자에서 숨기되 기록이 있는 날에는 보인다. 날짜 예외는 캘린더와 S-11(식단 끼니의 미래 날짜만) 양쪽에서 만든다.
 - **계획 유형은 `template|none` 둘뿐 (D-19).** '외부 식사 예정'은 없다. 외부 식사는 기록 종류 `MealRecord.kind=outside`로만 존재하며 화면 문구는 '식단 외 식사'(`home`은 '내 식품'). 하루 완료 = 쓰는 끼니 중 식단 끼니에 미기록 없음이고 목표 달성과 분리한다(D-20). 화면 어휘: 템플릿 → 식단, 주간 반복 계획 → 식단표(DEC-060).
+- **식단 외 식사의 메뉴는 여러 줄 (D-19 보완, DEC-103).** `meal_outside_items`(이름 + 영양 nullable, 수량 없음, 재고 무관). 쓰기는 `outsideItems[]` 로 통째로 바꾼다. 내 식품(스냅샷)과 섞지 않으며 친구에게는 이름만 나간다(`outsideMenus`).
 - **추가 간식은 `slot=extra`, `id`로 식별 (D-10).** 정규 5슬롯만 (user, date, slot) 유니크. `extra`는 완료 판정의 활성 슬롯에서 제외하고 영양 합계에는 포함한다.
 
 ## 구현 순서

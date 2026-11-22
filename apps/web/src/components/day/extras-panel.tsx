@@ -13,24 +13,18 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker, type ProductDto } from '@/components/products/product-picker';
+import {
+  OutsideItemsInput,
+  emptyOutsideLine,
+  outsideLinesBody,
+  outsideLinesProblem,
+  outsideLinesTouched,
+  type OutsideLine,
+} from './outside-items-input';
 import { MealPhotos, discardDraftPhotos, type MealPhoto } from './meal-photos';
 import { MealSocial, type RecordSocial } from '@/components/friends/meal-social';
 
 type Record = Schemas['MealRecordDto'];
-
-const OUTSIDE_FIELDS = [
-  ['kcal', 'kcal'],
-  ['carbG', '탄(g)'],
-  ['proteinG', '단(g)'],
-  ['fatG', '지(g)'],
-] as const;
-type OutsideValues = { [K in (typeof OUTSIDE_FIELDS)[number][0]]: string };
-const EMPTY_OUTSIDE: OutsideValues = { kcal: '', carbG: '', proteinG: '', fatG: '' };
-
-/** 빈 칸은 미상(null), 0 은 확인된 0 */
-function num(v: string): number | null {
-  return v.trim() === '' ? null : Number(v);
-}
 
 /** 목록 한 줄의 영양 요약. 열량이 없으면 '열량 미확인', 일부만 있으면 표시 */
 function nutritionLine(n: Record['nutrition']): string {
@@ -78,8 +72,7 @@ export function ExtrasPanel({
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState<StockUnit>('g');
   const [outside, setOutside] = useState(false);
-  const [menu, setMenu] = useState('');
-  const [nutrition, setNutrition] = useState<OutsideValues>(EMPTY_OUTSIDE);
+  const [lines, setLines] = useState<OutsideLine[]>(() => [emptyOutsideLine()]);
   // 시트에서 올린 임시 사진. 저장의 photoIds 로 붙인다 (DEC-086)
   const [photos, setPhotos] = useState<MealPhoto[]>([]);
 
@@ -87,8 +80,7 @@ export function ExtrasPanel({
     setProduct(null);
     setQuantity('');
     setOutside(false);
-    setMenu('');
-    setNutrition(EMPTY_OUTSIDE);
+    setLines([emptyOutsideLine()]);
   }
 
   async function save() {
@@ -98,11 +90,7 @@ export function ExtrasPanel({
           photoIds,
           status: 'eaten',
           kind: 'outside',
-          outsideMenu: menu,
-          outsideKcal: num(nutrition.kcal),
-          outsideCarbG: num(nutrition.carbG),
-          outsideProteinG: num(nutrition.proteinG),
-          outsideFatG: num(nutrition.fatG),
+          outsideItems: outsideLinesBody(lines),
         }
       : {
           photoIds,
@@ -153,7 +141,7 @@ export function ExtrasPanel({
               <div className="min-w-0">
                 <p className="truncate">
                   {x.kind === 'outside'
-                    ? `식단 외 · ${x.outsideMenu ?? ''}`
+                    ? `식단 외 · ${x.outsideItems.map((o) => o.name).join(', ')}`
                     : x.items
                         .map(
                           (i) =>
@@ -208,27 +196,10 @@ export function ExtrasPanel({
         </div>
         {outside ? (
           <>
-            <Field label="메뉴명" htmlFor="extra-menu">
-              <Input id="extra-menu" value={menu} onChange={(e) => setMenu(e.target.value)} />
-            </Field>
-            <p className="text-xs text-muted-foreground">
-              영양 추정값은 직접 입력합니다. 비운 칸은 &apos;미확인&apos; 으로 남습니다.
-            </p>
-            <div className="grid grid-cols-4 gap-2">
-              {OUTSIDE_FIELDS.map(([k, label]) => (
-                <Field key={k} label={label} htmlFor={`extra-${k}`}>
-                  <Input
-                    id={`extra-${k}`}
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    min={0}
-                    value={nutrition[k]}
-                    onChange={(e) => setNutrition({ ...nutrition, [k]: e.target.value })}
-                  />
-                </Field>
-              ))}
-            </div>
+            <OutsideItemsInput lines={lines} onChange={setLines} idPrefix="extra" />
+            {outsideLinesTouched(lines) && outsideLinesProblem(lines) ? (
+              <p className="text-xs text-destructive">{outsideLinesProblem(lines)}</p>
+            ) : null}
           </>
         ) : product ? (
           <>
@@ -282,7 +253,7 @@ export function ExtrasPanel({
         {outside || product ? (
           <MealPhotos photos={photos} edit={{ recordId: null, onChange: setPhotos }} />
         ) : null}
-        <Button onClick={save} disabled={outside ? menu.trim() === '' : !product}>
+        <Button onClick={save} disabled={outside ? outsideLinesProblem(lines) !== null : !product}>
           저장
         </Button>
       </Dialog>

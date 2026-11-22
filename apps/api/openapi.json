@@ -5254,6 +5254,31 @@
           "unrecordedCount"
         ]
       },
+      "OutsideItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nutrition": {
+            "description": "직접 입력 영양. null 은 미상",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NutritionValuesDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "nutrition"
+        ]
+      },
       "MealItemDto": {
         "type": "object",
         "properties": {
@@ -5478,17 +5503,12 @@
             "type": "boolean",
             "description": "레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용)"
           },
-          "outsideMenu": {
-            "type": "string",
-            "nullable": true
-          },
-          "outsideNutrition": {
-            "description": "외부 식사 직접 입력 영양. null 은 미상",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/NutritionValuesDto"
-              }
-            ]
+          "outsideItems": {
+            "description": "식단 외 식사의 메뉴 줄(입력 순). 먹은 식단 외 식사가 아니면 비어 있음 (DEC-103)",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutsideItemDto"
+            }
           },
           "items": {
             "description": "eaten: 실제 스냅샷. unrecorded: 계획 품목(가상, id null). skipped: 비어 있음",
@@ -5539,8 +5559,7 @@
           "templateName",
           "planNote",
           "planChanged",
-          "outsideMenu",
-          "outsideNutrition",
+          "outsideItems",
           "items",
           "nutrition",
           "eatenAt",
@@ -5873,6 +5892,43 @@
           "unit"
         ]
       },
+      "OutsideItemInputDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "kcal": {
+            "type": "number",
+            "nullable": true,
+            "description": "생략·null 은 미상",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "carbG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "proteinG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "fatG": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "PutMealRecordDto": {
         "type": "object",
         "properties": {
@@ -5901,31 +5957,12 @@
               "$ref": "#/components/schemas/MealItemInputDto"
             }
           },
-          "outsideMenu": {
-            "type": "string",
-            "nullable": true,
-            "description": "kind=outside, status=eaten 이면 필수",
-            "maxLength": 100
-          },
-          "outsideKcal": {
-            "type": "number",
-            "nullable": true,
-            "minimum": 0
-          },
-          "outsideCarbG": {
-            "type": "number",
-            "nullable": true,
-            "minimum": 0
-          },
-          "outsideProteinG": {
-            "type": "number",
-            "nullable": true,
-            "minimum": 0
-          },
-          "outsideFatG": {
-            "type": "number",
-            "nullable": true,
-            "minimum": 0
+          "outsideItems": {
+            "description": "식단 외 식사의 메뉴 줄 (DEC-103). kind=outside, status=eaten 이면 1줄 이상 필수",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutsideItemInputDto"
+            }
           },
           "version": {
             "type": "number",
@@ -7032,10 +7069,12 @@
             ],
             "type": "string"
           },
-          "outsideMenu": {
-            "type": "string",
-            "nullable": true,
-            "description": "식단 외 식사의 메뉴명. 그 밖에는 null"
+          "outsideMenus": {
+            "description": "식단 외 식사의 메뉴 이름(입력 순, 줄별 영양은 싣지 않는다, DEC-103). 그 밖에는 비어 있다",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "items": {
             "description": "먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다)",
@@ -7066,7 +7105,7 @@
           "slot",
           "status",
           "kind",
-          "outsideMenu",
+          "outsideMenus",
           "items",
           "photos",
           "social"

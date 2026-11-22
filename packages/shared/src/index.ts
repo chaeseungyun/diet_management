@@ -132,6 +132,10 @@ export const WEEKDAY_LABELS: Record<Weekday, string> = {
 /** 닉네임 길이 제한 (FR-01 최소 프로필) */
 export const NICKNAME_MAX_LENGTH = 30;
 export const NAME_MAX_LENGTH = 100;
+/** 식단 외 식사 한 끼의 메뉴 줄 상한 (DEC-103) */
+export const OUTSIDE_ITEMS_MAX = 20;
+/** 메뉴 한 줄의 열량(kcal)·탄단지(g) 상한. 오타로 DB 자릿수를 넘기지 않게 막는다 */
+export const OUTSIDE_NUTRITION_MAX = 100000;
 export const NOTE_MAX_LENGTH = 500;
 
 /** 멱등성 키 헤더 (api.md §0) */

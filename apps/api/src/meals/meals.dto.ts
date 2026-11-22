@@ -6,10 +6,12 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
   Min,
   ValidateIf,
@@ -18,6 +20,7 @@ import {
 import type {
   DayCompletion,
   MealItemSnapshot,
+  MealOutsideItem,
   MealPhoto,
   MealRecord,
   Product,
@@ -29,6 +32,8 @@ import {
   MEAL_SLOTS,
   MEAL_STATUSES,
   NAME_MAX_LENGTH,
+  OUTSIDE_ITEMS_MAX,
+  OUTSIDE_NUTRITION_MAX,
   PLAN_TYPES,
   STOCK_UNITS,
   displayUnit,
@@ -66,6 +71,44 @@ export class MealItemInputDto {
   unit!: StockUnit;
 }
 
+/** 식단 외 식사의 메뉴 한 줄 (DEC-103). 이름과 직접 입력 영양만. 수량은 없고 재고와 무관하다 */
+export class OutsideItemInputDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(NAME_MAX_LENGTH)
+  name!: string;
+
+  /** 생략·null 은 미상 */
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  @Max(OUTSIDE_NUTRITION_MAX)
+  kcal?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  @Max(OUTSIDE_NUTRITION_MAX)
+  carbG?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  @Max(OUTSIDE_NUTRITION_MAX)
+  proteinG?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  @Max(OUTSIDE_NUTRITION_MAX)
+  fatG?: number | null;
+}
+
 /** 상태 설정 요청 (D-04). 델타가 아니라 최종 상태를 보낸다 */
 export class PutMealRecordDto {
   @ApiProperty({ enum: MEAL_STATUSES })
@@ -87,36 +130,14 @@ export class PutMealRecordDto {
   @Type(() => MealItemInputDto)
   items?: MealItemInputDto[];
 
-  /** kind=outside, status=eaten 이면 필수 */
-  @ApiPropertyOptional({ type: String, nullable: true })
+  /** 식단 외 식사의 메뉴 줄 (DEC-103). kind=outside, status=eaten 이면 1줄 이상 필수 */
+  @ApiPropertyOptional({ type: OutsideItemInputDto, isArray: true })
   @IsOptional()
-  @IsString()
-  @MaxLength(NAME_MAX_LENGTH)
-  outsideMenu?: string | null;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  outsideKcal?: number | null;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  outsideCarbG?: number | null;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  outsideProteinG?: number | null;
-
-  @ApiPropertyOptional({ type: Number, nullable: true })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 })
-  @Min(0)
-  outsideFatG?: number | null;
+  @IsArray()
+  @ArrayMaxSize(OUTSIDE_ITEMS_MAX)
+  @ValidateNested({ each: true })
+  @Type(() => OutsideItemInputDto)
+  outsideItems?: OutsideItemInputDto[];
 
   /** 조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08) */
   @ApiPropertyOptional({ type: Number, nullable: true })
@@ -248,6 +269,31 @@ export class MealItemDto {
   }
 }
 
+export class OutsideItemDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  /** 직접 입력 영양. null 은 미상 */
+  @ApiProperty({ type: NutritionValuesDto })
+  nutrition!: NutritionValuesDto;
+
+  static from(i: MealOutsideItem): OutsideItemDto {
+    return {
+      id: i.id,
+      name: i.name,
+      nutrition: {
+        kcal: num(i.kcal),
+        carbG: num(i.carbG),
+        proteinG: num(i.proteinG),
+        fatG: num(i.fatG),
+      },
+    };
+  }
+}
+
 export interface RecordContext {
   date: string;
   slot: AnySlot;
@@ -298,12 +344,9 @@ export class MealRecordDto {
   @ApiProperty()
   planChanged!: boolean;
 
-  @ApiProperty({ type: String, nullable: true })
-  outsideMenu!: string | null;
-
-  /** 외부 식사 직접 입력 영양. null 은 미상 */
-  @ApiProperty({ type: NutritionValuesDto })
-  outsideNutrition!: NutritionValuesDto;
+  /** 식단 외 식사의 메뉴 줄(입력 순). 먹은 식단 외 식사가 아니면 비어 있음 (DEC-103) */
+  @ApiProperty({ type: OutsideItemDto, isArray: true })
+  outsideItems!: OutsideItemDto[];
 
   /** eaten: 실제 스냅샷. unrecorded: 계획 품목(가상, id null). skipped: 비어 있음 */
   @ApiProperty({ type: MealItemDto, isArray: true })
@@ -329,7 +372,7 @@ export class MealRecordDto {
   completionCleared!: boolean;
 
   static build(
-    record: (MealRecord & { photos?: MealPhoto[] }) | null,
+    record: (MealRecord & { photos?: MealPhoto[]; outsideItems?: MealOutsideItem[] }) | null,
     ctx: RecordContext,
     items: MealItemDto[],
     totals: NutritionTotals,
@@ -347,13 +390,7 @@ export class MealRecordDto {
       templateName: ctx.templateName,
       planNote: ctx.plan.note ?? null,
       planChanged: record?.planChanged ?? false,
-      outsideMenu: record?.outsideMenu ?? null,
-      outsideNutrition: {
-        kcal: num(record?.outsideKcal),
-        carbG: num(record?.outsideCarbG),
-        proteinG: num(record?.outsideProteinG),
-        fatG: num(record?.outsideFatG),
-      },
+      outsideItems: (record?.outsideItems ?? []).map((i) => OutsideItemDto.from(i)),
       items,
       nutrition: NutritionTotalsDto.from(totals),
       eatenAt: record?.eatenAt ? record.eatenAt.toISOString() : null,

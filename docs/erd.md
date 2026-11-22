@@ -46,6 +46,7 @@ erDiagram
     MealTemplate o|--o{ MealRecord : "계획 출처"
 
     MealRecord ||--o{ MealItemSnapshot : "품목 스냅샷"
+    MealRecord ||--o{ MealOutsideItem : "식단 외 메뉴 줄"
     MealItemSnapshot o|--o{ StockMovement : "차감·복구"
 
     User {
@@ -171,16 +172,21 @@ erDiagram
         enum status "unrecorded|eaten|skipped"
         enum kind "home|outside (D-17)"
         uuid template_id FK "nullable, 계획 출처"
-        string outside_menu "nullable"
-        numeric outside_kcal "nullable=미상"
-        numeric outside_carb_g "nullable"
-        numeric outside_protein_g "nullable"
-        numeric outside_fat_g "nullable"
         bool plan_changed "계획 사전 변경 여부"
         int version "낙관적 잠금, 쓰기마다 +1 (D-08)"
         timestamptz eaten_at "nullable"
         timestamptz created_at
         timestamptz updated_at
+    }
+    MealOutsideItem {
+        uuid id PK
+        uuid meal_record_id FK "cascade"
+        string name "식단 외 식사의 메뉴 한 줄 (DEC-103)"
+        numeric kcal "nullable=미상"
+        numeric carb_g "nullable"
+        numeric protein_g "nullable"
+        numeric fat_g "nullable"
+        int sort_order
     }
     MealItemSnapshot {
         uuid id PK

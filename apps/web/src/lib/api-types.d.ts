@@ -1875,6 +1875,13 @@ export interface components {
             /** @description 오늘 이전·오늘의 미기록 활성 슬롯 수. 미래는 null */
             unrecordedCount: number | null;
         };
+        OutsideItemDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description 직접 입력 영양. null 은 미상 */
+            nutrition: components["schemas"]["NutritionValuesDto"];
+        };
         MealItemDto: {
             /**
              * Format: uuid
@@ -1951,9 +1958,8 @@ export interface components {
             planNote: string | null;
             /** @description 레코드 생성 시 계획이 예외에서 왔으면 true (실천율 분모 제외용) */
             planChanged: boolean;
-            outsideMenu: string | null;
-            /** @description 외부 식사 직접 입력 영양. null 은 미상 */
-            outsideNutrition: components["schemas"]["NutritionValuesDto"];
+            /** @description 식단 외 식사의 메뉴 줄(입력 순). 먹은 식단 외 식사가 아니면 비어 있음 (DEC-103) */
+            outsideItems: components["schemas"]["OutsideItemDto"][];
             /** @description eaten: 실제 스냅샷. unrecorded: 계획 품목(가상, id null). skipped: 비어 있음 */
             items: components["schemas"]["MealItemDto"][];
             /** @description eaten: 실제 합계, skipped: 0(확인된 0), unrecorded: 계획 기준 예상 */
@@ -2055,6 +2061,14 @@ export interface components {
             /** @enum {string} */
             unit: "g" | "ml" | "ea";
         };
+        OutsideItemInputDto: {
+            name: string;
+            /** @description 생략·null 은 미상 */
+            kcal?: number | null;
+            carbG?: number | null;
+            proteinG?: number | null;
+            fatG?: number | null;
+        };
         PutMealRecordDto: {
             /** @enum {string} */
             status: "unrecorded" | "eaten" | "skipped";
@@ -2066,12 +2080,8 @@ export interface components {
             kind: "home" | "outside";
             /** @description status=eaten 일 때 먹은 품목. 외부 식사에서는 '추가한 식단 품목' 만 (이 항목만 차감) */
             items?: components["schemas"]["MealItemInputDto"][];
-            /** @description kind=outside, status=eaten 이면 필수 */
-            outsideMenu?: string | null;
-            outsideKcal?: number | null;
-            outsideCarbG?: number | null;
-            outsideProteinG?: number | null;
-            outsideFatG?: number | null;
+            /** @description 식단 외 식사의 메뉴 줄 (DEC-103). kind=outside, status=eaten 이면 1줄 이상 필수 */
+            outsideItems?: components["schemas"]["OutsideItemInputDto"][];
             /** @description 조회로 받은 version. 레코드가 없던 슬롯은 null. 불일치는 409 (D-08) */
             version?: number | null;
             /**
@@ -2420,8 +2430,8 @@ export interface components {
              * @enum {string}
              */
             kind: "home" | "outside";
-            /** @description 식단 외 식사의 메뉴명. 그 밖에는 null */
-            outsideMenu: string | null;
+            /** @description 식단 외 식사의 메뉴 이름(입력 순, 줄별 영양은 싣지 않는다, DEC-103). 그 밖에는 비어 있다 */
+            outsideMenus: string[];
             /** @description 먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다) */
             items: components["schemas"]["SharedMealItemDto"][];
             photos: components["schemas"]["SharedPhotoDto"][];

@@ -126,10 +126,7 @@ export class StatsService {
           kind: true,
           templateId: true,
           planChanged: true,
-          outsideKcal: true,
-          outsideCarbG: true,
-          outsideProteinG: true,
-          outsideFatG: true,
+          outsideItems: { select: { kcal: true, carbG: true, proteinG: true, fatG: true } },
           items: {
             select: {
               kcal: true,
@@ -163,14 +160,7 @@ export class StatsService {
       const date = fromDbDate(r.mealDate);
       const list = parts.get(date) ?? [];
       for (const i of r.items) list.push(i);
-      if (r.kind === 'outside') {
-        list.push({
-          kcal: r.outsideKcal,
-          carbG: r.outsideCarbG,
-          proteinG: r.outsideProteinG,
-          fatG: r.outsideFatG,
-        });
-      }
+      for (const o of r.outsideItems) list.push(o);
       parts.set(date, list);
     }
     const completed = new Set(completions.map((c) => fromDbDate(c.onDate)));

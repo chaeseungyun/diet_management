@@ -4,6 +4,7 @@ import {
   Prisma,
   type DayCompletion,
   type MealItemSnapshot,
+  type MealOutsideItem,
   type MealPhoto,
   type MealRecord,
   type Product,
@@ -50,7 +51,11 @@ import {
 
 type Db = Prisma.TransactionClient | PrismaService;
 type SnapshotWithProduct = MealItemSnapshot & { product: Product | null };
-type RecordWithItems = MealRecord & { items: SnapshotWithProduct[]; photos: MealPhoto[] };
+type RecordWithItems = MealRecord & {
+  items: SnapshotWithProduct[];
+  outsideItems: MealOutsideItem[];
+  photos: MealPhoto[];
+};
 
 /** 보이는 끼니 하나의 계산 결과 (계획·기록·DTO) */
 interface EvaluatedSlot {
@@ -81,6 +86,7 @@ export interface SharedDaySource {
 
 const include = {
   items: { include: { product: true }, orderBy: { sortOrder: 'asc' as const } },
+  outsideItems: { orderBy: { sortOrder: 'asc' as const } },
   // 지운 사진은 빼고, 보관 기간이 지난 사진은 자리 표시를 위해 남긴다 (DEC-069)
   photos: { where: { deletedAt: null }, orderBy: { createdAt: 'asc' as const } },
 } as const;
@@ -526,8 +532,16 @@ export class MealsService {
     const kind = dto.kind ?? 'home';
     const eaten = dto.status === 'eaten';
     const items = eaten ? (dto.items ?? []) : [];
-    if (eaten && kind === 'outside' && !dto.outsideMenu?.trim()) {
-      throw unprocessable('OUTSIDE_MENU_REQUIRED', 'outsideMenu is required for an outside meal');
+    // 식단 외 식사의 메뉴 줄 (DEC-103). 이름이 빈 줄은 받지 않는다
+    const outside = eaten && kind === 'outside';
+    const outsideItems = outside
+      ? (dto.outsideItems ?? []).map((i) => ({ ...i, name: i.name.trim() }))
+      : [];
+    if (outside && (outsideItems.length === 0 || outsideItems.some((i) => !i.name))) {
+      throw unprocessable(
+        'OUTSIDE_MENU_REQUIRED',
+        'outsideItems needs at least one item, each with a name, for an outside meal',
+      );
     }
     // 품목 없는 '먹었음' 은 의미가 없다(안 먹음으로 기록해야 한다). 외부 식사는 메뉴명만으로 가능 (DEC-057)
     if (eaten && kind === 'home' && items.length === 0) {
@@ -584,15 +598,9 @@ export class MealsService {
     //    동시 수정은 먼저 커밋한 쪽만 통과하고 나머지는 409 (D-08, 요구사항 §7-7).
     //    원장·스냅샷은 이 잠금을 얻은 뒤에만 건드린다.
     const now = new Date();
-    const outside = eaten && kind === 'outside';
     const data = {
       status: dto.status,
       kind,
-      outsideMenu: outside ? dto.outsideMenu!.trim() : null,
-      outsideKcal: outside ? dec(dto.outsideKcal ?? null) : null,
-      outsideCarbG: outside ? dec(dto.outsideCarbG ?? null) : null,
-      outsideProteinG: outside ? dec(dto.outsideProteinG ?? null) : null,
-      outsideFatG: outside ? dec(dto.outsideFatG ?? null) : null,
       eatenAt: eaten ? (existing?.status === 'eaten' ? existing.eatenAt : now) : null,
     };
     let record: MealRecord;
@@ -607,6 +615,7 @@ export class MealsService {
       // 2) 기존 차감 복구 → 스냅샷 제거 (잠금 이후이므로 먼저 커밋된 쓰기의 결과를 본다)
       await this.reverseDeductions(tx, user.id, existing);
       await tx.mealItemSnapshot.deleteMany({ where: { mealRecordId: existing.id } });
+      await tx.mealOutsideItem.deleteMany({ where: { mealRecordId: existing.id } });
       record = await tx.mealRecord.findUniqueOrThrow({ where: { id: existing.id } });
     } else {
       try {
@@ -629,6 +638,20 @@ export class MealsService {
         }
         throw e;
       }
+    }
+
+    if (outsideItems.length > 0) {
+      await tx.mealOutsideItem.createMany({
+        data: outsideItems.map((i, idx) => ({
+          mealRecordId: record.id,
+          name: i.name,
+          kcal: dec(i.kcal ?? null),
+          carbG: dec(i.carbG ?? null),
+          proteinG: dec(i.proteinG ?? null),
+          fatG: dec(i.fatG ?? null),
+          sortOrder: idx,
+        })),
+      });
     }
 
     // 3) 새 스냅샷 + 4) 차감
@@ -797,14 +820,8 @@ export class MealsService {
         proteinG: s.proteinG,
         fatG: s.fatG,
       }));
-      if (record.kind === 'outside') {
-        parts.push({
-          kcal: record.outsideKcal,
-          carbG: record.outsideCarbG,
-          proteinG: record.outsideProteinG,
-          fatG: record.outsideFatG,
-        });
-      }
+      // 식단 외 메뉴는 줄마다 한 부분이다: 열량이 빈 줄 하나가 미확인 1건 (DEC-103)
+      for (const o of record.outsideItems) parts.push(o);
       return sumNutrition(parts);
     }
     if (plan.planType === 'template' && view)

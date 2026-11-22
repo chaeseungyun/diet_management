@@ -14,6 +14,14 @@ import { Field, Input, Select } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { ProductPicker } from '@/components/products/product-picker';
 import { PlanCellDialog } from '@/components/plans/plan-cell-dialog';
+import {
+  OutsideItemsInput,
+  outsideLinesBody,
+  outsideLinesFrom,
+  outsideLinesKey,
+  outsideLinesProblem,
+  type OutsideLine,
+} from './outside-items-input';
 import { MealPhotos, discardDraftPhotos, type MealPhoto } from './meal-photos';
 import { depletionChangeText } from '@/lib/stock';
 import { cn } from '@/lib/utils';
@@ -37,15 +45,6 @@ interface EditItem {
   saved: Item | null;
 }
 
-interface OutsideValues {
-  kcal: string;
-  carbG: string;
-  proteinG: string;
-  fatG: string;
-}
-
-const EMPTY_OUTSIDE: OutsideValues = { kcal: '', carbG: '', proteinG: '', fatG: '' };
-
 function fromItem(i: Item): EditItem {
   const q = i.actualQuantity ?? i.plannedQuantity;
   return {
@@ -66,28 +65,21 @@ function fromItem(i: Item): EditItem {
 function draftFromRecord(r: MealRecord): {
   kind: Kind;
   items: EditItem[];
-  menu: string;
-  outside: OutsideValues;
+  lines: OutsideLine[];
 } {
   return {
     kind: r.status === 'eaten' ? r.kind : 'home',
     items: r.items.map(fromItem),
-    menu: r.outsideMenu ?? '',
-    outside: {
-      kcal: r.outsideNutrition.kcal?.toString() ?? '',
-      carbG: r.outsideNutrition.carbG?.toString() ?? '',
-      proteinG: r.outsideNutrition.proteinG?.toString() ?? '',
-      fatG: r.outsideNutrition.fatG?.toString() ?? '',
-    },
+    lines: outsideLinesFrom(r.status === 'eaten' ? r.outsideItems : []),
   };
 }
 
 /** 변경 여부 판정용 키. 화면 표시용 필드는 제외한다 */
-function draftKey(kind: Kind, items: EditItem[], menu: string, outside: OutsideValues): string {
+function draftKey(kind: Kind, items: EditItem[], lines: OutsideLine[]): string {
   return JSON.stringify({
     kind,
     items: items.map((i) => [i.productId, i.quantity.trim(), i.unit]),
-    ...(kind === 'outside' ? { menu: menu.trim(), outside } : {}),
+    ...(kind === 'outside' ? { lines: outsideLinesKey(lines) } : {}),
   });
 }
 
@@ -128,13 +120,10 @@ export function MealRecordEditor({
   const first = draftFromRecord(initial);
   const [kind, setKind] = useState<Kind>(first.kind);
   const [items, setItems] = useState<EditItem[]>(first.items);
-  const [menu, setMenu] = useState(first.menu);
-  const [outside, setOutside] = useState<OutsideValues>(first.outside);
+  const [lines, setLines] = useState<OutsideLine[]>(first.lines);
   // 저장 전에 올린 사진은 임시 사진(mealRecordId 없음)으로 여기 들고 있다가 저장의 photoIds 로 붙인다 (DEC-086)
   const [photos, setPhotos] = useState<MealPhoto[]>(initial.photos);
-  const [baseline, setBaseline] = useState(() =>
-    draftKey(first.kind, first.items, first.menu, first.outside),
-  );
+  const [baseline, setBaseline] = useState(() => draftKey(first.kind, first.items, first.lines));
   // 기록 전에는 편집기를 닫아 두고, 기록 후에는 항상 연다
   const [editing, setEditing] = useState(initial.status === 'eaten');
   const [chooser, setChooser] = useState(
@@ -195,14 +184,14 @@ export function MealRecordEditor({
   }
 
   const num = (s: string): number | null => (s.trim() === '' ? null : Number(s));
-  const dirty = draftKey(kind, items, menu, outside) !== baseline;
+  const dirty = draftKey(kind, items, lines) !== baseline;
   const noItems = kind === 'home' && items.length === 0;
-  const eatenBlocked = (kind === 'outside' && menu.trim() === '') || noItems;
   const eatenBlockedReason = noItems
     ? "품목이 없으면 '먹었음' 으로 저장할 수 없습니다. 식단이나 식품을 추가하거나 '안 먹음' 을 고르세요."
-    : kind === 'outside' && menu.trim() === ''
-      ? '식단 외 식사는 메뉴명을 입력해야 저장됩니다.'
+    : kind === 'outside'
+      ? outsideLinesProblem(lines)
       : null;
+  const eatenBlocked = eatenBlockedReason !== null;
 
   function applySaved(saved: MealRecord, keepDrafts = false) {
     const d = draftFromRecord(saved);
@@ -219,16 +208,14 @@ export function MealRecordEditor({
     }
     if (saved.status === 'eaten') {
       setKind(d.kind);
-      setMenu(d.menu);
-      setOutside(d.outside);
-      setBaseline(draftKey(d.kind, d.items, d.menu, d.outside));
+      setLines(d.lines);
+      setBaseline(draftKey(d.kind, d.items, d.lines));
       setEditing(true);
     } else {
       // 안 먹음·기록 취소: 초안을 계획으로 되돌리고 편집기를 닫는다
       setKind('home');
-      setMenu('');
-      setOutside(EMPTY_OUTSIDE);
-      setBaseline(draftKey('home', d.items, '', EMPTY_OUTSIDE));
+      setLines(d.lines);
+      setBaseline(draftKey('home', d.items, d.lines));
       setEditing(false);
     }
     setConflict(false);
@@ -247,15 +234,7 @@ export function MealRecordEditor({
                 quantity: num(i.quantity),
                 unit: i.unit,
               })),
-              ...(kind === 'outside'
-                ? {
-                    outsideMenu: menu,
-                    outsideKcal: num(outside.kcal),
-                    outsideCarbG: num(outside.carbG),
-                    outsideProteinG: num(outside.proteinG),
-                    outsideFatG: num(outside.fatG),
-                  }
-                : {}),
+              ...(kind === 'outside' ? { outsideItems: outsideLinesBody(lines) } : {}),
               photoIds: photos.filter((ph) => !ph.mealRecordId).map((ph) => ph.id),
               version: record.version,
             }
@@ -304,8 +283,7 @@ export function MealRecordEditor({
     const d = draftFromRecord(record);
     setKind(d.kind);
     setItems(d.items);
-    setMenu(d.menu);
-    setOutside(d.outside);
+    setLines(d.lines);
     discardDraftPhotos(photos);
     setPhotos(record.photos);
     setEditing(false);
@@ -572,38 +550,7 @@ export function MealRecordEditor({
             </div>
 
             {kind === 'outside' ? (
-              <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
-                <Field label="메뉴명" htmlFor="menu">
-                  <Input
-                    id="menu"
-                    value={menu}
-                    onChange={(e) => setMenu(e.target.value)}
-                    placeholder="예: 김치찌개"
-                  />
-                </Field>
-                <p className="text-xs text-muted-foreground">
-                  영양 추정값은 직접 입력합니다. 비우면 &apos;미확인&apos; 으로 남고 메뉴명으로 자동
-                  계산하지 않습니다 (FR-05).
-                </p>
-                <div className="grid grid-cols-4 gap-2">
-                  {(['kcal', 'carbG', 'proteinG', 'fatG'] as const).map((k) => (
-                    <Field
-                      key={k}
-                      label={{ kcal: 'kcal', carbG: '탄(g)', proteinG: '단(g)', fatG: '지(g)' }[k]}
-                      htmlFor={`o-${k}`}
-                    >
-                      <Input
-                        id={`o-${k}`}
-                        type="number"
-                        inputMode="decimal"
-                        step="any"
-                        value={outside[k]}
-                        onChange={(e) => setOutside({ ...outside, [k]: e.target.value })}
-                      />
-                    </Field>
-                  ))}
-                </div>
-              </div>
+              <OutsideItemsInput lines={lines} onChange={setLines} idPrefix="o" />
             ) : null}
 
             <div className="flex items-center justify-between">

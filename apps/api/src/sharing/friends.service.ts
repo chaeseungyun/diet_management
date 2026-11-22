@@ -396,7 +396,7 @@ function sharedMeal(r: MealRecordDto, social: Map<string, RecordSocialDto>): Sha
     slot: r.slot,
     status: r.status,
     kind: r.kind,
-    outsideMenu: eaten && r.kind === 'outside' ? r.outsideMenu : null,
+    outsideMenus: eaten ? r.outsideItems.map((o) => o.name) : [],
     items: eaten
       ? r.items.map((i) => ({
           name: i.productName,

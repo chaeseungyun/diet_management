@@ -48,7 +48,7 @@ describe('phase 3: meal photos', () => {
   const outside = (extra: Record<string, unknown> = {}) => ({
     status: 'eaten',
     kind: 'outside',
-    outsideMenu: '김치찌개',
+    outsideItems: [{ name: '김치찌개' }],
     ...extra,
   });
 
@@ -167,7 +167,13 @@ describe('phase 3: meal photos', () => {
     // 수정 저장: photoIds 를 보내지 않아도 사진은 남고, 이미 붙은 id 를 다시 보내도 된다
     const edited = await a
       .put(`/meal-records/${TODAY}/lunch`)
-      .send(outside({ version: saved.body.version, outsideMenu: '된장찌개', photoIds: [p1] }))
+      .send(
+        outside({
+          version: saved.body.version,
+          outsideItems: [{ name: '된장찌개' }],
+          photoIds: [p1],
+        }),
+      )
       .expect(200);
     expect(edited.body.photos).toHaveLength(2);
 
@@ -185,7 +191,7 @@ describe('phase 3: meal photos', () => {
     const p3 = (await upload(a, jpeg).expect(201)).body.id;
     const extra = await a
       .post(`/meal-records/${TODAY}/extra`)
-      .send(outside({ outsideMenu: '붕어빵', photoIds: [p3] }))
+      .send(outside({ outsideItems: [{ name: '붕어빵' }], photoIds: [p3] }))
       .expect(201);
     expect(extra.body.photos).toHaveLength(1);
     await a.delete(`/meal-records/${TODAY}/extra/${extra.body.id}`).expect(204);

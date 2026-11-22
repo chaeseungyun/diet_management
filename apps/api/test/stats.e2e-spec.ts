@@ -101,7 +101,12 @@ describe('phase 2: stats', () => {
     await eat(D(2), 'breakfast', 100);
     await a
       .put(`/meal-records/${D(2)}/dinner`)
-      .send({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개', version: null })
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: [{ name: '김치찌개' }],
+        version: null,
+      })
       .expect(200);
     // D-1: 아침 안 먹음 (확인된 0)
     await a

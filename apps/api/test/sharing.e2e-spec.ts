@@ -310,7 +310,7 @@ describe('phase 4: sharing-1a', () => {
       .send({
         status: 'eaten',
         kind: 'outside',
-        outsideMenu: '김치찌개',
+        outsideItems: [{ name: '김치찌개' }],
         photoIds: [photo],
         version: null,
       })
@@ -321,7 +321,7 @@ describe('phase 4: sharing-1a', () => {
       .expect(200);
     await a
       .post(`/meal-records/${TODAY}/extra`)
-      .send({ status: 'eaten', kind: 'outside', outsideMenu: '붕어빵', outsideKcal: 200 })
+      .send({ status: 'eaten', kind: 'outside', outsideItems: [{ name: '붕어빵', kcal: 200 }] })
       .expect(201);
     await a.put(`/weights/${TODAY}`).send({ weightKg: 71.35 }).expect(200);
 
@@ -349,7 +349,7 @@ describe('phase 4: sharing-1a', () => {
     expect(body).toMatchObject({ date: TODAY, today: TODAY, firstDate: TODAY, completed: false });
     for (const meal of [...body.slots, ...body.extras]) {
       expect(Object.keys(meal).sort()).toEqual(
-        ['items', 'kind', 'outsideMenu', 'photos', 'recordId', 'slot', 'social', 'status'].sort(),
+        ['items', 'kind', 'outsideMenus', 'photos', 'recordId', 'slot', 'social', 'status'].sort(),
       );
     }
     // 미기록 자유 끼니(오후 간식)는 없다 (D-18). 미기록 식단 끼니(점심)는 상태만 보인다
@@ -360,18 +360,18 @@ describe('phase 4: sharing-1a', () => {
       'evening_snack',
     ]);
     const [breakfast, lunch, dinner, snack] = body.slots;
-    expect(breakfast).toMatchObject({ status: 'eaten', kind: 'home', outsideMenu: null });
+    expect(breakfast).toMatchObject({ status: 'eaten', kind: 'home', outsideMenus: [] });
     expect(breakfast.items).toEqual([
       { name: '닭가슴살', quantity: 2, unit: 'ea', displayUnit: '팩' },
     ]);
     // 계획 품목과 식단 이름은 공유하지 않는다
     expect(lunch).toMatchObject({ status: 'unrecorded', recordId: null, items: [], photos: [] });
-    expect(dinner).toMatchObject({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개' });
+    expect(dinner).toMatchObject({ status: 'eaten', kind: 'outside', outsideMenus: ['김치찌개'] });
     expect(dinner.photos).toHaveLength(1);
     expect(Object.keys(dinner.photos[0]).sort()).toEqual(['expired', 'height', 'id', 'width']);
     expect(snack).toMatchObject({ status: 'skipped', items: [] });
     expect(body.extras).toHaveLength(1);
-    expect(body.extras[0]).toMatchObject({ slot: 'extra', outsideMenu: '붕어빵' });
+    expect(body.extras[0]).toMatchObject({ slot: 'extra', outsideMenus: ['붕어빵'] });
 
     // 영양 합계: 닭 2팩(236) + 붕어빵 200, 김치찌개는 미상 → complete=false (null 은 미상)
     expect(Object.keys(body.nutrition).sort()).toEqual(
@@ -536,7 +536,7 @@ describe('phase 4: sharing-1a', () => {
       .send({
         status: 'eaten',
         kind: 'outside',
-        outsideMenu: '김밥',
+        outsideItems: [{ name: '김밥' }],
         photoIds: [attached],
         version: null,
       })

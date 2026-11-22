@@ -172,7 +172,7 @@ describe('phase 2: day completion', () => {
       .send({
         status: 'eaten',
         kind: 'outside',
-        outsideMenu: '김치찌개',
+        outsideItems: [{ name: '김치찌개' }],
         version: dinner.body.version,
       })
       .expect(200);

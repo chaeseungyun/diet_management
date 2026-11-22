@@ -385,6 +385,118 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
 
   // ---------- 외부 식사·추가 간식·영양 미상 보완 (D-03, D-10) ----------
 
+  it('records an outside meal as several menu lines, each with its own nutrition (DEC-103)', async () => {
+    const date = addDays(TODAY, -40);
+    const path = `/meal-records/${date}/dinner`;
+    // 이름이 빈 줄·빈 목록·21줄은 거부
+    await a
+      .put(path)
+      .send({ status: 'eaten', kind: 'outside', outsideItems: [], version: null })
+      .expect(422);
+    await a
+      .put(path)
+      .send({ status: 'eaten', kind: 'outside', outsideItems: [{ name: '   ' }], version: null })
+      .expect(422);
+    await a
+      .put(path)
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: Array.from({ length: 21 }, (_, i) => ({ name: `메뉴${i}` })),
+        version: null,
+      })
+      .expect(422);
+
+    // 영양 값: 음수·상한 초과·소수 넷째 자리는 거부 (DB 자릿수를 넘겨 500 이 되지 않는다)
+    for (const kcal of [-1, 100000.001, 1e10, 1.2345]) {
+      await a
+        .put(path)
+        .send({
+          status: 'eaten',
+          kind: 'outside',
+          outsideItems: [{ name: '메뉴', kcal }],
+          version: null,
+        })
+        .expect(422);
+    }
+
+    const before = (await a.get(`/products/${chicken}`)).body.currentStock;
+    const saved = await a
+      .put(path)
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: [
+          { name: ' 김치찌개 1인분 ', kcal: 450, carbG: 30, proteinG: 25, fatG: 20 },
+          { name: '삼겹살 1인분', kcal: 600 },
+          { name: '공깃밥' },
+        ],
+        items: [{ productId: chicken, quantity: 1, unit: 'ea' }],
+        version: null,
+      })
+      .expect(200);
+    expect(saved.body.outsideItems.map((o: { name: string }) => o.name)).toEqual([
+      '김치찌개 1인분',
+      '삼겹살 1인분',
+      '공깃밥',
+    ]);
+    expect(saved.body.outsideItems[1].nutrition).toEqual({
+      kcal: 600,
+      carbG: null,
+      proteinG: null,
+      fatG: null,
+    });
+    // 합계 = 줄 합 + 곁들인 내 식품(닭 1팩). 열량이 빈 줄마다 미확인 1건(탄단지만 빈 줄은 세지 않는다)
+    const chickenKcal = saved.body.items[0].nutrition.kcal as number;
+    expect(saved.body.nutrition.kcal).toBe(450 + 600 + chickenKcal);
+    expect(saved.body.nutrition).toMatchObject({ complete: false, missing: 1 });
+    // 메뉴 줄은 재고와 무관하고 곁들인 식품만 뺀다
+    expect((await a.get(`/products/${chicken}`)).body.currentStock).toBe(before - 1);
+
+    // 수정은 줄을 통째로 바꾼다. 모든 줄에 영양이 있으면 완전
+    const edited = await a
+      .put(path)
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: [{ name: '삼겹살 2인분', kcal: 1200, carbG: 0, proteinG: 60, fatG: 100 }],
+        version: saved.body.version,
+      })
+      .expect(200);
+    expect(edited.body.outsideItems).toHaveLength(1);
+    expect(edited.body.nutrition).toMatchObject({ kcal: 1200, complete: true, missing: 0 });
+    expect((await a.get(`/products/${chicken}`)).body.currentStock).toBe(before);
+    const day = await a.get(`/days/${date}`).expect(200);
+    expect(
+      day.body.slots.find((s: { slot: string }) => s.slot === 'dinner').outsideItems[0].name,
+    ).toBe('삼겹살 2인분');
+
+    // 추가 간식도 여러 줄을 한 기록으로 받는다
+    const extra = await a
+      .post(`/meal-records/${date}/extra`)
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: [
+          { name: '붕어빵', kcal: 200 },
+          { name: '어묵', kcal: 90 },
+        ],
+      })
+      .expect(201);
+    expect(extra.body.outsideItems).toHaveLength(2);
+    expect(extra.body.nutrition.kcal).toBe(290);
+
+    // 취소(미기록)·내 식품으로 바꾸면 줄이 남지 않는다
+    const cleared = await a
+      .put(path)
+      .send({ status: 'unrecorded', version: edited.body.version })
+      .expect(200);
+    expect(cleared.body.outsideItems).toEqual([]);
+    expect(await prisma.mealOutsideItem.count({ where: { mealRecordId: edited.body.id } })).toBe(0);
+    await a.delete(`/meal-records/${date}/extra/${extra.body.id}`).expect(204);
+    expect(await prisma.mealOutsideItem.count({ where: { mealRecordId: extra.body.id } })).toBe(0);
+  });
+
   it('records an outside meal with unknown nutrition and adds extras that deduct stock (D-10)', async () => {
     await a
       .put(`/meal-records/${YESTERDAY}/dinner`)
@@ -392,7 +504,12 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
       .expect(422); // 메뉴명 필수
     const outside = await a
       .put(`/meal-records/${YESTERDAY}/dinner`)
-      .send({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개', version: null })
+      .send({
+        status: 'eaten',
+        kind: 'outside',
+        outsideItems: [{ name: '김치찌개' }],
+        version: null,
+      })
       .expect(200);
     expect(outside.body.nutrition).toMatchObject({ complete: false, missing: 1, kcal: 0 });
 
@@ -661,7 +778,7 @@ describe('phase 1: products, nutrition, plans, records, stock ledger', () => {
       .send({
         status: 'eaten',
         kind: 'outside',
-        outsideMenu: '김밥',
+        outsideItems: [{ name: '김밥' }],
         items: [],
         version: skipped.body.version,
       })

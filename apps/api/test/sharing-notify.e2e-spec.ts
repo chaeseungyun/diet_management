@@ -117,7 +117,12 @@ describe('phase 4: sharing-2b (social notifications)', () => {
     lunch = (
       await a
         .put(`/meal-records/${TODAY}/lunch`)
-        .send({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개', version: null })
+        .send({
+          status: 'eaten',
+          kind: 'outside',
+          outsideItems: [{ name: '김치찌개' }],
+          version: null,
+        })
         .expect(200)
     ).body.id;
     await reset();

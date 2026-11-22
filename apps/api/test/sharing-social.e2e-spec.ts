@@ -42,7 +42,12 @@ describe('phase 4: sharing-2a (reactions, comments, likes)', () => {
     (
       await who
         .put(`/meal-records/${TODAY}/lunch`)
-        .send({ status: 'eaten', kind: 'outside', outsideMenu: '김치찌개', version: null })
+        .send({
+          status: 'eaten',
+          kind: 'outside',
+          outsideItems: [{ name: '김치찌개' }],
+          version: null,
+        })
         .expect(200)
     ).body.id as string;
 
@@ -284,7 +289,7 @@ describe('phase 4: sharing-2a (reactions, comments, likes)', () => {
     const extra = (
       await a
         .post(`/meal-records/${TODAY}/extra`)
-        .send({ status: 'eaten', kind: 'outside', outsideMenu: '붕어빵' })
+        .send({ status: 'eaten', kind: 'outside', outsideItems: [{ name: '붕어빵' }] })
         .expect(201)
     ).body.id as string;
     await comment(b, '간식 댓글', aId, extra).expect(201);

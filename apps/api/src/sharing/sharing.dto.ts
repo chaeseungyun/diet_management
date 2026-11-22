@@ -195,9 +195,9 @@ export class SharedMealDto {
   @ApiProperty({ enum: MEAL_KINDS })
   kind!: MealKind;
 
-  /** 식단 외 식사의 메뉴명. 그 밖에는 null */
-  @ApiProperty({ type: String, nullable: true })
-  outsideMenu!: string | null;
+  /** 식단 외 식사의 메뉴 이름(입력 순, 줄별 영양은 싣지 않는다, DEC-103). 그 밖에는 비어 있다 */
+  @ApiProperty({ type: String, isArray: true })
+  outsideMenus!: string[];
 
   /** 먹은 품목. 먹었음이 아니면 비어 있다(계획 품목은 공유하지 않는다) */
   @ApiProperty({ type: SharedMealItemDto, isArray: true })
