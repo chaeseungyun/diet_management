@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "predev": "prisma migrate deploy || echo [dev] migrate deploy failed - if the DB is down, pnpm db:dev applies migrations when it starts",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",

@@ -27,7 +27,7 @@ cp apps/api/.env.example apps/api/.env    # JWT_SECRET, KAKAO_* 채우기
 cp apps/web/.env.example apps/web/.env
 
 pnpm db:dev                                # 터미널 1: 로컬 PostgreSQL (127.0.0.1:54320, 데이터 .local/pgdata)
-pnpm --filter @diet/api prisma:deploy      # 터미널 2: 마이그레이션 적용
+pnpm --filter @diet/api prisma:deploy      # 터미널 2: 마이그레이션 적용(db:dev·API dev 가 시작할 때도 자동 적용)
 pnpm --filter @diet/api dev                # API :4000  (Swagger: http://localhost:4000/api/v1/docs)
 pnpm --filter @diet/web dev                # 웹 :3000   (/api/* 는 :4000 으로 rewrite)
 ```

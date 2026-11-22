@@ -36,6 +36,16 @@ try {
 }
 console.log(`[dev-db] postgresql://postgres:postgres@127.0.0.1:${port}/diet_dev  (Ctrl+C to stop)`);
 
+// 아직 적용 안 된 마이그레이션을 적용한다(apps/api/.env 의 DATABASE_URL 대상). 실패해도 DB 는 띄워 둔다
+try {
+  const { execSync } = await import('node:child_process');
+  execSync('pnpm --filter @diet/api prisma:deploy', { stdio: 'inherit' });
+} catch {
+  console.error(
+    '[dev-db] 마이그레이션 적용 실패. pnpm --filter @diet/api prisma:deploy 로 확인하세요.',
+  );
+}
+
 const stop = async () => {
   await pg.stop();
   process.exit(0);
