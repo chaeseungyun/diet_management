@@ -26,8 +26,11 @@
 | `GET /auth/kakao` | 카카오 로그인 시작. OAuth state 생성 후 리다이렉트 | 상태 전이 §7 |
 | `GET /auth/kakao/callback` | 카카오에 등록하는 리다이렉트 URI. state·허용 리다이렉트 검증, `User` upsert, JWT 쿠키 발급 후 웹 `/`로 302 | 실패는 `/login?error=1`로 302(사유 비노출). 웹 처리 화면 없음(**D-14**). 개발 중 URI는 `localhost`(D-07) |
 | `POST /auth/logout` | 쿠키 삭제(서버 상태 없음). 만료 전 토큰의 강제 무효화는 1차 범위 밖 | 비인증 허용, Origin 검사 적용. 로컬 임시 입력 삭제는 프런트 책임 |
-| `GET /me` | 프로필·시간대·온보딩 완료 여부 | |
+| `GET /me` | 프로필(`nickname`·`statusMessage`·`avatarId`, DEC-104)·시간대·온보딩 완료 여부 | |
 | `PATCH /me` | 닉네임·시간대·`activeSlots`(쓰는 끼니, 1개 이상, D-18) 수정, `onboarded: true`로 첫 설정(S-03) 완료 표시 | 시간대 변경 시 pending 알림 재예약(단계 2) |
+| `PUT /me/profile` | **구현(2026-11-22, DEC-104)**. 프로필 저장(multipart): `nickname`(필수, 1~30자)·`statusMessage`(한 줄 60자, 없거나 비면 지움)·`file`(사진, 선택)·`removeAvatar`(선택) → `MeDto`. 요청 하나로 통째로 바꾼다 | `file` 이 없으면 사진은 그대로, `removeAvatar=true` 면 지움. 사진은 JPEG·PNG·WebP 10 MB(초과 413), 읽을 수 없으면 `422 PHOTO_UNSUPPORTED` 이고 글자도 바뀌지 않는다. 사진 바꾸기 하루 10번 초과 `422 PHOTO_DAILY_LIMIT`, 저장 공간 가득 `422 PHOTO_STORAGE_FULL`. 사진은 만료 없이 보관 |
+| `GET /profiles/{userId}` | **구현(DEC-104)**. 프로필 보기 `ProfileDto`: `userId`·`nickname`·`statusMessage`·`avatarId`·`isMe`·`isFriend` | 본인·친구·같은 친구가 있는 사람만. 끼니 공개 범위와 무관. 차단·탈퇴·남·없는 id 는 같은 404 |
+| `GET /profiles/{userId}/avatar?size=thumb` | **구현(DEC-104)**. 프로필 사진(JPEG, 보기용 긴 변 800 px·썸네일 160 px 정사각) | 판정은 위와 같다. 사진 없음·파일 없음도 404. 캐시 규칙은 §8-1 과 같다(ETag 는 `avatarId` 기준) |
 | `DELETE /me` | 계정 소프트 삭제(`deleted_at`) | 2단계 확인은 화면 책임. 개인 데이터 삭제 절차 문서화 필요 |
 | `GET /health` | 상태 확인(비인증). DB `SELECT 1` 포함, 실패면 `503` | NFR-05 |
 | `GET /docs` | Swagger UI. 운영 환경에서는 비활성 | D-05 |
@@ -146,7 +149,7 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 | `GET /friend-invites/{code}` | 미리보기 `{nickname}` | **로그인 불필요**. 만료·소진·철회·초대자 탈퇴는 404 |
 | `POST /friend-invites/{code}/accept` | 수락 → 즉시 친구, `FriendDto` | 내 링크 `422 FRIEND_INVITE_OWN`, 이미 친구 `422 FRIEND_ALREADY`, 친구 50명 `422 FRIEND_LIMIT`, 쓸 수 없는 링크 404. 공개 범위는 바꾸지 않는다 |
 | `DELETE /friend-invites/{id}` | 철회 | 남의 링크 404 |
-| `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `date`·`activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
+| `GET /friends` | 친구 목록 `FriendDto[]`: `userId`·`nickname`·`statusMessage`·`avatarId`(DEC-104)·`since`·`shareToFriend`(내 스위치)·`shared`(내가 볼 수 있는가)·`today`(친구 시간대 오늘의 `date`·`activeSlots`·`recordedSlots`·`completed`, 볼 수 없으면 null) | 탈퇴한 친구는 빠진다 |
 | `PATCH /friends/{userId}` `{shareToFriend?, shareWeightToFriend?}` | 이 친구에게만 내 끼니 끄기·켜기, 내 몸무게 켜기·끄기(기본 꺼짐, DEC-101) | 친구가 아니면 404. 둘 다 없으면 422. 끼니를 끄면 몸무게 스위치도 꺼진다 |
 | `DELETE /friends/{userId}` | 친구 끊기(양쪽 즉시) | |
 | `POST /friends/{userId}/block` | 차단(204): 친구가 끊기고 어느 쪽의 초대 링크도 404, 서로의 반응·댓글 숨김·알림 막기 | 지금 친구만. 그 밖(상대가 나를 차단함 포함)은 404, 이미 내가 차단했으면 204. DEC-097 |
@@ -164,12 +167,12 @@ DEC-080 계산 규칙(2026-11-12): 소진일 = 필요량을 채우지 못하는 
 | `GET /days/{date}/social` | 내 하루의 기록별 `RecordSocialDto[]`: `recordId`·`reactions[{emoji,count}]`·`myReaction`(늘 null)·`commentCount` | 미기록 끼니는 없다 |
 | `PUT /friends/{userId}/meal-records/{recordId}/reaction` `{emoji}` | 반응(한 사람 1개, 다시 보내면 교체) → `RecordSocialDto` | 친구만. 내 기록은 404. 허용 외 이모지 422 |
 | `DELETE /friends/{userId}/meal-records/{recordId}/reaction` | 내 반응 지우기 → `RecordSocialDto` | 없어도 200 |
-| `GET /friends/{userId}/meal-records/{recordId}/comments` | 댓글 `CommentDto[]`(오래된 순): `id`·`userId`·`nickname`·`body`·`createdAt`·`likeCount`·`likedByMe`·`mine`·`canDelete` | 소유자 본인도 자기 `userId` 로 부른다. 기록당 100개까지라 전부 준다 |
+| `GET /friends/{userId}/meal-records/{recordId}/comments` | 댓글 `CommentDto[]`(오래된 순): `id`·`userId`·`nickname`·`avatarId`(DEC-104)·`body`·`createdAt`·`likeCount`·`likedByMe`·`mine`·`canDelete` | 소유자 본인도 자기 `userId` 로 부른다. 기록당 100개까지라 전부 준다 |
 | `POST /friends/{userId}/meal-records/{recordId}/comments` `{body}` | 댓글 쓰기(앞뒤 공백 뗀 1~500자) → 갱신된 `CommentDto[]` | 100개째 뒤는 `422 COMMENT_LIMIT` |
 | `DELETE /friends/{userId}/meal-records/{recordId}/comments/{commentId}` | 댓글 삭제(행 삭제) | 쓴 사람 또는 기록 소유자. 그 밖에는 404 |
 | `PUT /comments/{commentId}/like` · `DELETE …/like` | 댓글 좋아요·취소 → `{likeCount, likedByMe}` | 댓글이 달린 기록을 볼 수 있어야 한다. 다시 보내도 1개 |
 
-친구의 하루(`SharedMealDto`)에는 `social`(`RecordSocialDto`, 미기록 끼니는 null)이 실린다.
+친구의 하루(`SharedMealDto`)에는 `social`(`RecordSocialDto`, 미기록 끼니는 null)이 실린다. `SharedDayDto.owner` 는 `userId`·`nickname`·`avatarId`(DEC-104)다.
 
 친구 코드 요청(`/friends/requests`)·`friend-code` 는 만들지 않는다(DEC-092). 차단 관계인 두 사람은 서로의 댓글·반응을 보지 못하고(같은 친구의 끼니에서도, 목록과 수 모두), 끼니 주인과 차단 관계인 사람의 댓글·반응은 그 끼니에서 모두에게 숨는다. 숨은 댓글의 좋아요는 404 다(DEC-097).
 

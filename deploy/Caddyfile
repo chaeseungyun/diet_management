@@ -14,16 +14,16 @@ www.{$DOMAIN} {
 		-Server
 	}
 
-	# 본문 크기 제한 (NFR-04). 식사 사진 올리기만 11MB(사진 10 MB + multipart 여유, DEC-086), 나머지는 2MB.
+	# 본문 크기 제한 (NFR-04). 사진 올리기(식사 사진 POST, 프로필 저장 PUT)만 11MB(사진 10 MB + multipart 여유, DEC-086·104), 나머지는 2MB.
 	# 두 request_body 가 한 요청에 함께 걸리면 작은 쪽이 이기므로 조건을 서로 겹치지 않게 둔다
 	@photoUpload {
-		method POST
-		path /api/v1/meal-photos
+		method POST PUT
+		path /api/v1/meal-photos /api/v1/me/profile
 	}
 	@notPhotoUpload {
 		not {
-			method POST
-			path /api/v1/meal-photos
+			method POST PUT
+			path /api/v1/meal-photos /api/v1/me/profile
 		}
 	}
 	request_body @photoUpload {

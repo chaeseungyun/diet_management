@@ -41,9 +41,14 @@ const DRAFT_TTL_MS = 24 * 3600_000;
 /** 행 없는 파일은 이만큼 지난 것만 지운다(지금 올리는 중인 파일을 건드리지 않게) */
 const ORPHAN_MIN_AGE_MS = 3600_000;
 const MONTH_RE = /^\d{4}-\d{2}$/;
-const PHOTO_FILE_RE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(_t)?\.jpg$/;
+export const PHOTO_FILE_RE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(_t)?\.jpg$/;
 
 export type PhotoSize = 'view' | 'thumb';
+
+/** 변환 크기. squareThumb 면 썸네일을 가운데 기준 정사각으로 자른다(프로필 사진, DEC-104) */
+export type PhotoConvertSizes = { viewPx: number; thumbPx: number; squareThumb?: boolean };
+const MEAL_SIZES: PhotoConvertSizes = { viewPx: VIEW_PX, thumbPx: THUMB_PX };
 
 export type PhotoCleanupResult = {
   /** 24시간 지난 임시 사진 */
@@ -102,7 +107,7 @@ export class PhotosService {
 
     this.countUpload(user, now);
     const started = Date.now();
-    const { view, thumb } = await this.serial(() => this.process(input));
+    const { view, thumb } = await this.convert(input, MEAL_SIZES);
     // 느린 업로드가 전송 탓인지 변환 탓인지 가릴 수 있게 변환 시간(대기 포함)을 남긴다
     this.log.log(`photo processed inBytes=${input.length} ms=${Date.now() - started}`);
     const id = randomUUID();
@@ -147,6 +152,14 @@ export class PhotosService {
       if (row === null) await this.unlink({ path, thumbPath });
       throw e;
     }
+  }
+
+  /**
+   * 보기용·썸네일 JPEG 을 만든다. 식사 사진과 프로필 사진(DEC-104)이 같은 줄에 서서 한 번에 한 장만 푼다.
+   * 읽을 수 없는 파일은 422 PHOTO_UNSUPPORTED.
+   */
+  convert(input: Buffer, sizes: PhotoConvertSizes) {
+    return this.serial(() => this.process(input, sizes));
   }
 
   /** 파일 열기. 타인·삭제·만료·파일 없음은 모두 404 (D-06) */
@@ -333,8 +346,9 @@ export class PhotosService {
   /**
    * 저장 공간이 찼으면 새 업로드를 거부한다 (DEC-069: 7일 아래로 조용히 줄여 지우지 않는다).
    * 찼다 = 보관 중인 사진이 예산(20 GB) 이상이거나 디스크 사용률 80 % 초과.
+   * 프로필 사진도 같은 판정을 쓴다(DEC-104. 프로필 사진 자체는 예산에 세지 않는다).
    */
-  private async assertStorage(): Promise<void> {
+  async assertStorage(): Promise<void> {
     const [stored, disk] = await Promise.all([
       this.sumBytes(Prisma.sql`purged_at IS NULL`),
       this.diskUsedRatio(),
@@ -471,7 +485,7 @@ export class PhotosService {
   }
 
   /** 보기용·썸네일 JPEG 을 만든다. 방향은 EXIF 대로 돌려 굽고 메타데이터는 싣지 않는다 */
-  private async process(input: Buffer) {
+  private async process(input: Buffer, sizes: PhotoConvertSizes) {
     try {
       const meta = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata();
       if (!meta.format || !INPUT_FORMATS.has(meta.format)) {
@@ -479,13 +493,17 @@ export class PhotosService {
       }
       const view = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
         .rotate()
-        .resize(VIEW_PX, VIEW_PX, { fit: 'inside', withoutEnlargement: true })
+        .resize(sizes.viewPx, sizes.viewPx, { fit: 'inside', withoutEnlargement: true })
         .flatten({ background: '#ffffff' })
         .jpeg({ quality: JPEG_QUALITY })
         .toBuffer({ resolveWithObject: true });
       // 썸네일은 원본을 다시 풀지 않고 보기용에서 줄인다
       const thumb = await sharp(view.data)
-        .resize(THUMB_PX, THUMB_PX, { fit: 'inside', withoutEnlargement: true })
+        .resize(
+          sizes.thumbPx,
+          sizes.thumbPx,
+          sizes.squareThumb ? { fit: 'cover' } : { fit: 'inside', withoutEnlargement: true },
+        )
         .jpeg({ quality: JPEG_QUALITY })
         .toBuffer({ resolveWithObject: true });
       return { view, thumb };

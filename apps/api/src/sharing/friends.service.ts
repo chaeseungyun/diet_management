@@ -280,7 +280,7 @@ export class FriendsService {
         .map((r) => r.id as string),
     );
     return {
-      owner: { userId: owner.id, nickname: owner.nickname },
+      owner: { userId: owner.id, nickname: owner.nickname, avatarId: owner.avatarId },
       date,
       today,
       firstDate,
@@ -345,6 +345,8 @@ export class FriendsService {
     return {
       userId: friend.id,
       nickname: friend.nickname,
+      statusMessage: friend.statusMessage,
+      avatarId: friend.avatarId,
       since: (link.respondedAt ?? link.createdAt).toISOString(),
       shareToFriend: iAmLow ? link.lowSharesToHigh : link.highSharesToLow,
       shareWeightToFriend: iAmLow ? link.lowSharesWeightToHigh : link.highSharesWeightToLow,

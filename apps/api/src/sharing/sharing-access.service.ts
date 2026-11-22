@@ -58,6 +58,50 @@ export class SharingAccessService {
   }
 
   /**
+   * 프로필(닉네임·상태 메시지·프로필 사진)을 볼 수 있는 대상 (DEC-104).
+   * 본인, 친구, 또는 같은 친구가 있는 사람(친구의 끼니 댓글창에서 서로 닉네임이 보이는 범위)만 통과한다.
+   * 끼니 공개 범위와는 무관하다. 차단 관계·탈퇴·그 밖은 모두 같은 404 (D-06).
+   */
+  async resolveProfileViewable(
+    viewer: User,
+    targetId: string,
+  ): Promise<{ target: User; isMe: boolean; isFriend: boolean }> {
+    if (viewer.id === targetId) return { target: viewer, isMe: true, isFriend: false };
+    const target = await this.prisma.user.findFirst({ where: { id: targetId, deletedAt: null } });
+    if (!target) throw new NotFoundException();
+    const link = await this.prisma.friendLink.findUnique({
+      where: { userLowId_userHighId: friendPair(viewer.id, targetId) },
+      select: { status: true },
+    });
+    if (link?.status === 'blocked') throw new NotFoundException();
+    if (link?.status === 'accepted') return { target, isMe: false, isFriend: true };
+    // 같은 친구: 내 친구(탈퇴하지 않은) 중 target 과도 친구인 사람이 있는가
+    const mine = await this.prisma.friendLink.findMany({
+      where: { status: 'accepted', OR: [{ userLowId: viewer.id }, { userHighId: viewer.id }] },
+      select: {
+        userLow: { select: { id: true, deletedAt: true } },
+        userHigh: { select: { id: true, deletedAt: true } },
+      },
+    });
+    const friendIds = mine
+      .map((l) => (l.userLow.id === viewer.id ? l.userHigh : l.userLow))
+      .filter((u) => u.deletedAt === null)
+      .map((u) => u.id);
+    if (friendIds.length === 0) throw new NotFoundException();
+    const common = await this.prisma.friendLink.count({
+      where: {
+        status: 'accepted',
+        OR: [
+          { userLowId: targetId, userHighId: { in: friendIds } },
+          { userHighId: targetId, userLowId: { in: friendIds } },
+        ],
+      },
+    });
+    if (common === 0) throw new NotFoundException();
+    return { target, isMe: false, isFriend: false };
+  }
+
+  /**
    * userId 와 차단 관계인 사람들(내가 차단했거나 나를 차단한 사람, DEC-097).
    * 같은 친구의 끼니에 서로 남긴 반응·댓글을 서로에게 숨기고, 서로의 알림을 막는 데 쓴다.
    */

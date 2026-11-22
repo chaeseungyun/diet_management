@@ -3111,6 +3111,126 @@
           "sharing"
         ]
       }
+    },
+    "/api/v1/me/profile": {
+      "put": {
+        "operationId": "ProfileController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "nickname"
+                ],
+                "properties": {
+                  "nickname": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 30
+                  },
+                  "statusMessage": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "removeAvatar": {
+                    "type": "boolean"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "내 프로필 저장: 닉네임·상태 메시지·사진을 요청 하나로. 사진은 JPEG·PNG·WebP, 10 MB 초과는 413. file 이 없으면 사진은 그대로(removeAvatar=true 면 지움)",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profiles/{userId}": {
+      "get": {
+        "operationId": "ProfileController_profile",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "프로필 보기. 본인·친구·같은 친구가 있는 사람만, 그 밖(차단·탈퇴 포함)은 404",
+        "tags": [
+          "profile"
+        ]
+      }
+    },
+    "/api/v1/profiles/{userId}/avatar": {
+      "get": {
+        "operationId": "ProfileController_avatar",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "view",
+                "thumb"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "프로필 사진 파일(JPEG). 볼 수 없는 사람·사진 없음은 404",
+        "tags": [
+          "profile"
+        ]
+      }
     }
   },
   "info": {
@@ -3139,6 +3259,17 @@
           },
           "nickname": {
             "type": "string"
+          },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true,
+            "description": "상태 메시지 (DEC-104). 없으면 null"
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true,
+            "description": "프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{id}/avatar`",
+            "format": "uuid"
           },
           "timezone": {
             "type": "string",
@@ -3171,6 +3302,8 @@
         "required": [
           "id",
           "nickname",
+          "statusMessage",
+          "avatarId",
           "timezone",
           "onboardedAt",
           "activeSlots",
@@ -6839,6 +6972,17 @@
           "nickname": {
             "type": "string"
           },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true,
+            "description": "상태 메시지 (DEC-104). 없으면 null"
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true,
+            "description": "프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar`",
+            "format": "uuid"
+          },
           "since": {
             "type": "string",
             "description": "친구가 된 시각",
@@ -6870,6 +7014,8 @@
         "required": [
           "userId",
           "nickname",
+          "statusMessage",
+          "avatarId",
           "since",
           "shareToFriend",
           "shareWeightToFriend",
@@ -6915,11 +7061,18 @@
           },
           "nickname": {
             "type": "string"
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true,
+            "description": "프로필 사진 id (DEC-104). 없으면 null",
+            "format": "uuid"
           }
         },
         "required": [
           "userId",
-          "nickname"
+          "nickname",
+          "avatarId"
         ]
       },
       "SharedMealItemDto": {
@@ -7253,6 +7406,12 @@
           "nickname": {
             "type": "string"
           },
+          "avatarId": {
+            "type": "string",
+            "nullable": true,
+            "description": "쓴 사람의 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar`",
+            "format": "uuid"
+          },
           "body": {
             "type": "string"
           },
@@ -7279,6 +7438,7 @@
           "id",
           "userId",
           "nickname",
+          "avatarId",
           "body",
           "createdAt",
           "likeCount",
@@ -7314,6 +7474,43 @@
         "required": [
           "likeCount",
           "likedByMe"
+        ]
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarId": {
+            "type": "string",
+            "nullable": true,
+            "description": "프로필 사진 id. 없으면 null. 파일은 `GET /profiles/{userId}/avatar`",
+            "format": "uuid"
+          },
+          "isMe": {
+            "type": "boolean"
+          },
+          "isFriend": {
+            "type": "boolean",
+            "description": "지금 친구인가. 같은 친구가 있을 뿐인 사람은 false"
+          }
+        },
+        "required": [
+          "userId",
+          "nickname",
+          "statusMessage",
+          "avatarId",
+          "isMe",
+          "isFriend"
         ]
       },
       "ErrorFieldDto": {

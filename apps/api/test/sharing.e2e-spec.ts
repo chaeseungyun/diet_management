@@ -345,7 +345,8 @@ describe('phase 4: sharing-1a', () => {
     );
     // 몸무게는 켜지 않으면 null 이다 (DEC-101)
     expect(body.weight).toBeNull();
-    expect(body.owner).toEqual({ userId: aId, nickname: '에이' });
+    // 프로필 사진 id 는 나간다 (DEC-104). 사진이 없으면 null
+    expect(body.owner).toEqual({ userId: aId, nickname: '에이', avatarId: null });
     expect(body).toMatchObject({ date: TODAY, today: TODAY, firstDate: TODAY, completed: false });
     for (const meal of [...body.slots, ...body.extras]) {
       expect(Object.keys(meal).sort()).toEqual(

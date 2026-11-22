@@ -143,6 +143,8 @@ describe('phase 4: sharing-2a (reactions, comments, likes)', () => {
     ]);
     expect(Object.keys(seenByC[0]).sort()).toEqual(
       [
+        // 쓴 사람의 프로필 사진 id (DEC-104)
+        'avatarId',
         'body',
         'canDelete',
         'createdAt',

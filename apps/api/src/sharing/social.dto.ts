@@ -55,6 +55,10 @@ export class CommentDto {
   @ApiProperty()
   nickname!: string;
 
+  /** 쓴 사람의 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar` */
+  @ApiProperty({ type: String, nullable: true, format: 'uuid' })
+  avatarId!: string | null;
+
   @ApiProperty()
   body!: string;
 

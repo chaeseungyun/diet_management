@@ -6,12 +6,15 @@ import { cn } from '@/lib/utils';
 /** 화면 공통 틀: 제목, 뒤로 링크, 우측 동작 */
 export function Page({
   title,
+  leading,
   back,
   actions,
   children,
   wide = false,
 }: {
   title: React.ReactNode;
+  /** 제목 앞에 두는 것(프로필 사진 버튼 등). 제목 h1 밖에 그린다 */
+  leading?: React.ReactNode;
   back?: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
@@ -36,6 +39,7 @@ export function Page({
               <ChevronLeft className="size-5" />
             </Link>
           ) : null}
+          {leading ? <div className="mr-1 flex shrink-0 items-center">{leading}</div> : null}
           <h1 className="truncate text-xl font-semibold">{title}</h1>
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}

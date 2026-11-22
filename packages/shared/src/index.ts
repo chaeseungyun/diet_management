@@ -131,6 +131,12 @@ export const WEEKDAY_LABELS: Record<Weekday, string> = {
 
 /** 닉네임 길이 제한 (FR-01 최소 프로필) */
 export const NICKNAME_MAX_LENGTH = 30;
+/** 상태 메시지 길이 (DEC-104). 한 줄 */
+export const STATUS_MESSAGE_MAX_LENGTH = 60;
+/** 프로필 사진 (DEC-104): 보기용 긴 변, 썸네일 한 변(정사각), 하루 바꾸기 횟수 */
+export const AVATAR_VIEW_PX = 800;
+export const AVATAR_THUMB_PX = 160;
+export const AVATAR_MAX_CHANGES_PER_DAY = 10;
 export const NAME_MAX_LENGTH = 100;
 /** 식단 외 식사 한 끼의 메뉴 줄 상한 (DEC-103) */
 export const OUTSIDE_ITEMS_MAX = 20;

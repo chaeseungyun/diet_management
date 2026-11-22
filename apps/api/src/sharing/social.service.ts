@@ -120,7 +120,7 @@ export class SocialService {
       where: { mealRecordId: record.id, ...(await this.visibleAuthors(viewer.id, owner.id)) },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       include: {
-        user: { select: { nickname: true } },
+        user: { select: { nickname: true, avatarId: true } },
         _count: { select: { likes: true } },
         likes: { where: { userId: viewer.id }, select: { userId: true } },
       },
@@ -129,6 +129,7 @@ export class SocialService {
       id: c.id,
       userId: c.userId,
       nickname: c.user.nickname,
+      avatarId: c.user.avatarId,
       body: c.body,
       createdAt: c.createdAt.toISOString(),
       likeCount: c._count.likes,

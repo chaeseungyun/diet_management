@@ -97,6 +97,10 @@ model User {
   shareVisibility ShareVisibility @default(private) @map("share_visibility")
   /// 몸무게도 친구에게 보이는가 (DEC-101). 기본 꺼짐. 끼니 공개 + 친구별 몸무게 스위치(FriendLink)와 AND
   shareWeight     Boolean         @default(false) @map("share_weight")
+  /// 상태 메시지 한 줄 (DEC-104). null = 없음
+  statusMessage   String?         @map("status_message")
+  /// 프로필 사진 id (DEC-104). 파일은 PHOTOS_DIR/<userId>/avatar/<id>.jpg 와 _t.jpg, 만료 없음. null = 사진 없음
+  avatarId        String?         @map("avatar_id") @db.Uuid
 
   goals                  GoalHistory[]
   products               Product[]

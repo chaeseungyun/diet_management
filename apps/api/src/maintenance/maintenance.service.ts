@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { AvatarsService } from '../photos/avatars.service';
 import { PhotosService, type PhotoCleanupResult } from '../photos/photos.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StockService } from '../stock/stock.service';
@@ -20,6 +21,7 @@ export class MaintenanceService {
     private readonly prisma: PrismaService,
     private readonly stock: StockService,
     private readonly photos: PhotosService,
+    private readonly avatars: AvatarsService,
   ) {}
 
   @Cron('0 4 * * *', { name: 'daily-cleanup', timeZone: 'Asia/Seoul' })
@@ -37,6 +39,8 @@ export class MaintenanceService {
     alertResets: number;
     /** 사진 정리 결과. 실패하면 null (다른 정리는 그대로 끝낸다) */
     photos: PhotoCleanupResult | null;
+    /** 안 쓰는 프로필 사진 파일 수 (DEC-104). 실패하면 null */
+    avatars: number | null;
   }> {
     const keys = await this.prisma.idempotencyKey.deleteMany({ where: { expiresAt: { lt: now } } });
     const cutoff = new Date(now.getTime() - DELIVERY_RETENTION_DAYS * 86_400_000);
@@ -50,14 +54,21 @@ export class MaintenanceService {
     } catch (e) {
       this.log.error(`photo cleanup failed: ${e instanceof Error ? e.message : String(e)}`);
     }
+    let avatars: number | null = null;
+    try {
+      avatars = await this.avatars.cleanup(now);
+    } catch (e) {
+      this.log.error(`avatar cleanup failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
     const result = {
       idempotencyKeys: keys.count,
       deliveries: deliveries.count,
       alertResets,
       photos,
+      avatars,
     };
     this.log.log(
-      `daily cleanup idempotencyKeys=${result.idempotencyKeys} deliveries=${result.deliveries} alertResets=${result.alertResets} photos=${JSON.stringify(photos)}`,
+      `daily cleanup idempotencyKeys=${result.idempotencyKeys} deliveries=${result.deliveries} alertResets=${result.alertResets} photos=${JSON.stringify(photos)} avatars=${avatars}`,
     );
     return result;
   }

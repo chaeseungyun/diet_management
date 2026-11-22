@@ -12,8 +12,9 @@ import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
+import { ProfileButton } from './profile-sheet';
 
-/** S-80 친구 한 줄: 누르면 친구의 오늘(S-83), ⋮ 로 이 친구에게 숨기기·친구 끊기·차단(DEC-097) */
+/** S-80 친구 한 줄: 사진을 누르면 프로필(S-87, DEC-104), 줄을 누르면 친구의 오늘(S-83), ⋮ 로 이 친구에게 숨기기·친구 끊기·차단(DEC-097) */
 export function FriendRow({ friend }: { friend: Friend }) {
   const router = useRouter();
   const { status, run } = useStatus();
@@ -37,7 +38,10 @@ export function FriendRow({ friend }: { friend: Friend }) {
 
   const body = (
     <>
-      <span className="font-medium">{friend.nickname}</span>
+      <span className="truncate font-medium">{friend.nickname}</span>
+      {friend.statusMessage ? (
+        <span className="truncate text-xs text-muted-foreground">{friend.statusMessage}</span>
+      ) : null}
       <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
         {friendTodayText(friend)}
         {!friend.shareToFriend ? <Badge variant="outline">내 끼니 숨김</Badge> : null}
@@ -47,6 +51,12 @@ export function FriendRow({ friend }: { friend: Friend }) {
 
   return (
     <Card className="flex items-center gap-1 p-3">
+      <ProfileButton
+        userId={friend.userId}
+        nickname={friend.nickname}
+        avatarId={friend.avatarId}
+        className="mr-2 size-10"
+      />
       {href ? (
         <Link href={href} className="flex min-w-0 flex-1 items-center justify-between gap-2">
           <span className="flex min-w-0 flex-col">{body}</span>

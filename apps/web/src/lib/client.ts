@@ -90,8 +90,12 @@ export async function api<T>(
 }
 
 /** 파일 올리기(multipart). content-type 은 브라우저가 경계 문자열과 함께 붙인다 */
-export function upload<T>(path: string, form: FormData): Promise<T> {
-  return send<T>(path, { method: 'POST', body: form });
+export function upload<T>(
+  path: string,
+  form: FormData,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
+  return send<T>(path, { method, body: form });
 }
 
 async function send<T>(path: string, init: RequestInit): Promise<T> {

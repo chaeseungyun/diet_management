@@ -1182,6 +1182,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 내 프로필 저장: 닉네임·상태 메시지·사진을 요청 하나로. 사진은 JPEG·PNG·WebP, 10 MB 초과는 413. file 이 없으면 사진은 그대로(removeAvatar=true 면 지움) */
+        put: operations["ProfileController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profiles/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 프로필 보기. 본인·친구·같은 친구가 있는 사람만, 그 밖(차단·탈퇴 포함)은 404 */
+        get: operations["ProfileController_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/profiles/{userId}/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 프로필 사진 파일(JPEG). 볼 수 없는 사람·사진 없음은 404 */
+        get: operations["ProfileController_avatar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1190,6 +1241,13 @@ export interface components {
             /** Format: uuid */
             id: string;
             nickname: string;
+            /** @description 상태 메시지 (DEC-104). 없으면 null */
+            statusMessage: string | null;
+            /**
+             * Format: uuid
+             * @description 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{id}/avatar`
+             */
+            avatarId: string | null;
             /** @example Asia/Seoul */
             timezone: string;
             /** Format: date-time */
@@ -2351,6 +2409,13 @@ export interface components {
             /** Format: uuid */
             userId: string;
             nickname: string;
+            /** @description 상태 메시지 (DEC-104). 없으면 null */
+            statusMessage: string | null;
+            /**
+             * Format: uuid
+             * @description 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar`
+             */
+            avatarId: string | null;
             /**
              * Format: date-time
              * @description 친구가 된 시각
@@ -2380,6 +2445,11 @@ export interface components {
             /** Format: uuid */
             userId: string;
             nickname: string;
+            /**
+             * Format: uuid
+             * @description 프로필 사진 id (DEC-104). 없으면 null
+             */
+            avatarId: string | null;
         };
         SharedMealItemDto: {
             name: string;
@@ -2487,6 +2557,11 @@ export interface components {
             /** Format: uuid */
             userId: string;
             nickname: string;
+            /**
+             * Format: uuid
+             * @description 쓴 사람의 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar`
+             */
+            avatarId: string | null;
             body: string;
             /** Format: date-time */
             createdAt: string;
@@ -2504,6 +2579,20 @@ export interface components {
         CommentLikeDto: {
             likeCount: number;
             likedByMe: boolean;
+        };
+        ProfileDto: {
+            /** Format: uuid */
+            userId: string;
+            nickname: string;
+            statusMessage: string | null;
+            /**
+             * Format: uuid
+             * @description 프로필 사진 id. 없으면 null. 파일은 `GET /profiles/{userId}/avatar`
+             */
+            avatarId: string | null;
+            isMe: boolean;
+            /** @description 지금 친구인가. 같은 친구가 있을 뿐인 사람은 false */
+            isFriend: boolean;
         };
         ErrorFieldDto: {
             field: string;
@@ -4546,6 +4635,77 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CommentLikeDto"];
                 };
+            };
+        };
+    };
+    ProfileController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    nickname: string;
+                    statusMessage?: string;
+                    removeAvatar?: boolean;
+                    /** Format: binary */
+                    file?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeDto"];
+                };
+            };
+        };
+    };
+    ProfileController_profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDto"];
+                };
+            };
+        };
+    };
+    ProfileController_avatar: {
+        parameters: {
+            query?: {
+                size?: "view" | "thumb";
+            };
+            header?: never;
+            path: {
+                userId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

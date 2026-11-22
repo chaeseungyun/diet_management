@@ -10,6 +10,7 @@ import { buttonClasses } from '@/components/ui/button';
 import { Card, CardContent, EmptyState } from '@/components/ui/card';
 import { SharedPhotos } from '@/components/friends/shared-photos';
 import { MealSocial } from '@/components/friends/meal-social';
+import { ProfileButton } from '@/components/friends/profile-sheet';
 import { WeightChart } from '@/components/settings/weight-chart';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +33,14 @@ export default async function FriendDayPage({
   return (
     <Page
       title={`${day.owner.nickname}님의 하루`}
+      leading={
+        <ProfileButton
+          userId={day.owner.userId}
+          nickname={day.owner.nickname}
+          avatarId={day.owner.avatarId}
+          className="size-8 text-xs"
+        />
+      }
       back="/friends"
       actions={
         !isToday ? (

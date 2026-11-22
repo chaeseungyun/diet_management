@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import { getMe } from '@/lib/api';
 import { Page, Section } from '@/components/shell/page';
+import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { LogoutButton } from '@/components/logout-button';
 import { ProfileForm } from '@/components/settings/profile-form';
@@ -22,6 +23,23 @@ export default async function SettingsPage() {
   ];
   return (
     <Page title="더보기" actions={<LogoutButton />}>
+      <Link href="/settings/profile" aria-label="프로필 편집">
+        <Card className="flex items-center gap-3 p-3">
+          <Avatar
+            userId={me.id}
+            nickname={me.nickname}
+            avatarId={me.avatarId}
+            className="size-14 text-xl"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{me.nickname}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {me.statusMessage ?? '사진·상태 메시지를 정해 보세요'}
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </Card>
+      </Link>
       <ProfileForm me={me} />
       <Section title="테마">
         <ThemeToggle />

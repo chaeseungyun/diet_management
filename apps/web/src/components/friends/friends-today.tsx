@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { friendDayHref, friendTodayText, type Friend } from '@/lib/friends';
+import { Avatar } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
-/** S-10 ⑨ 친구 오늘 줄: 이니셜 + 오늘 요약. 볼 수 없는 친구는 흐리게, 누르면 친구 목록으로 */
+/** S-10 ⑨ 친구 오늘 줄: 프로필 사진(없으면 이니셜, DEC-104) + 오늘 요약. 볼 수 없는 친구는 흐리게, 누르면 친구 목록으로 */
 export function FriendsToday({ friends }: { friends: Friend[] }) {
   if (friends.length === 0) return null;
   return (
@@ -15,17 +16,17 @@ export function FriendsToday({ friends }: { friends: Friend[] }) {
               href={href ?? '/friends'}
               className={cn('flex w-16 flex-col items-center gap-1', !href && 'opacity-50')}
             >
-              <span
-                aria-hidden
+              <Avatar
+                userId={f.userId}
+                nickname={f.nickname}
+                avatarId={f.avatarId}
                 className={cn(
-                  'flex size-11 items-center justify-center rounded-full border text-sm font-semibold',
-                  f.today?.completed
-                    ? 'border-transparent bg-accent text-accent-foreground'
-                    : 'border-border bg-card',
+                  'size-11',
+                  // 하루를 완료한 친구는 테두리로 표시한다
+                  f.today?.completed && 'border-2 border-primary',
+                  !f.avatarId && f.today?.completed && 'bg-accent text-accent-foreground',
                 )}
-              >
-                {Array.from(f.nickname)[0] ?? '?'}
-              </span>
+              />
               <span className="w-full truncate text-center text-xs">{f.nickname}</span>
               <span className="w-full truncate text-center text-[11px] text-muted-foreground">
                 {friendTodayText(f)}

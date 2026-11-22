@@ -14,5 +14,7 @@ import { SocialService } from './social.service';
   imports: [MealsModule, PhotosModule, NotificationsModule],
   controllers: [SharingController, SocialController],
   providers: [FriendsService, SharingAccessService, SocialService, SocialNotifyService],
+  // 프로필 보기(DEC-104)가 같은 접근 판정을 쓴다
+  exports: [SharingAccessService],
 })
 export class SharingModule {}

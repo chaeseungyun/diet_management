@@ -20,6 +20,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PhotosModule } from './photos/photos.module';
 import { SharingModule } from './sharing/sharing.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({})
 export class AppModule {
@@ -51,6 +52,7 @@ export class AppModule {
         PhotosModule,
         // 단계 4 끼니 공유 (DEC-066·090)
         SharingModule,
+        ProfileModule,
       ],
       controllers: [HealthController],
     };

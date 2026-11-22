@@ -53,6 +53,8 @@ erDiagram
         uuid id PK
         string kakao_id UK
         string nickname
+        string status_message "nullable, 한 줄 (DEC-104)"
+        uuid avatar_id "nullable, 프로필 사진 파일 id (DEC-104)"
         string timezone "default Asia/Seoul"
         enum[] active_slots "쓰는 끼니, 기본 5개 (D-18)"
         timestamptz created_at

@@ -66,6 +66,14 @@ export class MeDto {
   @ApiProperty()
   nickname!: string;
 
+  /** 상태 메시지 (DEC-104). 없으면 null */
+  @ApiProperty({ type: String, nullable: true })
+  statusMessage!: string | null;
+
+  /** 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{id}/avatar` */
+  @ApiProperty({ type: String, nullable: true, format: 'uuid' })
+  avatarId!: string | null;
+
   @ApiProperty({ example: 'Asia/Seoul' })
   timezone!: string;
 
@@ -83,6 +91,8 @@ export class MeDto {
     const dto = new MeDto();
     dto.id = user.id;
     dto.nickname = user.nickname;
+    dto.statusMessage = user.statusMessage;
+    dto.avatarId = user.avatarId;
     dto.timezone = user.timezone;
     dto.onboardedAt = user.onboardedAt ? user.onboardedAt.toISOString() : null;
     dto.activeSlots = MEAL_SLOTS.filter((s) => (user.activeSlots as string[]).includes(s));

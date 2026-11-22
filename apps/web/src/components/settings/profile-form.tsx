@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { NICKNAME_MAX_LENGTH, type MealSlot } from '@diet/shared';
+import type { MealSlot } from '@diet/shared';
 import type { MeDto } from '@/lib/api';
 import { api } from '@/lib/client';
 import { Button } from '@/components/ui/button';
@@ -21,18 +21,17 @@ export const COMMON_TIMEZONES = [
   'UTC',
 ];
 
-/** S-70 프로필(닉네임)·시간대. 시간대 변경은 날짜 경계·알림 예약을 바꾼다 */
+/** S-70 시간대·쓰는 끼니. 닉네임·사진·상태 메시지는 S-74(DEC-104). 시간대 변경은 날짜 경계·알림 예약을 바꾼다 */
 export function ProfileForm({ me }: { me: MeDto }) {
   const router = useRouter();
   const { status, run } = useStatus();
-  const [nickname, setNickname] = useState(me.nickname);
   const [timezone, setTimezone] = useState(me.timezone);
   const [activeSlots, setActiveSlots] = useState<MealSlot[]>(me.activeSlots as MealSlot[]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await run(() => api('PATCH', '/me', { nickname, timezone, activeSlots }), '프로필 저장');
+      await run(() => api('PATCH', '/me', { timezone, activeSlots }), '설정 저장');
       router.refresh();
     } catch {
       // 배너
@@ -42,14 +41,6 @@ export function ProfileForm({ me }: { me: MeDto }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
       <StatusBanner status={status} />
-      <Field label="닉네임" htmlFor="nick">
-        <Input
-          id="nick"
-          maxLength={NICKNAME_MAX_LENGTH}
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-        />
-      </Field>
       <Field
         label="시간대"
         htmlFor="tz"
@@ -71,11 +62,7 @@ export function ProfileForm({ me }: { me: MeDto }) {
       <Button
         type="submit"
         variant="outline"
-        disabled={
-          nickname === me.nickname &&
-          timezone === me.timezone &&
-          activeSlots.join() === me.activeSlots.join()
-        }
+        disabled={timezone === me.timezone && activeSlots.join() === me.activeSlots.join()}
       >
         저장
       </Button>

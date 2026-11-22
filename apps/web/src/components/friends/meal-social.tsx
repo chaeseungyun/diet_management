@@ -10,6 +10,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/input';
 import { StatusBanner, useStatus } from '@/components/ui/status';
 import { cn } from '@/lib/utils';
+import { ProfileButton } from './profile-sheet';
 
 export type RecordSocial = Schemas['RecordSocialDto'];
 type Comment = Schemas['CommentDto'];
@@ -220,6 +221,12 @@ function Comments({ base, onCount }: { base: string; onCount: (n: number) => voi
         <ul className="flex flex-col gap-3">
           {comments.map((c) => (
             <li key={c.id} className="flex flex-wrap items-start gap-2">
+              <ProfileButton
+                userId={c.userId}
+                nickname={c.nickname}
+                avatarId={c.avatarId}
+                className="size-8 text-xs"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">{c.nickname}</span>

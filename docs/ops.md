@@ -145,7 +145,7 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
 - 서버에는 **공개 키(`BACKUP_RECIPIENT`)만** 둔다. 공개 키로는 암호화만 되므로 서버가 털려도 백업 파일을 풀 수 없다. **비밀 키(`AGE-SECRET-KEY-1…`)는 VM 밖(비밀번호 관리자)에 보관**하고, 복원할 때만 `~/diet-backup-key.txt`(권한 600)로 올렸다가 지운다. 비밀 키를 잃으면 백업은 복원할 수 없다.
 - `restore.sh` 는 DB 를 지우기 전에 파일이 그 키로 풀리는지 먼저 확인한다. 풀리지 않으면 아무것도 바꾸지 않고 끝난다.
 - 외부 저장소(`BACKUP_REMOTE`)가 없는 동안에는 백업이 VM 디스크에만 있다. 가끔 PC 로 내려받아 둔다: `scp -i <키>.pem "ubuntu@<IP>:~/diet/backups/diet-*.sql.gz.age" ./`
-- 백업에는 사진 등 파일이 없다(DEC-014·DEC-069). 식사 사진은 EXT-02 부터 VM 볼륨 `data/photos/` 에 리사이즈본만 7~30일 보관되고 백업 밖이다. 디스크를 잃으면 사진은 복구되지 않는다(사용자 안내 문구에 포함). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
+- 백업에는 사진 등 파일이 없다(DEC-014·DEC-069). 식사 사진은 EXT-02 부터 VM 볼륨 `data/photos/` 에 리사이즈본만 7~30일 보관되고 백업 밖이다. 디스크를 잃으면 사진은 복구되지 않는다(사용자 안내 문구에 포함). 프로필 사진(DEC-104, `data/photos/<user_id>/avatar/`)은 만료 없이 보관하지만 역시 백업 밖이다: 디스크를 잃고 DB 만 복원하면 `users.avatar_id` 는 남고 파일이 없어 화면이 닉네임 첫 글자로 떨어진다. 복원 뒤 `UPDATE users SET avatar_id = NULL WHERE avatar_id IS NOT NULL;` 로 정리한다(사용자는 다시 올리면 된다). 개인 식사 내용은 DB에 있으므로 백업 파일 자체를 공개 저장소에 두지 않는다.
 - 백업 만료: 7일 후 로컬·원격 모두 삭제. 계정 삭제 요청 시 "최대 7일 안에 백업에서도 사라진다"로 안내한다(NFR-04).
 
 ## 6. 계정·개인 데이터 삭제 절차 (NFR-04)
@@ -157,13 +157,13 @@ TARGET_DB=diet_restore_test ./scripts/restore.sh backups/diet-<stamp>.sql.gz.age
      psql -U diet -d diet -c "DELETE FROM users WHERE deleted_at IS NOT NULL AND deleted_at < now() - interval '7 days';"
    ```
 3. 백업은 7일 보관이므로 그 뒤에는 어디에도 남지 않는다.
-4. 식사 사진(DEC-086)은 DB 밖 파일이다. 하드 삭제 전에 그 사용자의 폴더를 지운다: `rm -rf ~/diet/data/photos/<user_id>`. `meal_photos` 행은 `users` 를 참조하므로 2번의 삭제보다 먼저 지워야 한다(다른 사용자 소유 테이블과 같다).
+4. 식사 사진(DEC-086)은 DB 밖 파일이다. 하드 삭제 전에 그 사용자의 폴더를 지운다: `rm -rf ~/diet/data/photos/<user_id>`(프로필 사진 `avatar/` 도 이 폴더 안이라 함께 지워진다, DEC-104). `meal_photos` 행은 `users` 를 참조하므로 2번의 삭제보다 먼저 지워야 한다(다른 사용자 소유 테이블과 같다).
 
 ## 7. 로그·관찰 (NFR-05)
 
 - 컨테이너 로그는 json-file 드라이버, 파일당 10MB·5개로 순환. `docker compose logs -f api`.
 - API 로그에 개인 식사 내용·토큰·비밀을 남기지 않는다. 로그인 실패는 사유 코드만(`kakao login failed: state_mismatch`).
-- 스케줄러 로그: 알림을 보낸 실행만 `tick claimed=… sent=… retried=… expired=…` 한 줄, 매일 04:00 `daily cleanup idempotencyKeys=… deliveries=… alertResets=… photos={…}`(사진: `drafts` 임시 사진, `retentionDays` 보관 일수, `purged` 만료 파일, `swept` 삭제분, `orphanFiles` 행 없는 파일). 사용자 식사 내용·endpoint·키는 남기지 않는다.
+- 스케줄러 로그: 알림을 보낸 실행만 `tick claimed=… sent=… retried=… expired=…` 한 줄, 매일 04:00 `daily cleanup idempotencyKeys=… deliveries=… alertResets=… photos={…}`(사진: `drafts` 임시 사진, `retentionDays` 보관 일수, `purged` 만료 파일, `swept` 삭제분, `orphanFiles` 행 없는 파일) 와 `avatars=N`(어느 사용자도 가리키지 않는 프로필 사진 파일 수, DEC-104). 사용자 식사 내용·endpoint·키는 남기지 않는다.
 - 사진 저장 공간 경고(DEC-087, 운영자 알림은 로그뿐이다): `docker compose logs api | grep -i photo` 로 본다. `photo retention below 30 days`(warn) 는 유입이 늘어 보관 일수가 줄었다는 뜻이고, `photo storage full, uploads are refused`·`photo upload refused`(error) 는 보관량이 20 GB 이상이거나 디스크가 80 % 를 넘어 업로드를 막고 있다는 뜻이다. 뒤쪽이면 `df -h`·`du -sh ~/diet/data/photos`·`docker system df` 로 무엇이 찼는지 먼저 본다. 사진 파일을 손으로 지우지 않는다(DB 행과 어긋난다. 행 없는 파일은 정리 작업이 지운다).
 - 확인 항목(주 1회): `df -h`(디스크, 80 % 초과면 정리), `docker stats --no-stream`(메모리, 2GB 기준), `docker compose ps`(재시작 횟수), `/api/v1/health`, 백업 로그, 월 예상 비용(공급자 콘솔). EXT-02 뒤에는 `du -sh data/photos`(사진 예산 20 GB, DEC-069)와 사진 정리 작업 로그(계산된 보관 일수가 30 미만이면 알림)를 추가한다.
 - 메모리 실측(단계 0 완료 조건, 요구사항 §7-5). 2026-11-07 첫 배포 직후, 사용자 0명 유휴 상태의 `docker stats --no-stream`:

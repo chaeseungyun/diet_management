@@ -96,6 +96,14 @@ export class FriendDto {
   @ApiProperty()
   nickname!: string;
 
+  /** 상태 메시지 (DEC-104). 없으면 null */
+  @ApiProperty({ type: String, nullable: true })
+  statusMessage!: string | null;
+
+  /** 프로필 사진 id (DEC-104). 없으면 null. 파일은 `GET /profiles/{userId}/avatar` */
+  @ApiProperty({ type: String, nullable: true, format: 'uuid' })
+  avatarId!: string | null;
+
   /** 친구가 된 시각 */
   @ApiProperty({ format: 'date-time' })
   since!: string;
@@ -237,6 +245,10 @@ export class SharedDayOwnerDto {
 
   @ApiProperty()
   nickname!: string;
+
+  /** 프로필 사진 id (DEC-104). 없으면 null */
+  @ApiProperty({ type: String, nullable: true, format: 'uuid' })
+  avatarId!: string | null;
 }
 
 export class SharedDayDto {
